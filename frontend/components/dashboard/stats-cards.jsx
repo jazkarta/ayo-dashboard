@@ -5,7 +5,7 @@ import { statsData } from "@/utils/data";
 
 export function StatsCards() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-4">
       {statsData.map((stat) => (
         <Card key={stat.title} className="animate-fade-in">
           <CardContent className="p-6">

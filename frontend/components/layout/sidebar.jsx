@@ -43,11 +43,6 @@ const navItems = [
     icon: FlaskConical,
   },
   {
-    title: "Studies",
-    href: "/dashboard/studies",
-    icon: ClipboardList,
-  },
-  {
     title: "Reports",
     href: "/dashboard/reports",
     icon: BarChart3,
@@ -80,7 +75,7 @@ export function Sidebar() {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          "relative flex flex-col h-full bg-sidebar border-r border-sidebar-border transition-all duration-300 ease-in-out",
+          "relative flex flex-col h-full bg-sidebar border-r border-sidebar-border shadow-sm transition-all duration-300 ease-in-out",
           collapsed ? "w-[60px]" : "w-[240px]"
         )}
       >
@@ -91,16 +86,10 @@ export function Sidebar() {
             collapsed ? "justify-center" : "gap-3"
           )}
         >
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground shrink-0">
-            <FlaskConical className="w-4 h-4" />
-          </div>
           {!collapsed && (
             <div className="overflow-hidden">
-              <p className="text-sm font-semibold text-sidebar-foreground truncate leading-tight">
+              <p className="text-lg font-semibold text-sidebar-foreground truncate leading-tight">
                 AYO
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                Admin Panel
               </p>
             </div>
           )}
@@ -124,12 +113,7 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="flex flex-col flex-1 gap-1 p-2 overflow-y-auto scrollbar-thin">
           {/* Main nav section */}
-          <div className="flex flex-col gap-1">
-            {!collapsed && (
-              <p className="px-2 pt-2 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-                Main
-              </p>
-            )}
+          <div className="flex flex-col gap-1 mt-4">
             {collapsed && <div className="h-3" />}
             {navItems.map((item) => {
               const isActive =

@@ -122,18 +122,4 @@ export const statsData = [
     trend: "up",
     description: "vs last month",
   },
-  {
-    title: "Ongoing Studies",
-    value: "14",
-    change: "-1",
-    trend: "down",
-    description: "vs last month",
-  },
-  {
-    title: "Completion Rate",
-    value: "68%",
-    change: "+5%",
-    trend: "up",
-    description: "vs last month",
-  },
 ];

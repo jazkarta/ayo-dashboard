@@ -15,7 +15,7 @@ import {
 
 export function Header({ title = "Dashboard", subtitle }) {
   return (
-    <header className="h-16 border-b  bg-background flex items-center px-6 gap-4 shrink-0">
+    <header className="h-16 border-b border-sidebar-border shadow-xs bg-background flex items-center px-6 gap-4 shrink-0">
       {/* Page Title */}
       <div className="flex-1 min-w-0">
         <h1 className="text-lg font-semibold text-foreground truncate">
