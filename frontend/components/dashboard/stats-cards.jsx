@@ -1,7 +1,7 @@
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import { statsData } from "@/lib/data";
+import { cn } from "@/utils/utils";
+import { statsData } from "@/utils/data";
 
 export function StatsCards() {
   return (

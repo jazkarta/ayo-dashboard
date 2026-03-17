@@ -10,7 +10,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { recentResearchers } from "@/lib/data";
+import { recentResearchers } from "@/utils/data";
 
 const statusConfig = {
   active: { label: "Active", variant: "success" },

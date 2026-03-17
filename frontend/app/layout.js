@@ -16,8 +16,8 @@ const lato = Lato({
 
 export const metadata = {
   title: {
-    default: "ResearchHub | Dashboard",
-    template: "%s | ResearchHub",
+    default: "Ayo Dashboard | Dashboard",
+    template: "%s | Ayo Dashboard",
   },
   description:
     "Research management platform for participants and researchers.",
