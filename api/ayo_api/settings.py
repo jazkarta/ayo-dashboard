@@ -144,3 +144,13 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# keycloak configuration
+KEYCLOAK_SERVER_URL = os.environ.get('KEYCLOAK_SERVER_URL', 'http://localhost:8080')
+KEYCLOAK_REALM = os.environ.get('KEYCLOAK_REALM', 'ayo')
+KEYCLOAK_CLIENT_ID = os.environ.get('KEYCLOAK_CLIENT_ID', 'admin-cli')
+KEYCLOAK_ADMIN_USERNAME = os.environ.get('KEYCLOAK_ADMIN_USERNAME', 'admin')
+KEYCLOAK_ADMIN_PASSWORD = os.environ.get('KEYCLOAK_ADMIN_PASSWORD', 'admin')
+
+KEYCLOAK_PARTICIPANT_ROLE = 'participants'
+KEYCLOAK_RESEARCHER_ROLE = 'researchers'
