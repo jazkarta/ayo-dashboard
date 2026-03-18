@@ -1,16 +1,16 @@
-import { Lato } from "next/font/google";
+import { Raleway } from "next/font/google";
 import "./globals.css";
 
 /**
- * Google Lato font configuration.
+ * Google Raleway font configuration.
  * Weights: 300 (Light), 400 (Regular), 700 (Bold), 900 (Black)
  * Includes italic variants for each weight.
  */
-const lato = Lato({
+const raleway = Raleway({
   subsets: ["latin"],
   weight: ["300", "400", "700", "900"],
   style: ["normal", "italic"],
-  variable: "--font-lato",
+  variable: "--font-raleway",
   display: "swap",
 });
 
@@ -32,7 +32,7 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${lato.variable} font-sans antialiased`}>
+      <body className={`${raleway.variable} font-sans antialiased`}>
         {children}
       </body>
     </html>

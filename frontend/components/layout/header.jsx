@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { redirect } from "next/navigation";
 
 export function Header({ title = "Dashboard", subtitle }) {
   return (
@@ -82,7 +83,7 @@ export function Header({ title = "Dashboard", subtitle }) {
               Change Password
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2 cursor-pointer text-destructive focus:text-destructive">
+            <DropdownMenuItem onClick={() => {redirect('/login')}} className="gap-2 cursor-pointer text-destructive focus:text-destructive">
               <LogOut className="h-4 w-4" />
               Log out
             </DropdownMenuItem>
