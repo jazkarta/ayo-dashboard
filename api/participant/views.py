@@ -7,7 +7,10 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 
-from .serializers import ParticipantCreateSerializer, InvitationSerializer, InvitationAcceptSerializer
+from .serializers import (
+    ParticipantCreateSerializer, InvitationSerializer,
+    InvitationAcceptSerializer, InvitationSendSerializer
+)
 from .permissions import IsResearcher
 from .models import Invitation
 
@@ -26,36 +29,23 @@ class ParticipantViewSet(viewsets.ModelViewSet):
     serializer_class = ParticipantCreateSerializer
     # permission_classes = [IsResearcher]
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], serializer_class=InvitationSendSerializer)
     def invite(self, request, pk=None):
         """
         Send an invitation to a participant.
         """
         participant = self.get_object()
+        serializer = self.get_serializer(data=request.data, context={
+            'participant': participant
+        })
 
-        # Validation: User is already active
-        if participant.is_active:
-            return Response(
-                {"detail": "User is already active."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        if serializer.is_valid():
+            invitation = serializer.save(invited_by=request.user)
+            logger.info(f"Invitation {invitation.id} created for participant {participant.username}")
+            serializer = InvitationSerializer(invitation)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        # Limitation: delete previous invitations
-        try:
-            participant.invitations.delete()
-        except Invitation.DoesNotExist:
-            logger.info(f"No existing invitation for user {participant.username} to delete.")
-
-        # Create new invitation
-        expiry_date = timezone.now() + timedelta(days=2)  # Default 2 days
-        invitation = Invitation.objects.create(
-            user=participant,
-            invited_by=request.user,
-            expiry_date=expiry_date
-        )
-
-        serializer = InvitationSerializer(invitation)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class InvitationViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):

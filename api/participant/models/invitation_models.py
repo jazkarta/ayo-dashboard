@@ -16,6 +16,8 @@ class Invitation(BaseModel):
         null=True,
         related_name='sent_invitations'
     )
+
+    parent_email = models.EmailField()
     expiry_date = models.DateTimeField(_('expiry date'))
     is_active = models.BooleanField(_('is active'), default=True)
     has_accepted = models.BooleanField(_('has accepted'), default=False)
