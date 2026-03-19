@@ -3,6 +3,7 @@ from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
 from common.models import BaseModel
+from .guardian_models import Guardian
 
 
 class ParticipantProfile(BaseModel):
@@ -18,6 +19,14 @@ class ParticipantProfile(BaseModel):
         on_delete=models.CASCADE,
         related_name='participant_profile'
     )
+    guardian = models.OneToOneField(
+        Guardian,
+        on_delete=models.CASCADE,
+        related_name='participant_profile',
+        blank=True,
+        null=True
+    )
+
     date_of_birth = models.DateField(_('date of birth'))
     gender = models.CharField(
         _('gender'),
@@ -34,3 +43,4 @@ class ParticipantProfile(BaseModel):
     class Meta:
         verbose_name = _('Participant Profile')
         verbose_name_plural = _('Participant Profiles')
+        db_table = 'participant_profile'

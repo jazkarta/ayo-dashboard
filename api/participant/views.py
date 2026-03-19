@@ -2,12 +2,12 @@ import logging
 
 from datetime import timedelta
 from django.utils import timezone
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 
-from .serializers import ParticipantCreateSerializer, InvitationSerializer
+from .serializers import ParticipantCreateSerializer, InvitationSerializer, InvitationAcceptSerializer
 from .permissions import IsResearcher
 from .models import Invitation
 
@@ -56,3 +56,34 @@ class ParticipantViewSet(viewsets.ModelViewSet):
 
         serializer = InvitationSerializer(invitation)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class InvitationViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    """
+    ViewSet for handling invitation details and acceptance.
+    """
+    queryset = Invitation.objects.all()
+    serializer_class = InvitationSerializer
+    permission_classes = []
+
+    @action(detail=True, methods=['post'], serializer_class=InvitationAcceptSerializer)
+    def accept(self, request, pk=None):
+        """
+        Accept an invitation, activating the user and marking it as accepted.
+        """
+        invitation = self.get_object()
+        invitation_accept_serializer = self.serializer_class(
+            data=request.data, context={'invitation': invitation}
+        )
+
+        if invitation_accept_serializer.is_valid():
+            invitation = invitation_accept_serializer.save()
+            logger.info(f"Invitation {invitation.id} accepted")
+
+            serializer = InvitationSerializer(invitation)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        return Response(
+            invitation_accept_serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )

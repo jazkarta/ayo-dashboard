@@ -1,22 +1,33 @@
+import logging
+
 from django.utils import timezone
 from rest_framework import serializers
 from django.db import transaction
 from django.contrib.auth import get_user_model
 from users.models.user import UserRole
-from .models import ParticipantProfile, Invitation
+from utils.keycloak_manager import KeycloakSync
+from .models import ParticipantProfile, Invitation, Guardian
 
 from utils.username_generator_helper import generate_username
 
+logger = logging.getLogger(__name__)
+
 User = get_user_model()
 
+
+class GuardianSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Guardian
+        fields = ['first_name', 'last_name', 'phone_number', 'email', 'address', 'relationship']
+
+
 class ParticipantProfileSerializer(serializers.ModelSerializer):
+    guardian = GuardianSerializer(read_only=True)
+
     class Meta:
         model = ParticipantProfile
-        fields = ['date_of_birth', 'gender', 'demographics']
-        extra_kwargs = {
-            'date_of_birth': {'required': True},
-            'gender': {'required': True},
-        }
+        fields = ['date_of_birth', 'gender', 'demographics', 'guardian']
 
     def validate_date_of_birth(self, value):
         if value >= timezone.now().date():
@@ -106,7 +117,81 @@ class ParticipantCreateSerializer(serializers.ModelSerializer):
 
 
 class InvitationSerializer(serializers.ModelSerializer):
+    user = ParticipantCreateSerializer(read_only=True)
+
     class Meta:
         model = Invitation
-        fields = ['id', 'user', 'invited_by', 'expiry_date', 'is_active', 'created_at']
-        read_only_fields = ['id', 'user', 'invited_by', 'is_active', 'created_at']
+        fields = [
+            'id', 'user', 'invited_by',
+            'expiry_date', 'is_active', 'created_at',
+            'has_accepted'
+        ]
+        read_only_fields = [
+            'id', 'user', 'invited_by',
+            'is_active', 'created_at'
+        ]
+
+
+class InvitationAcceptSerializer(serializers.Serializer):
+    first_name = serializers.CharField(max_length=256, required=True)
+    last_name = serializers.CharField(max_length=256, required=True)
+    phone_number = serializers.CharField(max_length=15, required=True)
+    email = serializers.EmailField(max_length=256, required=True)
+
+    address = serializers.CharField(max_length=2056)
+    relationship = serializers.CharField(max_length=256)
+
+    def validate(self, attrs):
+        invitation = self.context['invitation']
+
+        if invitation.has_accepted:
+            raise serializers.ValidationError("Invitation already accepted.")
+        if invitation.expiry_date < timezone.now():
+            raise serializers.ValidationError("Invitation has expired.")
+        if not invitation.is_active:
+            raise serializers.ValidationError("Invitation is no longer active.")
+
+        return attrs
+
+    @transaction.atomic
+    def create(self, validated_data):
+        invitation = self.context['invitation']
+        keycloak_manager = KeycloakSync()
+
+        # Update invitation status
+        invitation.has_accepted = True
+        invitation.is_active = False
+        invitation.save()
+
+        logger.info(f"Invitation {invitation.id} accepted by user {invitation.user.username}")
+
+        # Create guardian profile
+        guardian = Guardian.objects.create(
+            first_name=validated_data['first_name'],
+            last_name=validated_data['last_name'],
+            phone_number=validated_data['phone_number'],
+            email=validated_data['email'],
+            address=validated_data.get('address', ''),
+            relationship=validated_data.get('relationship', '')
+        )
+
+        logger.info(f"Guardian profile created for user {invitation.user.username} with ID {guardian.id}")
+
+        # Activate the user
+        user = invitation.user
+        user.participant_profile.guardian = guardian
+        user.participant_profile.save()
+        logger.info(f"User {user.username} activated and linked to guardian profile {guardian.id}")
+
+        keycloak_id = keycloak_manager.create_user(
+            user.username, user.email,
+            user.first_name, user.last_name, user.role
+        )
+
+        user.keycloak_id = keycloak_id
+        user.is_active = True
+        user.save()
+        logger.info(f"User {user.username} created in Keycloak with role {user.role}")
+
+        return invitation
+
