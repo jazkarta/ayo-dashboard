@@ -10,7 +10,7 @@ User = get_user_model()
 
 @receiver(post_save, sender=User)
 def sync_user_to_keycloak(sender, instance, created, **kwargs):
-    if created:
+    if created and getattr(instance, '_created_via_admin', False):
         logger.info(f"New user created in Django admin: {instance.username}. Syncing to Keycloak...")
         try:
             sync = KeycloakSync()
