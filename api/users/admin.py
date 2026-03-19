@@ -29,6 +29,8 @@ class UserCreationForm(forms.ModelForm):
 
     def save(self, commit=True):
         user = super().save(commit=False)
+        # Tag the instance so the signal knows it came from the admin creation form
+        user._created_via_admin = True
         # Generate a strong random password the user can reset later
         alphabet = string.ascii_letters + string.digits + string.punctuation
         random_password = "".join(secrets.choice(alphabet) for _ in range(20))
