@@ -124,13 +124,43 @@ class InvitationSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'user', 'invited_by',
             'expiry_date', 'is_active', 'created_at',
-            'has_accepted'
+            'has_accepted', 'parent_email'
         ]
         read_only_fields = [
             'id', 'user', 'invited_by',
             'is_active', 'created_at'
         ]
 
+class InvitationSendSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+    def validate(self, attrs):
+        participant = self.context['participant']
+
+        if participant.is_active:
+            return serializers.ValidationError("User is already active.")
+
+        return attrs
+
+    @transaction.atomic
+    def create(self, validated_data):
+        participant = self.context['participant']
+
+        try:
+            participant.invitations.delete()
+        except Invitation.DoesNotExist:
+            logger.info(f"No existing invitation for user {participant.username} to delete.")
+
+        # Create new invitation
+        expiry_date = timezone.now() + timezone.timedelta(days=2)
+        invitation = Invitation.objects.create(
+            user=participant,
+            invited_by=validated_data['invited_by'],
+            expiry_date=expiry_date,
+            parent_email=validated_data['email'],
+        )
+
+        return invitation
 
 class InvitationAcceptSerializer(serializers.Serializer):
     first_name = serializers.CharField(max_length=256, required=True)
