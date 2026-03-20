@@ -18,10 +18,21 @@ class ChatCreateSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ('id', 'created_at', 'updated_at', 'conversation')
 
+    def get_last_conversation_for_user(self, user) -> ConversationModel | None:
+        last_new_session = ConversationModel.objects.filter(
+            conversation_id='new-session', user=user
+        )
+
+        if last_new_session.exists():
+            return last_new_session.order_by('-created_at').last()
+        else:
+            return None
+
 
     def validate(self, attrs):
         conversation_id = attrs.get('conversation_id')
         user_email = attrs.get('user_email')
+        prompt = attrs.get('prompt')
 
         try:
             user = User.objects.get(email=user_email)
@@ -29,19 +40,26 @@ class ChatCreateSerializer(serializers.ModelSerializer):
         except User.DoesNotExist:
             raise serializers.ValidationError(f"User with email '{user_email}' does not exist.")
 
+        title_generation_prompt = "Provide a concise, 5-word-or-less title for the conversation, using title case conventions. Only return the title itself."
+
         if conversation_id != 'new-session':
             try:
                 conversation = ConversationModel.objects.get(conversation_id=conversation_id, user=user)
             except ConversationModel.DoesNotExist:
-                last_new_session = ConversationModel.objects.filter(
-                    conversation_id='new-session', user=user
-                )
-
-                if last_new_session.exists():
-                    conversation = last_new_session.last()
-                else:
+                conversation = self.get_last_conversation_for_user(user)
+                if not conversation:
                     raise serializers.ValidationError(f"Conversation with user '{user_email}' does not exist.")
             attrs['conversation'] = conversation
+        else:
+            if title_generation_prompt in prompt:
+                conversation = self.get_last_conversation_for_user(user)
+                if conversation:
+                    conversation.title = attrs['response']
+                    attrs['conversation'] = conversation
+                    attrs["custom_type"] = "title_generation"
+                    conversation.save()
+                else:
+                    raise serializers.ValidationError(f"No existing conversation found for user '{user_email}' to generate a title from.")
 
         return attrs
 
@@ -52,6 +70,10 @@ class ChatCreateSerializer(serializers.ModelSerializer):
         model_name = validated_data.pop('model_name', None)
         _ = validated_data.pop('user_email', None)
         user = validated_data.pop('user', None)
+        custom_type = validated_data.get('custom_type', None)
+
+        if custom_type == 'title_generation':
+            return conversation.chats.last()
 
         if not conversation:
             conversation = ConversationModel.objects.create(

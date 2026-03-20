@@ -19,3 +19,4 @@ class ConversationModel(BaseModel):
         verbose_name = "Conversation"
         verbose_name_plural = "Conversations"
         db_table = "conversation"
+        ordering = ["-created_at"]

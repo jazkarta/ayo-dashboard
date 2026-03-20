@@ -17,3 +17,4 @@ class Chat(BaseModel):
         verbose_name = "Chat"
         verbose_name_plural = "Chats"
         db_table = "chat"
+        ordering = ["-created_at"]
