@@ -36,15 +36,39 @@ export const initKeycloak = async () => {
   const kc = getKeycloak();
   if (!kc) return { authenticated: false, keycloak: null };
 
+  // If already initialized, just return it
+  if (kc.didInitialize) {
+    return { authenticated: kc.authenticated, keycloak: kc };
+  }
+
   try {
     const redirectUri = `${window.location.origin}/auth/callback`;
+    const { access_token, refresh_token } = getTokens();
 
     const authenticated = await kc.init({
       onLoad: "check-sso",
       silentCheckSsoRedirectUri: `${window.location.origin}/silent-check-sso.html`,
       redirectUri,
       pkceMethod: "S256",
+      token: access_token || undefined,
+      refreshToken: refresh_token || undefined,
     });
+
+    // Listen for events to keep localStorage in sync
+    kc.onTokenExpired = () => {
+      console.log("[Keycloak] Token expired. Attempting refresh...");
+      refreshTokens(30).catch(console.error);
+    };
+
+    kc.onAuthRefreshSuccess = () => {
+      console.log("[Keycloak] Token successfully refreshed.");
+      localStorage.setItem("access_token", kc.token);
+      localStorage.setItem("refresh_token", kc.refreshToken);
+    };
+
+    kc.onAuthRefreshError = () => {
+      console.error("[Keycloak] Failed to refresh token.");
+    };
 
     return { authenticated, keycloak: kc };
   } catch (err) {
@@ -55,7 +79,6 @@ export const initKeycloak = async () => {
 
 /**
  * Redirect the user to Keycloak's login page, hinting to use the Google IdP.
- * Make sure "google" matches exactly the identity provider alias in your Keycloak realm.
  */
 export const loginWithGoogle = async () => {
   const kc = getKeycloak();
@@ -64,18 +87,12 @@ export const loginWithGoogle = async () => {
   const redirectUri = `${window.location.origin}/auth/callback`;
 
   try {
-    // Some versions of keycloak-js require init() before login() works correctly
     if (!kc.didInitialize) {
-      await kc.init({
-        onLoad: "check-sso",
-        silentCheckSsoRedirectUri: `${window.location.origin}/silent-check-sso.html`,
-        pkceMethod: "S256",
-      });
+      await initKeycloak();
     }
     kc.login({ idpHint: "google", redirectUri });
   } catch (err) {
     console.error("[Keycloak] Login redirect failed:", err);
-    // Fallback if init fails but we want to try login anyway
     kc.login({ idpHint: "google", redirectUri });
   }
 };
@@ -85,11 +102,17 @@ export const loginWithGoogle = async () => {
  */
 export const logout = () => {
   const kc = getKeycloak();
-  if (!kc) return; // SSR guard
-
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("refresh_token");
-  kc.logout({ redirectUri: `${window.location.origin}/login` });
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+  }
+  if (kc && kc.didInitialize) {
+    kc.logout({ redirectUri: `${window.location.origin}/login` });
+  } else {
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
+  }
 };
 
 /**
@@ -106,17 +129,28 @@ export const getTokens = () => {
 /**
  * Attempt to refresh the access token.
  * minValidity (seconds) — refresh only if the token expires within this window.
- * Returns the fresh access_token string, or null on failure.
  */
 export const refreshTokens = async (minValidity = 30) => {
   const kc = getKeycloak();
-  if (!kc) return null; // SSR guard
+  if (!kc) return null;
+
+  // Use initKeycloak to ensure we have an initialized instance with tokens
+  if (!kc.didInitialize) {
+    const { authenticated } = await initKeycloak();
+    if (!authenticated) return null;
+  }
 
   try {
+    // Re-check validity in case initKeycloak already refreshed it
+    if (!kc.isTokenExpired(minValidity)) {
+       return kc.token;
+    }
+
     const refreshed = await kc.updateToken(minValidity);
     if (refreshed) {
       localStorage.setItem("access_token", kc.token);
       localStorage.setItem("refresh_token", kc.refreshToken);
+      console.log("[Keycloak] Manual token refresh successful.");
     }
     return kc.token;
   } catch (err) {
@@ -127,20 +161,24 @@ export const refreshTokens = async (minValidity = 30) => {
 
 /**
  * Check whether the current access token is expired.
- * Uses keycloak-js built-in method.
  */
 export const isTokenExpired = (minValidity = 30) => {
   const kc = getKeycloak();
-  if (!kc || !kc.token) return true; // SSR guard
+  if (!kc) return true;
+  
+  // If not initialized, we can check the token in localStorage if we want,
+  // but it's safer to say "it might be expired" and let refreshTokens handle re-init.
+  if (!kc.didInitialize || !kc.token) return true;
+  
   return kc.isTokenExpired(minValidity);
 };
 
 /**
- * Check whether the current user has the 'researchers' or 'admin' realm-level roles.
+ * Check whether the current user has roles.
  */
 export const hasResearcherOrAdminRole = () => {
   const kc = getKeycloak();
-  if (!kc) return false;
+  if (!kc || !kc.didInitialize) return false;
   return kc.hasRealmRole("researchers") || kc.hasRealmRole("admin");
 };
 
