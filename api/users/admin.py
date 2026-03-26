@@ -25,7 +25,7 @@ class UserCreationForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ("username", "first_name", "last_name", "email", "role")
+        fields = ("email", "first_name", "last_name", "username", "role")
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -60,10 +60,10 @@ class UserChangeForm(forms.ModelForm):
     class Meta:
         model = User
         fields = (
-            "username",
+            "email",
             "first_name",
             "last_name",
-            "email",
+            "username",
             "role",
             "password",
             "is_active",
@@ -85,17 +85,17 @@ class UserAdmin(BaseUserAdmin):
     # ------------------------------------------------------------------
     # List view
     # ------------------------------------------------------------------
-    list_display = ("username", "first_name", "last_name", "email", "role", "is_active", "is_staff")
+    list_display = ("email", "first_name", "last_name", "username", "role", "is_active", "is_staff")
     list_filter = ("role", "is_active", "is_staff", "is_superuser")
-    search_fields = ("username", "first_name", "last_name", "email")
-    ordering = ("username",)
+    search_fields = ("email", "username", "first_name", "last_name")
+    ordering = ("email",)
 
     # ------------------------------------------------------------------
     # Detail / change view fieldsets
     # ------------------------------------------------------------------
     fieldsets = (
-        (None, {"fields": ("username", "password")}),
-        (_("Personal info"), {"fields": ("first_name", "last_name", "email")}),
+        (None, {"fields": ("email", "password")}),
+        (_("Personal info"), {"fields": ("first_name", "last_name", "username")}),
         (_("Role"), {"fields": ("role",)}),
         (
             _("Permissions"),
@@ -120,7 +120,7 @@ class UserAdmin(BaseUserAdmin):
             None,
             {
                 "classes": ("wide",),
-                "fields": ("username", "first_name", "last_name", "email", "role"),
+                "fields": ("email", "first_name", "last_name", "username", "role"),
                 "description": (
                     "A secure random password will be generated automatically. "
                     "The user can reset it via the password-reset link."
@@ -143,7 +143,7 @@ class UserAdmin(BaseUserAdmin):
             messages.info(
                 request,
                 _(
-                    f'User "{obj.username}" created successfully. '
+                    f'User "{obj.email}" created successfully. '
                     "A random password has been set — use the "
                     '"Change password" link on the user detail page to set a known password, '
                     "or ask the user to use the password-reset flow."

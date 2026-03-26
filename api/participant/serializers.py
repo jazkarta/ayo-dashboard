@@ -28,6 +28,7 @@ class ParticipantProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = ParticipantProfile
         fields = ['date_of_birth', 'gender', 'demographics', 'guardian']
+        read_only_fields = ['guardian']
 
     def validate_date_of_birth(self, value):
         if value >= timezone.now().date():
@@ -46,8 +47,8 @@ class ParticipantCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile_data']
-        read_only_fields = ['username', 'id']
+        fields = ['id', 'email', 'first_name', 'last_name', 'profile_data']
+        read_only_fields = ['id']
         extra_kwargs = {
             'email': {'required': True},
         }
@@ -57,22 +58,14 @@ class ParticipantCreateSerializer(serializers.ModelSerializer):
         if self.instance:
             self.fields['email'].read_only = True
 
-    def __generate_participant_username(self) -> str:
-        while True:
-            username = generate_username()
-            if not User.objects.filter(username=username).exists():
-                return username
 
     @transaction.atomic
     def create(self, validated_data):
         profile_data = validated_data.pop('profile_data')
 
-        username = self.__generate_participant_username()
-        
         # Create user with PARTICIPANT role
         user = User.objects.create(
             role=UserRole.PARTICIPANT,
-            username=username,
             is_active=False,
             **validated_data
         )
@@ -160,16 +153,24 @@ class InvitationSendSerializer(serializers.Serializer):
             parent_email=validated_data['email'],
         )
 
+        # send email to guardian
+
         return invitation
 
 class InvitationAcceptSerializer(serializers.Serializer):
     first_name = serializers.CharField(max_length=256, required=True)
     last_name = serializers.CharField(max_length=256, required=True)
+    username = serializers.CharField(max_length=150, required=True)
     phone_number = serializers.CharField(max_length=15, required=True)
     email = serializers.EmailField(max_length=256, required=True)
 
-    address = serializers.CharField(max_length=2056)
-    relationship = serializers.CharField(max_length=256)
+    address = serializers.CharField(max_length=2056, required=False, allow_blank=True)
+    relationship = serializers.CharField(max_length=256, required=False, allow_blank=True)
+
+    def validate_username(self, value):
+        if User.objects.filter(username__iexact=value).exists():
+            raise serializers.ValidationError("Username already exists.")
+        return value
 
     def validate(self, attrs):
         invitation = self.context['invitation']
@@ -209,6 +210,7 @@ class InvitationAcceptSerializer(serializers.Serializer):
 
         # Activate the user
         user = invitation.user
+        user.username = validated_data['username'].lower()
         user.participant_profile.guardian = guardian
         user.participant_profile.save()
         logger.info(f"User {user.username} activated and linked to guardian profile {guardian.id}")
