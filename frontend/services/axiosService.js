@@ -1,99 +1,79 @@
 "use client";
 import axios from "axios";
-// import { toast } from "react-hot-toast";
-// import { jwtDecode } from "jwt-decode";
+import { getTokens, refreshTokens, isTokenExpired } from "@/services/keycloakService";
 
 const baseURL = process.env.NEXT_PUBLIC_API_URL;
 
-// const isTokenExpired = (token) => {
-//   if (!token) return true;
-//   const decodedToken = jwtDecode(token);
-//   const currentTime = new Date().getTime() / 1000;
-//   return decodedToken.exp < currentTime;
-// };
-
-// const getNewToken = async (refreshToken) => {
-//   try {
-//     const response = await axios.post(`${baseURL}/auth/token/refresh/`, {
-//       refresh: refreshToken,
-//     });
-//     const newAuthToken = response.data.access;
-//     localStorage.setItem("access_token", newAuthToken);
-//     return newAuthToken;
-//   } catch (error) {
-//     toast.error("Something went wrong. Please login again");
-//     return null;
-//   }
-// };
-
-// const logOutUser = () => {
-//   setTimeout(() => {
-//     if (typeof window !== "undefined") {
-//       localStorage.removeItem("access_token");
-//       localStorage.removeItem("refresh_token");
-//       localStorage.removeItem("user");
-//       localStorage.removeItem("isAuthenticated");
-//     }
-//     window.location = "/login";
-//   }, 1500);
-//   toast.error("Session has exipred!!");
-// };
-
-// const getAuthToken = async () => {
-//   const authToken = localStorage.getItem("access_token");
-//   const refreshToken = localStorage.getItem("refresh_token");
-
-//   if (isTokenExpired(authToken)) {
-//     if (refreshToken) {
-//       const newAuthToken = await getNewToken(refreshToken);
-//       if (newAuthToken) {
-//         return newAuthToken;
-//       }
-//     }
-//   } else {
-//     return authToken;
-//   }
-
-//   return null;
-// };
+const redirectToLogin = () => {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    window.location.href = "/login";
+  }
+};
 
 const ApiClient = () => {
-  const defaultOptions = {
-    baseURL: baseURL,
+  const instance = axios.create({
+    baseURL,
     headers: { Accept: "application/json" },
-  };
-
-  const instance = axios.create(defaultOptions);
+  });
 
   instance.interceptors.request.use(async (request) => {
+    // Allow callers to opt out of auth with { public: true }
     const requireToken = request.public !== undefined ? !request.public : true;
+    // Allow callers to force-send the token on public routes with { sendToken: true }
+    const sendToken = request.sendToken !== undefined ? request.sendToken : false;
 
-    // Sometimes in public API we may need to pass the token
-    // Use sendToken: True to send token with request even though it may be public
-    const sendToken =
-      request.sendToken !== undefined ? request.sendToken : true;
-
+    // Set Content-Type unless FormData (browser handles it automatically)
     const contentType = request.contentType;
     if (contentType) {
       request.headers["Content-Type"] = contentType;
-    } else {
-      if (!(request.data instanceof FormData)) {
-        request.headers["Content-Type"] = "application/json";
+    } else if (!(request.data instanceof FormData)) {
+      request.headers["Content-Type"] = "application/json";
+    }
+
+    if (requireToken || sendToken) {
+      let { access_token } = getTokens();
+
+      // Try to refresh if the token is about to expire or missing
+      if (!access_token || isTokenExpired(30)) {
+        access_token = await refreshTokens(30);
+      }
+
+      if (access_token) {
+        request.headers.Authorization = `Bearer ${access_token}`;
+      } else if (requireToken) {
+        // No valid token and the route requires auth — redirect to login
+        redirectToLogin();
+        return Promise.reject(new Error("No valid access token. Redirecting to login."));
       }
     }
 
-    // if (requireToken || sendToken) {
-    //   const authToken = await getAuthToken();
-    //   if (authToken) {
-    //     request.headers.Authorization = `Bearer ${authToken}`;
-    //   } else {
-    //     if (requireToken) {
-    //       logOutUser();
-    //     }
-    //   }
-    // }
     return request;
   });
+
+  // Optional: handle 401 responses globally (e.g. token accepted by axios but rejected by API)
+  instance.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+      const originalRequest = error.config;
+
+      if (error.response?.status === 401 && !originalRequest._retried) {
+        originalRequest._retried = true;
+
+        const freshToken = await refreshTokens(0); // force refresh
+        if (freshToken) {
+          originalRequest.headers.Authorization = `Bearer ${freshToken}`;
+          return instance(originalRequest);
+        }
+
+        // Still no token — log the user out
+        redirectToLogin();
+      }
+
+      return Promise.reject(error);
+    }
+  );
 
   return instance;
 };
