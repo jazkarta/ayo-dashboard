@@ -1,16 +1,9 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { redirect } from "next/navigation";
-
-const GOOGLE_AUTH_ENDPOINT = "/api/auth/google";
+import { loginWithGoogle } from "@/services/keycloakService";
 
 export default function LoginPage() {
-  const onGoogleLogin = () => {
-    // window.location.href = GOOGLE_AUTH_ENDPOINT;
-    redirect('/dashboard');
-  };
-
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center px-4">
       <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-lg">
@@ -21,7 +14,7 @@ export default function LoginPage() {
 
         <div className="mt-8">
           <Button
-            onClick={onGoogleLogin}
+            onClick={loginWithGoogle}
             className="w-full justify-center cursor-pointer px-4 py-3"
             variant="default"
           >
@@ -60,3 +53,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
