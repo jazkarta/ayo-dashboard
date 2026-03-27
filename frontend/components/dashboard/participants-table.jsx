@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -14,19 +14,7 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-
-const participantsData = [
-  { id: 1, firstName: "Alice", lastName: "Smith", email: "alice@example.com", username: "alice", status: "active" },
-  { id: 2, firstName: "Bob", lastName: "Jones", email: "bob@example.com", username: "bobj", status: "inactive" },
-  { id: 3, firstName: "Charlie", lastName: "Brown", email: "charlie@example.com", username: "charlie", status: "active" },
-  { id: 4, firstName: "Danielle", lastName: "Garcia", email: "danielle@example.com", username: "danielle", status: "active" },
-  { id: 5, firstName: "Eric", lastName: "Wong", email: "eric@example.com", username: "eric", status: "inactive" },
-  { id: 6, firstName: "Fiona", lastName: "Lee", email: "fiona@example.com", username: "fiona", status: "pending" },
-  { id: 7, firstName: "George", lastName: "Clark", email: "george@example.com", username: "george", status: "inactive" },
-  { id: 8, firstName: "Hannah", lastName: "Lopez", email: "hannah@example.com", username: "hannah", status: "pending" },
-  { id: 9, firstName: "Ian", lastName: "Taylor", email: "ian@example.com", username: "ian", status: "active" },
-  { id: 10, firstName: "Julia", lastName: "Parker", email: "julia@example.com", username: "julia", status: "inactive" },
-];
+import participantService from "../../services/participantService.js";
 
 const columnHelper = createColumnHelper();
 
@@ -47,23 +35,36 @@ const columns = [
     header: "Email",
     cell: (info) => info.getValue(),
   }),
-  columnHelper.accessor("status", {
-    header: "Status",
-    cell: (info) => {
-      const status = info.getValue();
-      return (
-        <Badge variant={status === "active" ? "success" : status === "pending" ? "warning" : "outline"}>
-          {status ? status.charAt(0).toUpperCase() + status.slice(1) : ""}
-        </Badge>
-      );
-    },
-  }),
+  // columnHelper.accessor("status", {
+  //   header: "Status",
+  //   cell: (info) => {
+  //     const status = info.getValue();
+  //     return (
+  //       <Badge variant={status === "active" ? "success" : status === "pending" ? "warning" : "outline"}>
+  //         {status ? status.charAt(0).toUpperCase() + status.slice(1) : ""}
+  //       </Badge>
+  //     );
+  //   },
+  // }),
 ];
 
 export default function ParticipantsTable() {
   const [globalFilter, setGlobalFilter] = useState("");
+  const [data, setData] = useState([]);
 
-  const data = useMemo(() => participantsData, []);
+  useEffect(() => {
+    const fetchParticipants = async () => {
+      try {
+        const response = await participantService.getAllParticipants();
+        console.log(response);
+        setData(response.data);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchParticipants();
+  }, []);
 
   const table = useReactTable({
     data,
