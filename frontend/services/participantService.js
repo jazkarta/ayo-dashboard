@@ -1,8 +1,10 @@
 import apiClient from "./axiosService.js";
 
+const urlBase = '/participants/'
+
 const participantService = {
-  getAllParticipants() {
-    return apiClient.get(`/participants/`);
+  getAllParticipants(url = urlBase) {
+    return apiClient.get(url);
   },
 };
 
