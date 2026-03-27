@@ -18,7 +18,7 @@ import participantService from "@/services/participantService";
 
 const createUser = async (data) => {
   try {
-    const response = await participantService.createParticipant('/participants/', data);
+    const response = await participantService.createParticipant(data);
     return response
   } catch (error) {
     console.error("Error creating participant:", error.response?.data || error.message);
@@ -26,10 +26,17 @@ const createUser = async (data) => {
   }
 };
 
-const sendInvite = async (email) => {
-  console.log("Send invite API called for:", email);
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  return { success: true };
+const sendInvite = async (id, email) => {
+  try {
+    const payload = { email };
+    console.log("Send invite API called for participant id:", id, "payload:", payload);
+    const response = await participantService.sendInvitationToParticipant(id, payload);
+    console.log("Invite sent response:", response.data);
+    return response;
+  } catch (error) {
+    console.error("Error sending invitation:", error.response?.data || error.message);
+    throw error;
+  }
 };
 
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -40,6 +47,7 @@ export default function AddParticipantForm() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [userCreated, setUserCreated] = useState(false);
+  const [createdParticipantId, setCreatedParticipantId] = useState(null);
   const [errors, setErrors] = useState({});
 
   const [formData, setFormData] = useState({
@@ -125,7 +133,9 @@ export default function AddParticipantForm() {
     setLoading(true);
     try {
       const res = await createUser(formattedData);
-      if (res.status === 201) {
+      if (res.status === 201 || res.status === 200) {
+        const id = res.data?.id || res?.id;
+        setCreatedParticipantId(id || null);
         setUserCreated(true);
         setCurrentStep((prev) => Math.min(prev + 1, steps.length));
       }
@@ -137,15 +147,20 @@ export default function AddParticipantForm() {
   };
 
   const handleSendInvite = async () => {
+    if (!createdParticipantId) {
+      console.error("No participant ID available to send invite");
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await sendInvite(formData.email);
-      if (res.success) {
+      const res = await sendInvite(createdParticipantId, formData.email);
+      if (res.status === 201 || res.status === 200) {
         setSubmitted(true);
         setTimeout(() => {
           setSubmitted(false);
           handleClose();
-        }, 1500);
+        }, 1000);
       }
     } catch (err) {
       console.error("Error sending invite:", err);

@@ -7,8 +7,12 @@ const participantService = {
     return apiClient.get(url);
   },
 
-  createParticipant(url = urlBase, data) {
-    return apiClient.post(url, data);
+  createParticipant(data) {
+    return apiClient.post(`${urlBase}`, data);
+  },
+
+  sendInvitationToParticipant(id, data) {
+    return apiClient.post(`${urlBase}${id}/invite/`, data);
   },
 };
 
