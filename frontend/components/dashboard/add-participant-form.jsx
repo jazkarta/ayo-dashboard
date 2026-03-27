@@ -14,11 +14,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CheckCircle2Icon, Loader2, XIcon } from "lucide-react";
+import participantService from "@/services/participantService";
 
 const createUser = async (data) => {
-  console.log("Create user API called with:", data);
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  return { success: true, id: 1 };
+  try {
+    const response = await participantService.createParticipant('/participants/', data);
+    return response
+  } catch (error) {
+    console.error("Error creating participant:", error.response?.data || error.message);
+    throw error;
+  }
 };
 
 const sendInvite = async (email) => {
@@ -103,10 +108,24 @@ export default function AddParticipantForm() {
 
   const handleSaveUser = async () => {
     if (!validateStep2()) return;
+    
+    // Format formData to API structure
+    const formattedData = {
+      email: formData.email,
+      first_name: formData.firstName,
+      last_name: formData.lastName,
+      profile_data: {
+        date_of_birth: formData.dateOfBirth,
+        gender: formData.gender,
+        demographics: formData.demographics,
+      },
+    };
+    
+    
     setLoading(true);
     try {
-      const res = await createUser(formData);
-      if (res.success) {
+      const res = await createUser(formattedData);
+      if (res.status === 201) {
         setUserCreated(true);
         setCurrentStep((prev) => Math.min(prev + 1, steps.length));
       }
@@ -285,6 +304,7 @@ export default function AddParticipantForm() {
                         <SelectItem value="M">Male</SelectItem>
                         <SelectItem value="F">Female</SelectItem>
                         <SelectItem value="O">Other</SelectItem>
+                        <SelectItem value="N">Not Specified</SelectItem>
                       </SelectContent>
                     </Select>
                     {errors.gender && (
@@ -326,14 +346,16 @@ export default function AddParticipantForm() {
 
               {/* Navigation */}
               <div className="flex justify-between pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={prevStep}
-                  disabled={currentStep === 1 || loading}
-                >
-                  Back
-                </Button>
+                {currentStep !== 3 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={prevStep}
+                    disabled={currentStep === 1 || loading}
+                  >
+                    Back
+                  </Button>
+                )}
 
                 {currentStep === 1 && (
                   <Button type="button" onClick={handleNext} disabled={loading}>
