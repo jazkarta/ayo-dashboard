@@ -19,7 +19,7 @@ import participantService from "@/services/participantService";
 const createUser = async (data) => {
   try {
     const response = await participantService.createParticipant(data);
-    return response
+    return response;
   } catch (error) {
     console.error("Error creating participant:", error.response?.data || error.message);
     throw error;
@@ -61,11 +61,13 @@ export default function AddParticipantForm() {
 
   const steps = ["Participant Info", "Participant Details", "Send Invite"];
 
+  // ✅ CHANGE 1: skip clearing dateOfBirth error on change — let onBlur handle it
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear error on change
-    setErrors((prev) => ({ ...prev, [name]: "" }));
+    if (name !== "dateOfBirth") {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
   };
 
   const validateStep1 = () => {
@@ -83,7 +85,18 @@ export default function AddParticipantForm() {
 
   const validateStep2 = () => {
     const newErrors = {};
-    if (!formData.dateOfBirth) newErrors.dateOfBirth = "Date of birth is required.";
+
+    if (!formData.dateOfBirth) {
+      newErrors.dateOfBirth = "Date of birth is required.";
+    } else {
+      const dob = new Date(formData.dateOfBirth);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (dob >= today) {
+        newErrors.dateOfBirth = "Date of birth must be in the past.";
+      }
+    }
+
     if (!formData.gender) newErrors.gender = "Gender is required.";
     if (!formData.demographics.trim()) newErrors.demographics = "Demographics is required.";
     setErrors(newErrors);
@@ -116,8 +129,7 @@ export default function AddParticipantForm() {
 
   const handleSaveUser = async () => {
     if (!validateStep2()) return;
-    
-    // Format formData to API structure
+
     const formattedData = {
       email: formData.email,
       first_name: formData.firstName,
@@ -128,8 +140,7 @@ export default function AddParticipantForm() {
         demographics: formData.demographics,
       },
     };
-    
-    
+
     setLoading(true);
     try {
       const res = await createUser(formattedData);
@@ -201,11 +212,12 @@ export default function AddParticipantForm() {
                   <div key={idx} className="flex items-center gap-2">
                     <div
                       className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors
-                        ${currentStep === idx + 1
-                          ? "bg-primary text-primary-foreground"
-                          : currentStep > idx + 1
-                          ? "bg-green-500 text-white"
-                          : "bg-muted text-muted-foreground"
+                        ${
+                          currentStep === idx + 1
+                            ? "bg-primary text-primary-foreground"
+                            : currentStep > idx + 1
+                            ? "bg-green-500 text-white"
+                            : "bg-muted text-muted-foreground"
                         }`}
                     >
                       {currentStep > idx + 1 ? "✓" : idx + 1}
@@ -218,7 +230,11 @@ export default function AddParticipantForm() {
                       {step}
                     </span>
                     {idx < steps.length - 1 && (
-                      <div className={`h-px w-8 transition-colors ${currentStep > idx + 1 ? "bg-green-500" : "bg-muted"}`} />
+                      <div
+                        className={`h-px w-8 transition-colors ${
+                          currentStep > idx + 1 ? "bg-green-500" : "bg-muted"
+                        }`}
+                      />
                     )}
                   </div>
                 ))}
@@ -294,6 +310,27 @@ export default function AddParticipantForm() {
                       name="dateOfBirth"
                       value={formData.dateOfBirth}
                       onChange={handleChange}
+                      // ✅ CHANGE 2: clears error when valid date is picked on blur
+                      onBlur={() => {
+                        if (!formData.dateOfBirth) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            dateOfBirth: "Date of birth is required.",
+                          }));
+                        } else {
+                          const dob = new Date(formData.dateOfBirth);
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          if (dob >= today) {
+                            setErrors((prev) => ({
+                              ...prev,
+                              dateOfBirth: "Date of birth must be in the past.",
+                            }));
+                          } else {
+                            setErrors((prev) => ({ ...prev, dateOfBirth: "" }));
+                          }
+                        }
+                      }}
                       className={errors.dateOfBirth ? "border-destructive" : ""}
                     />
                     {errors.dateOfBirth && (
@@ -386,7 +423,11 @@ export default function AddParticipantForm() {
                 )}
 
                 {currentStep === 3 && (
-                  <Button type="button" onClick={handleSendInvite} disabled={loading || !userCreated}>
+                  <Button
+                    type="button"
+                    onClick={handleSendInvite}
+                    disabled={loading || !userCreated}
+                  >
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Send Invite
                   </Button>
