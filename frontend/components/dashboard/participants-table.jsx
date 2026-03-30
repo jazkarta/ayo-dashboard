@@ -1,19 +1,17 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   useReactTable,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   createColumnHelper,
   flexRender,
 } from "@tanstack/react-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import participantService from "../../services/participantService.js";
 
@@ -36,11 +34,13 @@ const columns = [
     header: "Last Name",
     cell: (info) => info.getValue() || "-",
   }),
-  columnHelper.accessor("profile_data.date_of_birth", {
+  columnHelper.accessor((row) => row.profile_data?.date_of_birth, {
+    id: "date_of_birth",
     header: "Date of Birth",
     cell: (info) => info.getValue() || "-",
   }),
-  columnHelper.accessor("profile_data.gender", {
+  columnHelper.accessor((row) => row.profile_data?.gender, {
+    id: "gender",
     header: "Gender",
     cell: (info) => {
       const gender = info.getValue();
@@ -48,11 +48,13 @@ const columns = [
       return gender === "M" ? "Male" : gender === "F" ? "Female" : gender;
     },
   }),
-  columnHelper.accessor("profile_data.demographics", {
+  columnHelper.accessor((row) => row.profile_data?.demographics, {
+    id: "demographics",
     header: "Demographics",
     cell: (info) => info.getValue() || "-",
   }),
-  columnHelper.accessor("profile_data.guardian", {
+  columnHelper.accessor((row) => row.profile_data?.guardian, {
+    id: "guardian",
     header: "Guardian",
     cell: (info) => {
       const guardian = info.getValue();
@@ -98,24 +100,24 @@ export default function ParticipantsTable() {
   const table = useReactTable({
     data,
     columns,
-    state: {
-      globalFilter,
-    },
+    state: { globalFilter },
     onGlobalFilterChange: setGlobalFilter,
     globalFilterFn: (row, columnId, filterValue) => {
       const search = filterValue.toLowerCase();
-      return ["first_name", "last_name", "email", "profile_data.date_of_birth", "profile_data.demographics"].some((key) => {
-        if (key.includes(".")) {
-          const [parent, child] = key.split(".");
-          return String(row.original[parent]?.[child] || "").toLowerCase().includes(search);
-        }
-        return String(row.original[key] || "").toLowerCase().includes(search);
-      }) || (row.original.profile_data?.guardian &&
-        `${row.original.profile_data.guardian.first_name || ""} ${row.original.profile_data.guardian.last_name || ""}`.toLowerCase().includes(search));
+      return (
+        ["first_name", "last_name", "email"].some((key) =>
+          String(row.original[key] || "").toLowerCase().includes(search)
+        ) ||
+        ["date_of_birth", "demographics"].some((key) =>
+          String(row.original.profile_data?.[key] || "").toLowerCase().includes(search)
+        ) ||
+        `${row.original.profile_data?.guardian?.first_name || ""} ${row.original.profile_data?.guardian?.last_name || ""}`
+          .toLowerCase()
+          .includes(search)
+      );
     },
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    debugTable: false,
   });
 
   return (
@@ -131,7 +133,9 @@ export default function ParticipantsTable() {
             onChange={(e) => setGlobalFilter(e.target.value)}
             className="min-h-9"
           />
-          <Button variant="secondary" onClick={() => setGlobalFilter("")}>Clear</Button>
+          <Button variant="secondary" onClick={() => setGlobalFilter("")}>
+            Clear
+          </Button>
         </div>
       </CardHeader>
 
@@ -180,14 +184,13 @@ export default function ParticipantsTable() {
           <div className="text-sm text-muted-foreground">
             Showing {data.length} of {pagination.count} participants
           </div>
-
           <div className="flex gap-2">
             <Button
               size="sm"
               variant="outline"
               onClick={() => {
                 if (pagination.previous) {
-                  const path = pagination.previous.replace(baseUrl, '');
+                  const path = pagination.previous.replace(baseUrl, "");
                   setCurrentUrl(path);
                 }
               }}
@@ -200,7 +203,7 @@ export default function ParticipantsTable() {
               variant="outline"
               onClick={() => {
                 if (pagination.next) {
-                  const path = pagination.next.replace(baseUrl, '');
+                  const path = pagination.next.replace(baseUrl, "");
                   setCurrentUrl(path);
                 }
               }}
