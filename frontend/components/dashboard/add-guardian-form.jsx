@@ -12,6 +12,7 @@ import participantService from "@/services/participantService";
 
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 const isValidPhone = (phone) => /^[\d\s\-\+\(\)]+$/.test(phone) && phone.length >= 10;
+const hasSpaces = (value) => /\s/.test(value);
 
 export default function GuardianInfoForm({ invitationId = null, onSuccess = null }) {
   const [loading, setLoading] = useState(false);
@@ -30,6 +31,14 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    if (name === "username") {
+      if (/\s/.test(value)) {
+        setErrors((prev) => ({ ...prev, username: "Spaces are not allowed in username." }));
+        return;
+      }
+    }
+
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
@@ -40,7 +49,11 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
     const newErrors = {};
     if (!formData.firstName.trim()) newErrors.firstName = "First name is required.";
     if (!formData.lastName.trim()) newErrors.lastName = "Last name is required.";
-    if (!formData.username.trim()) newErrors.username = "Username is required.";
+    if (!formData.username.trim()) {
+      newErrors.username = "Username is required.";
+    } else if (hasSpaces(formData.username)) {
+      newErrors.username = "Username must not contain spaces.";
+    }
     if (!formData.email.trim()) {
       newErrors.email = "Email is required.";
     } else if (!isValidEmail(formData.email)) {
