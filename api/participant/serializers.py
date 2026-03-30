@@ -227,3 +227,7 @@ class InvitationAcceptSerializer(serializers.Serializer):
 
         return invitation
 
+
+class UsernameSuggestionSerializer(serializers.Serializer):
+    usernames = serializers.ListField(child=serializers.CharField())
+

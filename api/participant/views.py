@@ -9,10 +9,13 @@ from django.contrib.auth import get_user_model
 
 from .serializers import (
     ParticipantCreateSerializer, InvitationSerializer,
-    InvitationAcceptSerializer, InvitationSendSerializer
+    InvitationAcceptSerializer, InvitationSendSerializer,
+    UsernameSuggestionSerializer
 )
 from .permissions import IsResearcher
 from .models import Invitation
+
+from utils.username_generator_helper import get_suggested_usernames
 
 from users.models import UserRole
 
@@ -27,7 +30,7 @@ class ParticipantViewSet(viewsets.ModelViewSet):
     """
     queryset = User.objects.filter(role=UserRole.PARTICIPANT)
     serializer_class = ParticipantCreateSerializer
-    permission_classes = [IsResearcher]
+    # permission_classes = [IsResearcher]
 
     @action(detail=True, methods=['post'], serializer_class=InvitationSendSerializer)
     def invite(self, request, pk=None):
@@ -46,6 +49,20 @@ class ParticipantViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['get'], url_path='suggest-username', serializer_class=UsernameSuggestionSerializer)
+    def suggest_username(self, request):
+        """
+        Get a list of suggested unique usernames.
+        """
+        count = request.query_params.get('count', 4)
+        try:
+            count = int(count)
+        except (ValueError, TypeError):
+            count = 4
+
+        usernames = get_suggested_usernames(count=count)
+        return Response({"usernames": usernames}, status=status.HTTP_200_OK)
 
 
 class InvitationViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
