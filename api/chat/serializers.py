@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from chat.models import Chat, ConversationModel
+from participant.serializers import ParticipantProfileSerializer
 
 User = get_user_model()
 
@@ -87,3 +88,38 @@ class ChatCreateSerializer(serializers.ModelSerializer):
 
         chat = Chat.objects.create(conversation=conversation, **validated_data)
         return chat
+
+
+class ChatSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Chat
+        fields = '__all__'
+
+class ConversationListSerializer(serializers.ModelSerializer):
+    last_message = serializers.CharField(read_only=True)
+    participant_information = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ConversationModel
+        fields = ['id', 'title', 'conversation_id', 'model_name', 'last_message', 'participant_information']
+
+    def get_participant_information(self, obj):
+        participant = getattr(obj.user, 'prefetched_participant', None)
+        if participant:
+            return ParticipantProfileSerializer(participant).data
+        return None
+
+class ConversationDetailSerializer(serializers.ModelSerializer):
+    chats = ChatSerializer(many=True, read_only=True)
+    participant_information = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ConversationModel
+        fields = ['id', 'title', 'conversation_id', 'model_name', 'chats', 'participant_information']
+
+    def get_participant_information(self, obj):
+        participant = getattr(obj.user, 'prefetched_participant', None)
+        if participant:
+            return ParticipantProfileSerializer(participant).data
+        return None
+
