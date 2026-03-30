@@ -48,6 +48,7 @@ export default function AddParticipantForm() {
   const [submitted, setSubmitted] = useState(false);
   const [userCreated, setUserCreated] = useState(false);
   const [createdParticipantId, setCreatedParticipantId] = useState(null);
+  const [invitationId, setInvitationId] = useState(null);
   const [errors, setErrors] = useState({});
 
   const [formData, setFormData] = useState({
@@ -61,7 +62,6 @@ export default function AddParticipantForm() {
 
   const steps = ["Participant Info", "Participant Details", "Send Invite"];
 
-  // ✅ CHANGE 1: skip clearing dateOfBirth error on change — let onBlur handle it
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -166,12 +166,26 @@ export default function AddParticipantForm() {
     setLoading(true);
     try {
       const res = await sendInvite(createdParticipantId, formData.email);
+      
       if (res.status === 201 || res.status === 200) {
+        const newInvitationId = res.data?.id;
+        setInvitationId(newInvitationId);
+
         setSubmitted(true);
         setTimeout(() => {
           setSubmitted(false);
           handleClose();
         }, 1000);
+
+        // @TODO: For now checking the invitation id and redirectling to accept page, after email setup it will be from email link.
+        // Verify the invitation
+        if (newInvitationId) {
+          const verifyRes = await participantService.getParticipantInvitation(newInvitationId);
+          if (verifyRes.status === 200) {
+            window.location.href = `/invitation/${newInvitationId}/accept`;
+            return;
+          }
+        }
       }
     } catch (err) {
       console.error("Error sending invite:", err);
@@ -247,8 +261,8 @@ export default function AddParticipantForm() {
                 <div className="space-y-4">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="flex flex-col gap-2">
-                      <Label htmlFor="firstName">
-                        First Name <span className="text-destructive">*</span>
+                      <Label htmlFor="firstName" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
+                        First Name
                       </Label>
                       <Input
                         id="firstName"
@@ -262,8 +276,8 @@ export default function AddParticipantForm() {
                       )}
                     </div>
                     <div className="flex flex-col gap-2">
-                      <Label htmlFor="lastName">
-                        Last Name <span className="text-destructive">*</span>
+                      <Label htmlFor="lastName" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
+                        Last Name
                       </Label>
                       <Input
                         id="lastName"
@@ -279,8 +293,8 @@ export default function AddParticipantForm() {
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="email">
-                      Email <span className="text-destructive">*</span>
+                    <Label htmlFor="email" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
+                      Email
                     </Label>
                     <Input
                       id="email"
@@ -301,8 +315,8 @@ export default function AddParticipantForm() {
               {currentStep === 2 && (
                 <div className="space-y-4">
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="dateOfBirth">
-                      Date of Birth <span className="text-destructive">*</span>
+                    <Label htmlFor="dateOfBirth" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
+                      Date of Birth
                     </Label>
                     <Input
                       id="dateOfBirth"
@@ -310,7 +324,6 @@ export default function AddParticipantForm() {
                       name="dateOfBirth"
                       value={formData.dateOfBirth}
                       onChange={handleChange}
-                      // ✅ CHANGE 2: clears error when valid date is picked on blur
                       onBlur={() => {
                         if (!formData.dateOfBirth) {
                           setErrors((prev) => ({
@@ -339,8 +352,8 @@ export default function AddParticipantForm() {
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="gender">
-                      Gender <span className="text-destructive">*</span>
+                    <Label htmlFor="gender" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
+                      Gender
                     </Label>
                     <Select
                       value={formData.gender}
@@ -356,7 +369,7 @@ export default function AddParticipantForm() {
                         <SelectItem value="M">Male</SelectItem>
                         <SelectItem value="F">Female</SelectItem>
                         <SelectItem value="O">Other</SelectItem>
-                        <SelectItem value="N">Not Specified</SelectItem>
+                        <SelectItem value="N">Prefer not to say</SelectItem>
                       </SelectContent>
                     </Select>
                     {errors.gender && (
@@ -365,8 +378,8 @@ export default function AddParticipantForm() {
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="demographics">
-                      Demographics <span className="text-destructive">*</span>
+                    <Label htmlFor="demographics" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
+                      Demographics
                     </Label>
                     <Input
                       id="demographics"

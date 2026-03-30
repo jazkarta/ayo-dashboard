@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+'use client'
+import { useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { getTokens, initKeycloak, isTokenExpired } from "@/services/keycloakService";
+import { getTokens } from "@/services/keycloakService";
 
 /**
  * useAuth hook - Check if user is authenticated and redirect to login if not
@@ -8,46 +9,25 @@ import { getTokens, initKeycloak, isTokenExpired } from "@/services/keycloakServ
  */
 export const useAuth = () => {
   const router = useRouter();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+
+  // useSyncExternalStore: no setState in effects, no hydration mismatch
+  // Server snapshot returns false; client snapshot reads localStorage
+  const isAuthenticated = useSyncExternalStore(
+    () => () => {},                          
+    () => !!getTokens().access_token,        // client snapshot
+    () => false,                             // server snapshot
+  );
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // Check if tokens exist in localStorage
-        const { access_token } = getTokens();
-
-        if (!access_token) {
-          // No token, user is not authenticated
-          setIsAuthenticated(false);
-          setIsLoading(false);
-          router.push("/login");
-          return;
-        }
-
-        // Initialize Keycloak to properly validate token
-        const { authenticated } = await initKeycloak();
-
-        if (!authenticated) {
-          // Not authenticated, redirect to login
-          setIsAuthenticated(false);
-          setIsLoading(false);
-          router.push("/login");
-          return;
-        }
-
-        // Token is valid and Keycloak is authenticated
-        setIsAuthenticated(true);
-        setIsLoading(false);
-      } catch (err) {
-        setIsAuthenticated(false);
-        setIsLoading(false);
-        router.push("/login");
+    if (!isAuthenticated) {
+      // Double-check localStorage directly — guards against the server snapshot
+      // being false during hydration before useSyncExternalStore syncs to client value
+      const { access_token } = getTokens();
+      if (!access_token) {
+        router.replace("/login?session=expired");
       }
-    };
+    }
+  }, [isAuthenticated, router]);
 
-    checkAuth();
-  }, [router]);
-
-  return { isAuthenticated, isLoading };
+  return { isAuthenticated, isLoading: false };
 };

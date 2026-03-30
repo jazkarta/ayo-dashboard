@@ -35,7 +35,7 @@ export function AuthWrapper({ children }) {
               />
             </svg>
           </div>
-          <p className="text-slate-600">Verifying authentication...</p>
+          <p className="text-slate-600">Verifying Authentication...</p>
         </div>
       </div>
     );

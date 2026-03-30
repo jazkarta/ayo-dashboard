@@ -1,27 +1,34 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useSyncExternalStore } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { loginWithGoogle, getTokens } from "@/services/keycloakService";
 import { useState } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const sessionExpired = searchParams.get("session") === "expired";
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const hasCheckedAuth = useRef(false);
 
-  // Check if user is already authenticated, redirect to dashboard if so
+  // Sync check against localStorage — no hydration mismatch, no setState in effect
+  const isLoggedIn = useSyncExternalStore(
+    () => () => {},
+    () => !!getTokens().access_token,
+    () => false,
+  );
+
+  // Redirect to dashboard if already authenticated
   useEffect(() => {
-    if (hasCheckedAuth.current) return;
-    hasCheckedAuth.current = true;
-
-    const { access_token } = getTokens();
-    if (access_token) {
+    if (isLoggedIn) {
       router.replace("/dashboard");
     }
-  }, [router]);
+  }, [isLoggedIn, router]);
+
+  // Return null while redirecting — prevents the login form from flashing
+  if (isLoggedIn) return null;
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
@@ -38,6 +45,11 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center px-4">
+      {sessionExpired && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-md">
+          Your session has expired. Please sign in again.
+        </div>
+      )}
       <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-lg">
         <h1 className="text-3xl font-bold text-slate-900">Welcome to Ayo Dashboard</h1>
         <p className="mt-3 text-sm text-slate-500">

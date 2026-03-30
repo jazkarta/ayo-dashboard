@@ -14,6 +14,14 @@ const participantService = {
   sendInvitationToParticipant(id, data) {
     return apiClient.post(`${urlBase}${id}/invite/`, data);
   },
+
+  getParticipantInvitation(id) {
+    return apiClient.get(`${urlBase}invitations/${id}/`);
+  },
+
+  acceptParticipantInvitation(id, data) {
+    return apiClient.post(`${urlBase}invitations/${id}/accept/`, data);
+  }
 };
 
 export default participantService;
