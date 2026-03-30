@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from users.models.user import UserRole
 from utils.keycloak_manager import KeycloakSync
 from .models import ParticipantProfile, Invitation, Guardian
-
+from utils.email_sender import send_invitation_email
 from utils.username_generator_helper import generate_username
 
 logger = logging.getLogger(__name__)
@@ -154,6 +154,15 @@ class InvitationSendSerializer(serializers.Serializer):
         )
 
         # send email to guardian
+        context = {
+            "participant_name": participant,
+            "invited_by": validated_data['invited_by'].first_name,
+            "expiry_date": expiry_date.strftime("%Y-%m-%d %H:%M"),
+            "invitation_id": invitation.id,
+        }
+
+        # Send the email (console backend)
+        send_invitation_email(to_email=invitation.parent_email, context=context)
 
         return invitation
 
