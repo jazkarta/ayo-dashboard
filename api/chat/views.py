@@ -1,12 +1,13 @@
 from rest_framework.generics import CreateAPIView
 
-from chat.serializers import ChatCreateSerializer, ConversationListSerializer, ConversationDetailSerializer
+from chat.serializers import ChatCreateSerializer, ConversationListSerializer, ConversationDetailSerializer, ChatSerializer
 from rest_framework.viewsets import ReadOnlyModelViewSet
 from chat.models.chat_models import Chat
 from chat.models.conversation_models import ConversationModel
-from django.db.models import OuterRef, Subquery, Prefetch
+from django.db.models import OuterRef, Subquery
 from rest_framework.permissions import IsAuthenticated
-from participant.models.participant_profile_models import ParticipantProfile
+from rest_framework.decorators import action
+from rest_framework.response import Response
 
 
 class ChatCreateAPIView(CreateAPIView):
@@ -16,29 +17,23 @@ class ChatCreateAPIView(CreateAPIView):
 class ConversationViewSet(ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_action_classes = {
-        'list': ConversationListSerializer,
-        'retrieve': ConversationDetailSerializer,
+        'list': ConversationListSerializer
     }
 
     def get_queryset(self):
-        user = self.request.user
-
-        participants_prefetch = Prefetch(
-            'user__participant_profile',
-            queryset=ParticipantProfile.objects.all(),
-            to_attr='prefetched_participant'
-        )
-
         last_chat_subquery = Chat.objects.filter(
             conversation=OuterRef('pk')
         ).order_by('-created_at')
 
-        queryset = ConversationModel.objects.filter(user__invitations__invited_by=user).annotate(
+        queryset = ConversationModel.objects.select_related(
+            'user'
+        ).prefetch_related(
+            'chats'
+        ).annotate(
             last_message=Subquery(last_chat_subquery.values('prompt')[:1])
-        ).select_related('user').prefetch_related(participants_prefetch)
-
-        if self.action == 'retrieve':
-            queryset = queryset.prefetch_related('chats')
+        ).order_by(
+            '-created_at'
+        )
 
         return queryset
 
@@ -47,3 +42,18 @@ class ConversationViewSet(ReadOnlyModelViewSet):
             self.action,
             ConversationDetailSerializer
         )
+
+    @action(detail=True, methods=['get'])
+    def details(self, request, pk=None):
+        instance = self.get_object()
+        chats = instance.chats.all().order_by(
+            '-created_at'
+        )
+
+        page = self.paginate_queryset(chats)
+        if page is not None:
+            serializer = ChatSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = ChatSerializer(chats, many=True)
+        return Response(serializer.data)

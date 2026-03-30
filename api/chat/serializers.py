@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from chat.models import Chat, ConversationModel
-from participant.serializers import ParticipantProfileSerializer
+
 
 User = get_user_model()
 
@@ -95,31 +95,24 @@ class ChatSerializer(serializers.ModelSerializer):
         model = Chat
         fields = '__all__'
 
+class ConversationUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'email', 'username']
+
+
 class ConversationListSerializer(serializers.ModelSerializer):
     last_message = serializers.CharField(read_only=True)
-    participant_information = serializers.SerializerMethodField()
+    participant = ConversationUserSerializer(read_only=True, source='user')
 
     class Meta:
         model = ConversationModel
-        fields = ['id', 'title', 'conversation_id', 'model_name', 'last_message', 'participant_information']
-
-    def get_participant_information(self, obj):
-        participant = getattr(obj.user, 'prefetched_participant', None)
-        if participant:
-            return ParticipantProfileSerializer(participant).data
-        return None
+        fields = ['id', 'title', 'conversation_id', 'model_name', 'last_message', 'participant']
 
 class ConversationDetailSerializer(serializers.ModelSerializer):
-    chats = ChatSerializer(many=True, read_only=True)
-    participant_information = serializers.SerializerMethodField()
+    participant = ConversationUserSerializer(read_only=True, source='user')
 
     class Meta:
         model = ConversationModel
-        fields = ['id', 'title', 'conversation_id', 'model_name', 'chats', 'participant_information']
-
-    def get_participant_information(self, obj):
-        participant = getattr(obj.user, 'prefetched_participant', None)
-        if participant:
-            return ParticipantProfileSerializer(participant).data
-        return None
+        fields = ['id', 'title', 'conversation_id', 'model_name', 'participant']
 
