@@ -25,7 +25,6 @@ class ConversationViewSet(ReadOnlyModelViewSet):
 
         participants_prefetch = Prefetch(
             'user__participant_profile',
-            # queryset=ParticipantProfile.objects.filter(user=user),
             queryset=ParticipantProfile.objects.all(),
             to_attr='prefetched_participant'
         )
@@ -34,7 +33,7 @@ class ConversationViewSet(ReadOnlyModelViewSet):
             conversation=OuterRef('pk')
         ).order_by('-created_at')
 
-        queryset = ConversationModel.objects.filter().annotate(
+        queryset = ConversationModel.objects.filter(user__invitations__invited_by=user).annotate(
             last_message=Subquery(last_chat_subquery.values('prompt')[:1])
         ).select_related('user').prefetch_related(participants_prefetch)
 
