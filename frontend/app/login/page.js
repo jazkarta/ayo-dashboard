@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { Suspense, useEffect, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { loginWithGoogle, getTokens } from "@/services/keycloakService";
 import { useState } from "react";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionExpired = searchParams.get("session") === "expired";
@@ -127,6 +127,14 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
   );
 }
 
