@@ -1,12 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { loginWithGoogle } from "@/services/keycloakService";
+import { loginWithGoogle, getTokens } from "@/services/keycloakService";
+import { useState } from "react";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const hasCheckedAuth = useRef(false);
+
+  // Check if user is already authenticated, redirect to dashboard if so
+  useEffect(() => {
+    if (hasCheckedAuth.current) return;
+    hasCheckedAuth.current = true;
+
+    const { access_token } = getTokens();
+    if (access_token) {
+      router.replace("/dashboard");
+    }
+  }, [router]);
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
