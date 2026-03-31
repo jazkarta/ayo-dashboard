@@ -5,6 +5,7 @@ from django.db import transaction
 
 from chat.models import Chat, ConversationModel
 
+
 User = get_user_model()
 
 
@@ -87,3 +88,31 @@ class ChatCreateSerializer(serializers.ModelSerializer):
 
         chat = Chat.objects.create(conversation=conversation, **validated_data)
         return chat
+
+
+class ChatSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Chat
+        fields = '__all__'
+
+class ConversationUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'email', 'username']
+
+
+class ConversationListSerializer(serializers.ModelSerializer):
+    last_message = serializers.CharField(read_only=True)
+    participant = ConversationUserSerializer(read_only=True, source='user')
+
+    class Meta:
+        model = ConversationModel
+        fields = ['id', 'title', 'conversation_id', 'model_name', 'last_message', 'participant']
+
+class ConversationDetailSerializer(serializers.ModelSerializer):
+    participant = ConversationUserSerializer(read_only=True, source='user')
+
+    class Meta:
+        model = ConversationModel
+        fields = ['id', 'title', 'conversation_id', 'model_name', 'participant']
+

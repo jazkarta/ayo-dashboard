@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model
 from users.models.user import UserRole
 from utils.keycloak_manager import KeycloakSync
 from .models import ParticipantProfile, Invitation, Guardian
-
+from utils.email_manager import EmailManager
 from utils.username_generator_helper import generate_username
 
 logger = logging.getLogger(__name__)
@@ -138,6 +138,7 @@ class InvitationSendSerializer(serializers.Serializer):
     @transaction.atomic
     def create(self, validated_data):
         participant = self.context['participant']
+        email_manager = EmailManager()
 
         try:
             participant.invitations.delete()
@@ -154,6 +155,17 @@ class InvitationSendSerializer(serializers.Serializer):
         )
 
         # send email to guardian
+        context = {
+            "participant_name": participant.get_full_name(),
+            "invited_by": validated_data['invited_by'].get_full_name(),
+            "expiry_date": expiry_date.strftime("%Y-%m-%d %H:%M"),
+            "invitation_id": invitation.id,
+        }
+
+        # Send the email using EmailManager
+        email_manager.send_participant_invitation_email(
+            to_email=invitation.parent_email, invitation_data=context
+        )
 
         return invitation
 
