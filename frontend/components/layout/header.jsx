@@ -14,8 +14,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { redirect } from "next/navigation";
 import { logout } from "@/services/keycloakService";
+import userService from "@/services/userService";
 
 export function Header({ title = "Dashboard", subtitle }) {
+  const [user, setUser] = React.useState(null);
+
+  React.useEffect(() => {
+    userService.getUserDetails().then((res) => setUser(res.data)).catch(() => {});
+  }, []);
+
+  const initials = user
+    ? `${user.first_name?.[0] ?? ""}${user.last_name?.[0] ?? ""}`.toUpperCase() || user.username?.[0]?.toUpperCase() || "U"
+    : "U";
+
   return (
     <header className="h-16 border-b border-sidebar-border shadow-xs bg-background flex items-center px-6 gap-4 shrink-0">
       {/* Page Title */}
@@ -61,16 +72,16 @@ export function Header({ title = "Dashboard", subtitle }) {
             <Avatar className="h-8 w-8 cursor-pointer transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background">
               <AvatarImage src="" alt="User avatar" />
               <AvatarFallback className="text-xs font-semibold bg-primary text-primary-foreground">
-                AD
+                {initials}
               </AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-semibold">Admin User</span>
+                <span className="text-sm font-semibold">{user?.full_name || user?.username || "—"}</span>
                 <span className="text-xs text-muted-foreground truncate">
-                  admin@example.com
+                  {user?.email || "—"}
                 </span>
               </div>
             </DropdownMenuLabel>
