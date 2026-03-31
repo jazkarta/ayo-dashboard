@@ -24,7 +24,7 @@ const participantService = {
   },
 
   suggestUsername() {
-    return apiClient.get(`${urlBase}suggest-username/`);
+    return apiClient.get(`${urlBase}suggest-username/`, { public: true });
   }
 };
 
