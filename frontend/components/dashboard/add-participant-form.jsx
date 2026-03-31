@@ -179,13 +179,13 @@ export default function AddParticipantForm() {
 
         // @TODO: For now checking the invitation id and redirectling to accept page, after email setup it will be from email link.
         // Verify the invitation
-        if (newInvitationId) {
-          const verifyRes = await participantService.getParticipantInvitation(newInvitationId);
-          if (verifyRes.status === 200) {
-            window.location.href = `/invitation/${newInvitationId}/accept`;
-            return;
-          }
-        }
+        // if (newInvitationId) {
+        //   const verifyRes = await participantService.getParticipantInvitation(newInvitationId);
+        //   if (verifyRes.status === 200) {
+        //     window.location.href = `/invitation/${newInvitationId}/accept`;
+        //     return;
+        //   }
+        // }
       }
     } catch (err) {
       console.error("Error sending invite:", err);
