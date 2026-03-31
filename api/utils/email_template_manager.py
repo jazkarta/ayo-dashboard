@@ -8,13 +8,19 @@ class EmailTemplateManager:
         # Email templates with their subjects, body, and placeholders
         self.email_template = {
             'participate_invitation_email': {
-                'subject': 'Your child has a new invitation',
+                'subject': 'Invitation for Your Child to Join AYO Platform',
                 'email_body': (
-                    "Hello,\n\n"
-                    "Your child %participantName% has been invited by %invitedBy%.\n"
-                    "Invitation link: %invitationLink%\n\n"
-                    "Invitation expires on %expiryDate%.\n"
-                    "Thank you."
+                    "Dear Guardian,\n\n"
+                    "I hope you are doing well.\n\n"
+                    "Your child %participantName% has been invited by a researcher, %invitedBy%, to join the AYO platform. "
+                    "AYO is an AI-powered chat platform where participants can interact with AI as part of platform activities.\n\n"
+                    "To proceed, please review the invitation and provide your consent using the link below:\n"
+                    "%invitationLink%\n\n"
+                    "Please note that this invitation will expire on %expiryDate%.\n\n"
+                    "If you have any questions, feel free to reach out.\n\n"
+                    "Thank you for your time and consideration.\n\n"
+                    "Sincerely,\n"
+                    "AYO Platform Team"
                 ),
                 'templates': ['%invitationLink%', '%participantName%', '%invitedBy%', '%expiryDate%']
             }
