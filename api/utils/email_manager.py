@@ -84,7 +84,7 @@ class EmailManager:
             return False
 
         context = {
-            '%invitationLink%': f"{settings.DASHBOARD_URL}/invitation/{invitation_data['invitation_id']}/",
+            '%invitationLink%': f"{settings.DASHBOARD_URL}/invitation/{invitation_data['invitation_id']}/accept",
             '%participantName%': invitation_data['participant_name'],
             '%invitedBy%': invitation_data['invited_by'],
             '%expiryDate%': invitation_data['expiry_date'],
