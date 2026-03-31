@@ -200,17 +200,20 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
                 <p className="text-xs text-destructive">{errors.username}</p>
               )}
               {(loadingSuggestions || suggestedUsernames.length > 0) && (
-                <div className="rounded-md border border-input bg-muted/40 p-3 flex flex-col gap-2.5">
+                <div className="rounded-md border border-blue-200 bg-blue-50 p-3 flex flex-col gap-2.5">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium text-muted-foreground">Suggested Usernames</p>
-                    {loadingSuggestions && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                    <div className="flex items-center gap-1.5">
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-600" />
+                      <p className="text-xs font-semibold text-blue-600 tracking-wide capitalize">Suggested Usernames</p>
+                    </div>
+                    {loadingSuggestions && <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />}
                   </div>
                   {loadingSuggestions ? (
                     <div className="flex flex-wrap gap-2">
                       {[80, 96, 72, 88].map((w) => (
                         <div
                           key={w}
-                          className="h-6 rounded-full bg-muted animate-pulse"
+                          className="h-6 rounded-full bg-blue-200 animate-pulse"
                           style={{ width: w }}
                         />
                       ))}
@@ -225,7 +228,7 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
                             setFormData((prev) => ({ ...prev, username: name }));
                             setErrors((prev) => ({ ...prev, username: "" }));
                           }}
-                          className="rounded-full border border-input bg-background px-3 py-1 text-xs font-medium shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+                          className="rounded-full border border-blue-300 bg-white text-blue-700 px-3 py-1 text-xs font-medium shadow-sm hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all cursor-pointer"
                         >
                           {name}
                         </button>
