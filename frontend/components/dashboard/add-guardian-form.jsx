@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CheckCircle2Icon, Loader2 } from "lucide-react";
+import { CheckCircle2Icon, Loader2, X } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import participantService from "@/services/participantService";
 
@@ -18,6 +18,14 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState({});
+  const [suggestedUsernames, setSuggestedUsernames] = useState([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(true);
+
+  useEffect(() => {
+    participantService.suggestUsername().then((res) => {
+      setSuggestedUsernames(res.data.usernames || []);
+    }).catch(() => {}).finally(() => setLoadingSuggestions(false));
+  }, []);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -169,16 +177,62 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
               <Label htmlFor="username" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
                 Username
               </Label>
-              <Input
-                id="username"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                disabled={loading}
-                className={errors.username ? "border-destructive" : ""}
-              />
+              <div className="relative">
+                <Input
+                  id="username"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  disabled={loading}
+                  className={`pr-8 ${errors.username ? "border-destructive" : ""}`}
+                />
+                {formData.username && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, username: "" }))}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
               {errors.username && (
                 <p className="text-xs text-destructive">{errors.username}</p>
+              )}
+              {(loadingSuggestions || suggestedUsernames.length > 0) && (
+                <div className="rounded-md border border-input bg-muted/40 p-3 flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-muted-foreground">Suggested Usernames</p>
+                    {loadingSuggestions && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                  </div>
+                  {loadingSuggestions ? (
+                    <div className="flex flex-wrap gap-2">
+                      {[80, 96, 72, 88].map((w) => (
+                        <div
+                          key={w}
+                          className="h-6 rounded-full bg-muted animate-pulse"
+                          style={{ width: w }}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {suggestedUsernames.map((name) => (
+                        <button
+                          key={name}
+                          type="button"
+                          onClick={() => {
+                            setFormData((prev) => ({ ...prev, username: name }));
+                            setErrors((prev) => ({ ...prev, username: "" }));
+                          }}
+                          className="rounded-full border border-input bg-background px-3 py-1 text-xs font-medium shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 

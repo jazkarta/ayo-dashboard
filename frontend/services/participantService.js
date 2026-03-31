@@ -21,6 +21,10 @@ const participantService = {
 
   acceptParticipantInvitation(id, data) {
     return apiClient.post(`${urlBase}invitations/${id}/accept/`, data);
+  },
+
+  suggestUsername() {
+    return apiClient.get(`${urlBase}suggest-username/`);
   }
 };
 
