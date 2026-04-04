@@ -103,8 +103,30 @@ export default function AddParticipantForm() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleNext = () => {
-    if (validateStep1()) setCurrentStep((prev) => Math.min(prev + 1, steps.length));
+  const handleNext = async () => {
+    if (!validateStep1()) return;
+
+    setLoading(true);
+    try {
+      await createUser({
+        email: formData.email,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+      });
+      // If somehow 201 (no profile_data required), proceed
+      setCurrentStep((prev) => Math.min(prev + 1, steps.length));
+    } catch (err) {
+      const apiErrors = err.response?.data;
+      if (apiErrors?.email) {
+        // Email already exists — show error, stay on step 1
+        setErrors({ email: apiErrors.email[0] });
+      } else {
+        // Any other error (e.g. profile_data required) means email is available
+        setCurrentStep((prev) => Math.min(prev + 1, steps.length));
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const prevStep = () => {
@@ -151,7 +173,11 @@ export default function AddParticipantForm() {
         setCurrentStep((prev) => Math.min(prev + 1, steps.length));
       }
     } catch (err) {
-      console.error("Error creating user:", err);
+      const apiErrors = err.response?.data;
+      if (apiErrors?.email) {
+        setErrors({ email: apiErrors.email[0] });
+        setCurrentStep(1);
+      }
     } finally {
       setLoading(false);
     }
@@ -424,6 +450,7 @@ export default function AddParticipantForm() {
 
                 {currentStep === 1 && (
                   <Button type="button" onClick={handleNext} disabled={loading}>
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Next
                   </Button>
                 )}
