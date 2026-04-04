@@ -9,6 +9,7 @@ from django.contrib.auth.forms import ReadOnlyPasswordHashField
 from django.utils.translation import gettext_lazy as _
 
 from utils.keycloak_manager import KeycloakSync
+from utils.librechat_manager import LibreChatSync
 from .models import User
 
 logger = logging.getLogger(__name__)
@@ -93,7 +94,7 @@ class UserAdmin(BaseUserAdmin):
     list_filter = ("role", "is_active", "is_staff", "is_superuser")
     search_fields = ("email", "username", "first_name", "last_name")
     ordering = ("email",)
-    
+
     def get_readonly_fields(self, request, obj=None):
         """
         `username` is editable when creating a new user (obj is None)
@@ -182,11 +183,13 @@ class UserAdmin(BaseUserAdmin):
         change-list.  Django's bulk QuerySet.delete() bypasses model signals,
         so we sync each user to Keycloak manually before deleting.
         """
-        sync = KeycloakSync()
+        sync_kc = KeycloakSync()
+        sync_lc = LibreChatSync()
         for user in queryset:
+            # 1. Sync delete with Keycloak
             if user.keycloak_id:
                 try:
-                    sync.delete_user(user.keycloak_id)
+                    sync_kc.delete_user(user.keycloak_id)
                 except Exception as e:
                     logger.error(
                         f"Failed to delete Keycloak user {user.keycloak_id} "
@@ -196,4 +199,15 @@ class UserAdmin(BaseUserAdmin):
                         request,
                         f'Could not remove user "{user.username}" from Keycloak: {e}',
                     )
+
+            # 2. Sync delete with LibreChat
+            try:
+                sync_lc.delete_user(user.email)
+            except Exception as e:
+                logger.error(f"Failed to delete LibreChat user {user.email}: {e}")
+                messages.warning(
+                    request,
+                    f'Could not remove user "{user.username}" from LibreChat: {e}',
+                )
+
         super().delete_queryset(request, queryset)
