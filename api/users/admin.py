@@ -93,7 +93,15 @@ class UserAdmin(BaseUserAdmin):
     list_filter = ("role", "is_active", "is_staff", "is_superuser")
     search_fields = ("email", "username", "first_name", "last_name")
     ordering = ("email",)
-    readonly_fields = ('username',)
+    
+    def get_readonly_fields(self, request, obj=None):
+        """
+        `username` is editable when creating a new user (obj is None)
+        but becomes read-only on the change form to prevent accidental edits.
+        """
+        if obj:  # editing an existing user
+            return ('username',)
+        return ()
 
     # ------------------------------------------------------------------
     # Detail / change view fieldsets
