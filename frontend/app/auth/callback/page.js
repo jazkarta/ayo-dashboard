@@ -2,51 +2,45 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { initKeycloak, hasResearcherOrAdminRole, logout } from "@/services/keycloakService";
+import { useKeycloak } from "@/context/KeycloakContext";
+import { hasResearcherOrAdminRole, logout } from "@/services/keycloakService";
 
 /**
  * /auth/callback
- * ...
+ * Minimal page that handles the OIDC redirect.
+ * The logic is mostly handled by KeycloakProvider; this page just checks roles
+ * and decides where to redirect the user next.
  */
 export default function AuthCallbackPage() {
   const router = useRouter();
+  const { authenticated, isLoading } = useKeycloak();
   const [status, setStatus] = useState("Completing sign-in…");
 
   useEffect(() => {
-    const handleCallback = async () => {
-      try {
-        const { authenticated, keycloak } = await initKeycloak();
+    // Wait for the initialization in KeycloakProvider to finish
+    if (isLoading) return;
 
-        if (authenticated && keycloak.token) {
-          // Check role: Must be researchers or admin
-          if (!hasResearcherOrAdminRole()) {
-            setStatus("Unauthorized access! You do not have the required role.");
-            // Log out from Keycloak session too, otherwise they'll just loop back
-            setTimeout(() => {
-              logout();
-            }, 2000);
-            return;
-          }
-
-          // Persist tokens only for authorized users
-          localStorage.setItem("access_token", keycloak.token);
-          localStorage.setItem("refresh_token", keycloak.refreshToken ?? "");
-
-          setStatus("Signed in! Redirecting to dashboard…");
-          router.replace("/dashboard");
-        } else {
-          setStatus("Authentication failed. Redirecting to login…");
-          router.replace("/login");
-        }
-      } catch (err) {
-        console.error("[AuthCallback] Error:", err);
-        setStatus("Something went wrong. Redirecting to login…");
-        router.replace("/login");
+    if (authenticated) {
+      // Check role: Must be researchers or admin
+      if (!hasResearcherOrAdminRole()) {
+        setStatus("Unauthorized access! You do not have the required role.");
+        // Log out from Keycloak session too, otherwise they'll just loop back
+        setTimeout(() => {
+          logout();
+        }, 2000);
+        return;
       }
-    };
 
-    handleCallback();
-  }, [router]);
+      setStatus("Signed in! Redirecting to dashboard…");
+      router.replace("/dashboard");
+    } else {
+      // If we're not authenticated after the callback, something went wrong
+      setStatus("Authentication failed. Redirecting to login…");
+      setTimeout(() => {
+        router.replace("/login");
+      }, 1500);
+    }
+  }, [authenticated, isLoading, router]);
 
 
   return (

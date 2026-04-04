@@ -1,7 +1,6 @@
-'use client'
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getTokens } from "@/services/keycloakService";
+import { useKeycloak } from "@/context/KeycloakContext";
 
 /**
  * useAuth hook - Check if user is authenticated and redirect to login if not
@@ -9,25 +8,21 @@ import { getTokens } from "@/services/keycloakService";
  */
 export const useAuth = () => {
   const router = useRouter();
-
-  // useSyncExternalStore: no setState in effects, no hydration mismatch
-  // Server snapshot returns false; client snapshot reads localStorage
-  const isAuthenticated = useSyncExternalStore(
-    () => () => {},                          
-    () => !!getTokens().access_token,        // client snapshot
-    () => false,                             // server snapshot
-  );
+  const { authenticated, hasRequiredRole, isLoading } = useKeycloak();
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      // Double-check localStorage directly — guards against the server snapshot
-      // being false during hydration before useSyncExternalStore syncs to client value
-      const { access_token } = getTokens();
-      if (!access_token) {
-        router.replace("/login?session=expired");
-      }
-    }
-  }, [isAuthenticated, router]);
+    // Only redirect if we've finished loading
+    if (isLoading) return;
 
-  return { isAuthenticated, isLoading: false };
+    if (!authenticated) {
+      router.replace("/login?session=expired");
+    } else if (!hasRequiredRole) {
+      // If we are authenticated but don't have the role, we MUST log out to clear the session
+      import("@/services/keycloakService").then(({ logout }) => {
+        logout(`${window.location.origin}/login?session=unauthorized`);
+      });
+    }
+  }, [authenticated, hasRequiredRole, isLoading, router]);
+
+  return { isAuthenticated: authenticated, isAuthorized: hasRequiredRole, isLoading };
 };

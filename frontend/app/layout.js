@@ -1,4 +1,5 @@
 import { Raleway } from "next/font/google";
+import { KeycloakProvider } from "@/context/KeycloakContext";
 import "./globals.css";
 
 /**
@@ -33,7 +34,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${raleway.variable} font-sans antialiased`}>
-        {children}
+        <KeycloakProvider>
+          {children}
+        </KeycloakProvider>
       </body>
     </html>
   );

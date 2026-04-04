@@ -32,6 +32,8 @@ const getKeycloak = () => {
  * Call this once on app mount (e.g. in the callback page or a top-level provider).
  * Returns { authenticated, keycloak }.
  */
+let _initPromise = null;
+
 export const initKeycloak = async () => {
   const kc = getKeycloak();
   if (!kc) return { authenticated: false, keycloak: null };
@@ -41,40 +43,77 @@ export const initKeycloak = async () => {
     return { authenticated: kc.authenticated, keycloak: kc };
   }
 
-  try {
-    const redirectUri = `${window.location.origin}/auth/callback`;
-    const { access_token, refresh_token } = getTokens();
-
-    const authenticated = await kc.init({
-      onLoad: "check-sso",
-      silentCheckSsoRedirectUri: `${window.location.origin}/silent-check-sso.html`,
-      redirectUri,
-      pkceMethod: "S256",
-      token: access_token || undefined,
-      refreshToken: refresh_token || undefined,
-    });
-
-    // Listen for events to keep localStorage in sync
-    kc.onTokenExpired = () => {
-      console.log("[Keycloak] Token expired. Attempting refresh...");
-      refreshTokens(30).catch(console.error);
-    };
-
-    kc.onAuthRefreshSuccess = () => {
-      console.log("[Keycloak] Token successfully refreshed.");
-      localStorage.setItem("access_token", kc.token);
-      localStorage.setItem("refresh_token", kc.refreshToken);
-    };
-
-    kc.onAuthRefreshError = () => {
-      console.error("[Keycloak] Failed to refresh token.");
-    };
-
-    return { authenticated, keycloak: kc };
-  } catch (err) {
-    console.error("[Keycloak] init error:", err);
-    return { authenticated: false, keycloak: kc };
+  // If initialization is already in progress, wait for it
+  if (_initPromise) {
+    return _initPromise;
   }
+
+  _initPromise = (async () => {
+    try {
+      const redirectUri = `${window.location.origin}/auth/callback`;
+      const { access_token, refresh_token } = getTokens();
+
+      // Listen for events to keep localStorage in sync
+      kc.onTokenExpired = () => {
+        console.log("[Keycloak] Token expired. Attempting refresh...");
+        refreshTokens(30).catch(console.error);
+      };
+
+      kc.onAuthRefreshSuccess = () => {
+        console.log("[Keycloak] Token successfully refreshed.");
+        localStorage.setItem("access_token", kc.token);
+        localStorage.setItem("refresh_token", kc.refreshToken);
+      };
+
+      kc.onAuthRefreshError = () => {
+        console.error("[Keycloak] Failed to refresh token.");
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+      };
+
+      kc.onAuthSuccess = () => {
+        console.log("[Keycloak] Auth success.");
+        localStorage.setItem("access_token", kc.token);
+        localStorage.setItem("refresh_token", kc.refreshToken);
+      }
+
+      kc.onAuthError = (errorData) => {
+        console.error("[Keycloak] Auth error:", errorData);
+      }
+
+      const authenticated = await kc.init({
+        onLoad: "check-sso",
+        silentCheckSsoRedirectUri: `${window.location.origin}/silent-check-sso.html`,
+        checkLoginIframe: false,
+        redirectUri,
+        pkceMethod: "S256",
+        token: access_token || undefined,
+        refreshToken: refresh_token || undefined,
+      });
+
+      if (authenticated) {
+        console.log("[Keycloak] Authenticated. Saving tokens...");
+        localStorage.setItem("access_token", kc.token || "");
+        localStorage.setItem("refresh_token", kc.refreshToken || "");
+      } else {
+        console.log("[Keycloak] Not authenticated. Clearing tokens...");
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+      }
+
+      return { authenticated, keycloak: kc };
+    } catch (err) {
+      console.error("[Keycloak] init error:", err);
+      // If initialization fails completely (e.g. network), don't wipe tokens just yet,
+      // but return not authenticated.
+      return { authenticated: false, keycloak: kc };
+    } finally {
+      // Clear the promise so future calls can properly detect didInitialize
+      _initPromise = null;
+    }
+  })();
+
+  return _initPromise;
 };
 
 /**

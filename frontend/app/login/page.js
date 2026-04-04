@@ -10,6 +10,7 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionExpired = searchParams.get("session") === "expired";
+  const sessionUnauthorized = searchParams.get("session") === "unauthorized";
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -22,10 +23,11 @@ function LoginContent() {
 
   // Redirect to dashboard if already authenticated
   useEffect(() => {
-    if (isLoggedIn) {
+    // If unauthorized param is present, don't auto-redirect back into dashboard
+    if (isLoggedIn && !sessionUnauthorized) {
       router.replace("/dashboard");
     }
-  }, [isLoggedIn, router]);
+  }, [isLoggedIn, router, sessionUnauthorized]);
 
   // Return null while redirecting — prevents the login form from flashing
   if (isLoggedIn) return null;
@@ -48,6 +50,11 @@ function LoginContent() {
       {sessionExpired && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-md">
           Your session has expired. Please sign in again.
+        </div>
+      )}
+      {sessionUnauthorized && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-md rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-md">
+          Unauthorized access. You must have the "researcher" or "admin" role to access the dashboard.
         </div>
       )}
       <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-lg">
