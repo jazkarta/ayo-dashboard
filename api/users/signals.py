@@ -3,6 +3,7 @@ from django.db.models.signals import post_save, post_delete, pre_save
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 from utils.keycloak_manager import KeycloakSync
+from utils.librechat_manager import LibreChatSync
 
 logger = logging.getLogger(__name__)
 
@@ -111,10 +112,17 @@ def delete_user_from_keycloak(sender, instance, **kwargs):
         )
         return
 
-    logger.info(f"User {instance.username} deleted from Django. Removing from Keycloak (ID: {instance.keycloak_id})…")
+    logger.info(f"User {instance.username} deleted from Django. Syncing to Keycloak & LibreChat…")
     try:
-        sync = KeycloakSync()
-        sync.delete_user(instance.keycloak_id)
+        # 1. Sync deletion with Keycloak
+        sync_kc = KeycloakSync()
+        sync_kc.delete_user(instance.keycloak_id)
         logger.info(f"Keycloak user {instance.keycloak_id} deleted successfully.")
+        
+        # 2. Sync deletion with LibreChat
+        sync_lc = LibreChatSync()
+        sync_lc.delete_user(instance.email)
+        logger.info(f"LibreChat user {instance.email} deleted successfully.")
+        
     except Exception as e:
-        logger.error(f"Failed to delete Keycloak user {instance.keycloak_id}: {e}")
+        logger.error(f"Failed to delete external user account for {instance.email}: {e}")

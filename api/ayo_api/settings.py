@@ -197,3 +197,6 @@ EMAIL_PORT = int(os.getenv("EMAIL_PORT", 587))
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+
+# LibreChat MongoDB configuration
+LIBRECHAT_MONGO_URI = os.getenv("LIBRECHAT_MONGO_URI", "mongodb://mongo:27017/LibreChat")
