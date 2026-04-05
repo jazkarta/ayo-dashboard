@@ -30,7 +30,7 @@ class ParticipantViewSet(viewsets.ModelViewSet):
     """
     queryset = User.objects.filter(role=UserRole.PARTICIPANT)
     serializer_class = ParticipantCreateSerializer
-    # permission_classes = [IsResearcher]
+    permission_classes = [IsResearcher]
 
     @action(detail=True, methods=['post'], serializer_class=InvitationSendSerializer)
     def invite(self, request, pk=None):
