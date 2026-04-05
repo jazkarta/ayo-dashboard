@@ -5,6 +5,7 @@ from django.utils import timezone
 from rest_framework import viewsets, status, mixins
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
 from django.contrib.auth import get_user_model
 
 from .serializers import (
@@ -50,7 +51,12 @@ class ParticipantViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=['get'], url_path='suggest-username', serializer_class=UsernameSuggestionSerializer)
+    @action(
+        detail=False, methods=['get'],
+        url_path='suggest-username',
+        serializer_class=UsernameSuggestionSerializer,
+        permission_classes=[AllowAny]
+    )
     def suggest_username(self, request):
         """
         Get a list of suggested unique usernames.
@@ -71,7 +77,7 @@ class InvitationViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     """
     queryset = Invitation.objects.all()
     serializer_class = InvitationSerializer
-    permission_classes = []
+    permission_classes = [AllowAny]
 
     @action(detail=True, methods=['post'], serializer_class=InvitationAcceptSerializer)
     def accept(self, request, pk=None):
