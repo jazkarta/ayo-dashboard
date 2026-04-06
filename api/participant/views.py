@@ -2,16 +2,18 @@ import logging
 
 from datetime import timedelta
 from django.utils import timezone
-from rest_framework import viewsets, status, mixins
+from rest_framework import viewsets, status, mixins, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from django.contrib.auth import get_user_model
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 from .serializers import (
     ParticipantCreateSerializer, InvitationSerializer,
     InvitationAcceptSerializer, InvitationSendSerializer,
-    UsernameSuggestionSerializer
+    UsernameSuggestionSerializer, ParticipantEmailCheckSerializer
 )
 from .permissions import IsResearcher
 from .models import Invitation
@@ -32,6 +34,24 @@ class ParticipantViewSet(viewsets.ModelViewSet):
     queryset = User.objects.filter(role=UserRole.PARTICIPANT)
     serializer_class = ParticipantCreateSerializer
     permission_classes = [IsResearcher]
+
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                'email',
+                openapi.IN_QUERY,
+                description="Email to check availability",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+        responses={200: "Email available"}
+    )
+    @action(detail=False, methods=["get"], url_path="check-email")
+    def check_email(self, request):
+        serializer = ParticipantEmailCheckSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        return Response({"detail": "Email is available"}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'], serializer_class=InvitationSendSerializer)
     def invite(self, request, pk=None):
