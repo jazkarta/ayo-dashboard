@@ -110,6 +110,14 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
       }
     } catch (err) {
       console.error("Error submitting guardian info:", err);
+      const apiErrors = err?.response?.data;
+      if (apiErrors?.non_field_errors?.length) {
+        setErrors((prev) => ({ ...prev, form: apiErrors.non_field_errors[0] }));
+      } else if (apiErrors?.detail) {
+        setErrors((prev) => ({ ...prev, form: apiErrors.detail }));
+      } else {
+        setErrors((prev) => ({ ...prev, form: "Something went wrong. Please try again." }));
+      }
     } finally {
       setLoading(false);
     }
@@ -316,6 +324,16 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
               )}
             </div>
           </div>
+
+          {errors.form && (
+            <div className="mt-4">
+              <Alert className="border-destructive bg-red-50">
+                <AlertDescription className="text-destructive">
+                  {errors.form}
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="mt-6 flex justify-end gap-3">

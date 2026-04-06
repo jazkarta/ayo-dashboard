@@ -16,7 +16,7 @@ const participantService = {
   },
 
   getParticipantInvitation(id) {
-    return apiClient.get(`${urlBase}invitations/${id}/`);
+    return apiClient.get(`${urlBase}invitations/${id}/`, { public: true });
   },
 
   acceptParticipantInvitation(id, data) {
