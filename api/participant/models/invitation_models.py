@@ -23,7 +23,7 @@ class Invitation(BaseModel):
     has_accepted = models.BooleanField(_('has accepted'), default=False)
 
     def __str__(self):
-        return f"Invitation for {self.user.username} (Active: {self.is_active})"
+        return f"Invitation for {self.user.get_full_name()} (Active: {self.is_active})"
 
     class Meta:
         verbose_name = _('Invitation')
