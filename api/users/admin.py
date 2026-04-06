@@ -37,6 +37,8 @@ class UserCreationForm(forms.ModelForm):
 
     def clean_username(self):
         username = self.cleaned_data.get("username")
+        if not username:
+            raise ValidationError(_("A username is required."))
         if username:
             username = username.lower()
             sync = KeycloakSync()
@@ -99,6 +101,9 @@ class UserChangeForm(forms.ModelForm):
 
     def clean_username(self):
         username = self.cleaned_data.get("username")
+        if not username:
+            raise ValidationError(_("A username is required."))
+
         if username:
             username = username.lower()
             if username != self.instance.username:
