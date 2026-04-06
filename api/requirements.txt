@@ -20,9 +20,15 @@ idna==3.11
 inflection==0.5.1
 jwcrypto==1.5.6
 Markdown==3.10.2
+model-bakery==1.23.4
 packaging==26.0
 psycopg2==2.9.11
 pycparser==3.0
+Pygments==2.20.0
+pymongo==4.10.1
+pytest==9.0.2
+pytest-django==4.12.0
+pytest-mock==3.15.1
 python-dotenv==1.2.2
 python-keycloak==7.1.1
 pytz==2026.1.post1
