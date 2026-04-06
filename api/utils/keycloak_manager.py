@@ -148,3 +148,35 @@ class KeycloakSync:
         except KeycloakError as e:
             logger.error(f"Error assigning role '{role_name}' to Keycloak user {keycloak_id}: {str(e)}")
             raise
+
+    # ------------------------------------------------------------------
+    # Validation helpers
+    # ------------------------------------------------------------------
+
+    def user_exists(self, username=None, email=None):
+        """
+        Check if a user with the given username or email already exists in Keycloak
+        using case-insensitive comparison.
+        Returns the Keycloak ID if the user exists, otherwise None.
+        """
+        try:
+            if username:
+                # Keycloak API might be case-sensitive for searches, so we manually
+                # compare lowercased versions for safety.
+                users = self.keycloak_admin.get_users({"username": username.lower()})
+                for u in users:
+                    if (u.get("username") or "").lower() == username.lower():
+                        logger.info(f"Existing Keycloak user found by username: {u['username']} (ID: {u['id']})")
+                        return u["id"]
+
+            if email:
+                users = self.keycloak_admin.get_users({"email": email.lower()})
+                for u in users:
+                    if (u.get("email") or "").lower() == email.lower():
+                        logger.info(f"Existing Keycloak user found by email: {u['email']} (ID: {u['id']})")
+                        return u["id"]
+
+            return None
+        except KeycloakError as e:
+            logger.error(f"Error checking user existence in Keycloak: {str(e)}")
+            raise

@@ -7,7 +7,10 @@ from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
 from django.utils.translation import gettext_lazy as _
+from django.db import transaction
+from django.core.exceptions import ValidationError
 
+from keycloak.exceptions import KeycloakError
 from utils.keycloak_manager import KeycloakSync
 from utils.librechat_manager import LibreChatSync
 from .models import User
@@ -31,6 +34,24 @@ class UserCreationForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ("email", "first_name", "last_name", "username", "role")
+
+    def clean_username(self):
+        username = self.cleaned_data.get("username")
+        if username:
+            username = username.lower()
+            sync = KeycloakSync()
+            if sync.user_exists(username=username):
+                raise ValidationError(_("A user with this username already exists in Keycloak."))
+        return username
+
+    def clean_email(self):
+        email = self.cleaned_data.get("email")
+        if email:
+            email = email.lower()
+            sync = KeycloakSync()
+            if sync.user_exists(email=email):
+                raise ValidationError(_("A user with this email already exists in Keycloak."))
+        return email
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -75,6 +96,26 @@ class UserChangeForm(forms.ModelForm):
             "is_staff",
             "is_superuser",
         )
+
+    def clean_username(self):
+        username = self.cleaned_data.get("username")
+        if username:
+            username = username.lower()
+            if username != self.instance.username:
+                sync = KeycloakSync()
+                if sync.user_exists(username=username):
+                    raise ValidationError(_("A user with this username already exists in Keycloak."))
+        return username
+
+    def clean_email(self):
+        email = self.cleaned_data.get("email")
+        if email:
+            email = email.lower()
+            if email != self.instance.email:
+                sync = KeycloakSync()
+                if sync.user_exists(email=email):
+                    raise ValidationError(_("A user with this email already exists in Keycloak."))
+        return email
 
 
 # ---------------------------------------------------------------------------
@@ -151,10 +192,24 @@ class UserAdmin(BaseUserAdmin):
         For new users, save normally (password was set in UserCreationForm.save).
         We display a one-time info message so the admin can share the credentials.
         Updates are handled by the post_save signal in signals.py.
+
+        Wrapped in a transaction to ensure that if Keycloak sync (in signals) fails, 
+        the Django database changes are rolled back.
         """
         is_new = obj.pk is None
-        super().save_model(request, obj, form, change)
-        if is_new:
+        try:
+            with transaction.atomic():
+                super().save_model(request, obj, form, change)
+        except KeycloakError as e:
+            logger.error(f"Keycloak synchronization failed: {e}")
+            messages.error(request, _(f"Failed to sync with Keycloak: {str(e)}. Changes were not saved."))
+            # We must re-raise or handle the failure to prevent redirection
+            # To provide a better UX than a 500 page, we can catch it here 
+            # and potentially the admin view will handle it if we are careful.
+            # However, just having messages.error and a rollback is the core requirement.
+            raise
+        
+        if is_new and not messages.get_messages(request): # only show if no error message already
             messages.info(
                 request,
                 _(
