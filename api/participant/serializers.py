@@ -109,6 +109,17 @@ class ParticipantCreateSerializer(serializers.ModelSerializer):
         return representation
 
 
+class ParticipantEmailCheckSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError(
+                "User with this email address already exists."
+            )
+        return value
+
+
 class InvitationSerializer(serializers.ModelSerializer):
     user = ParticipantCreateSerializer(read_only=True)
 
