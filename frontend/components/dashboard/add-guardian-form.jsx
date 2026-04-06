@@ -339,7 +339,7 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
           <div className="mt-6 flex justify-end gap-3">
             <Button
               onClick={handleSubmit}
-              disabled={loading}
+              disabled={loading || submitted}
               className="cursor-pointer"
             >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

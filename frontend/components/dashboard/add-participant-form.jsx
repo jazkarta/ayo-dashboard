@@ -17,26 +17,13 @@ import { CheckCircle2Icon, Loader2, XIcon } from "lucide-react";
 import participantService from "@/services/participantService";
 
 const createUser = async (data) => {
-  try {
-    const response = await participantService.createParticipant(data);
-    return response;
-  } catch (error) {
-    console.error("Error creating participant:", error.response?.data || error.message);
-    throw error;
-  }
+  const response = await participantService.createParticipant(data);
+  return response;
 };
 
 const sendInvite = async (id, email) => {
-  try {
-    const payload = { email };
-    console.log("Send invite API called for participant id:", id, "payload:", payload);
-    const response = await participantService.sendInvitationToParticipant(id, payload);
-    console.log("Invite sent response:", response.data);
-    return response;
-  } catch (error) {
-    console.error("Error sending invitation:", error.response?.data || error.message);
-    throw error;
-  }
+  const response = await participantService.sendInvitationToParticipant(id, { email });
+  return response;
 };
 
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -46,6 +33,7 @@ export default function AddParticipantForm() {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [inviteError, setInviteError] = useState(false);
   const [userCreated, setUserCreated] = useState(false);
   const [createdParticipantId, setCreatedParticipantId] = useState(null);
   const [invitationId, setInvitationId] = useState(null);
@@ -177,6 +165,9 @@ export default function AddParticipantForm() {
       if (apiErrors?.email) {
         setErrors({ email: apiErrors.email[0] });
         setCurrentStep(1);
+      } else {
+        setInviteError(true);
+        setTimeout(() => setInviteError(false), 4000);
       }
     } finally {
       setLoading(false);
@@ -192,7 +183,6 @@ export default function AddParticipantForm() {
     setLoading(true);
     try {
       const res = await sendInvite(createdParticipantId, formData.email);
-      
       if (res.status === 201 || res.status === 200) {
         const newInvitationId = res.data?.id;
         setInvitationId(newInvitationId);
@@ -214,7 +204,8 @@ export default function AddParticipantForm() {
         // }
       }
     } catch (err) {
-      console.error("Error sending invite:", err);
+      setInviteError(true);
+      setTimeout(() => setInviteError(false), 4000);
     } finally {
       setLoading(false);
     }
@@ -231,6 +222,18 @@ export default function AddParticipantForm() {
           <Alert>
             <CheckCircle2Icon className="text-green-500" />
             <AlertTitle>Participant invited successfully!</AlertTitle>
+          </Alert>
+        </div>
+      )}
+
+      {inviteError && (
+        <div className="fixed right-4 top-4 z-50 w-[320px]">
+          <Alert className="border-destructive bg-red-50">
+            <XIcon className="h-4 w-4 text-destructive" />
+            <AlertTitle className="text-destructive">Something went wrong!</AlertTitle>
+            <AlertDescription className="text-destructive">
+              Failed to send invite. Please try again.
+            </AlertDescription>
           </Alert>
         </div>
       )}
