@@ -4,6 +4,8 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 from users.models.user import UserRole
 from participant.models import Invitation
+from django.utils import timezone
+from datetime import timedelta
 
 User = get_user_model()
 
@@ -86,3 +88,52 @@ class TestParticipantViewSet:
         assert response.status_code == expected_status
         if expected_status == status.HTTP_200_OK:
             assert response.data["detail"] == "Email is available"
+
+    @pytest.mark.parametrize("invited_by_user", [True, False])
+    def test_list_participants_filtered_by_logged_in_user(
+            self, api_client, researcher_user, participant_user, invited_by_user
+    ):
+        """
+        Test that the list endpoint only returns participants invited by the logged-in researcher.
+        """
+
+        participant_1 = User.objects.create_user(
+            email="p1@example.com", password="password123", role=UserRole.PARTICIPANT
+        )
+        participant_2 = User.objects.create_user(
+            email="p2@example.com", password="password123", role=UserRole.PARTICIPANT
+        )
+
+        expiry = timezone.now() + timedelta(days=7)
+
+        if invited_by_user:
+            Invitation.objects.create(user=participant_1, invited_by=researcher_user, expiry_date=expiry)
+            Invitation.objects.create(user=participant_2, invited_by=researcher_user, expiry_date=expiry)
+            expected_ids = [participant_1.id, participant_2.id]
+        else:
+            other_researcher = User.objects.create_user(
+                email="other@example.com",
+                password="password123",
+                role=UserRole.RESEARCHER
+            )
+            Invitation.objects.create(user=participant_1, invited_by=other_researcher, expiry_date=expiry)
+            Invitation.objects.create(user=participant_2, invited_by=other_researcher, expiry_date=expiry)
+            expected_ids = []
+
+        api_client.force_authenticate(user=researcher_user)
+        url = reverse("participant-list")
+        response = api_client.get(url, format="json")
+
+        assert response.status_code == 200
+
+        # Handle pagination if present
+        if isinstance(response.data, dict) and "results" in response.data:
+            returned_ids = [p["id"] for p in response.data["results"]]
+        else:
+            returned_ids = [p["id"] for p in response.data]
+
+        print(f"\nInvited: {invited_by_user}")
+        print(f"Expected IDs: {expected_ids}")
+        print(f"Returned IDs: {returned_ids}")
+
+        assert set(returned_ids) == set(expected_ids), f"Expected IDs {expected_ids}, but got {returned_ids}"

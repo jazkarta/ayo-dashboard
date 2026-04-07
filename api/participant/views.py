@@ -30,10 +30,24 @@ class ParticipantViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing participant accounts.
     Only Researchers can create participants.
+    Researchers will see the list of the participants invited by himself.
     """
-    queryset = User.objects.filter(role=UserRole.PARTICIPANT)
     serializer_class = ParticipantCreateSerializer
     permission_classes = [IsResearcher]
+
+    def get_queryset(self):
+        return (
+            User.objects
+            .filter(
+                role=UserRole.PARTICIPANT,
+                invitations__invited_by=self.request.user
+            )
+            .select_related(
+                "participant_profile",
+                "participant_profile__guardian",
+            )
+            .distinct()
+        )
 
     @swagger_auto_schema(
         manual_parameters=[
