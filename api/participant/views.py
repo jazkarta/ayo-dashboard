@@ -34,20 +34,20 @@ class ParticipantViewSet(viewsets.ModelViewSet):
     """
     serializer_class = ParticipantCreateSerializer
     permission_classes = [IsResearcher]
+    queryset = User.objects.filter(role=UserRole.PARTICIPANT)
 
     def get_queryset(self):
-        return (
-            User.objects
-            .filter(
-                role=UserRole.PARTICIPANT,
-                invitations__invited_by=self.request.user
+        qs = super().get_queryset()
+        if self.action == "list":
+            qs = (
+                qs.filter(invitations__invited_by=self.request.user)
+                .select_related(
+                    "participant_profile",
+                    "participant_profile__guardian",
+                )
+                .distinct()
             )
-            .select_related(
-                "participant_profile",
-                "participant_profile__guardian",
-            )
-            .distinct()
-        )
+        return qs
 
     @swagger_auto_schema(
         manual_parameters=[

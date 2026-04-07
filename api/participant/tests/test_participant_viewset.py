@@ -62,6 +62,8 @@ class TestParticipantViewSet:
         
         url = reverse("participant-invite", kwargs={"pk": participant_user.pk})
         payload = {"email": "guardian@example.com"}
+
+        # print(f"")
         
         response = api_client.post(url, payload, format="json")
         
