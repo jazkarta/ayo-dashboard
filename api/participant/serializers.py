@@ -9,6 +9,7 @@ from utils.keycloak_manager import KeycloakSync
 from .models import ParticipantProfile, Invitation, Guardian
 from utils.email_manager import EmailManager
 from utils.username_generator_helper import generate_username
+from rest_framework.validators import UniqueValidator
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +51,24 @@ class ParticipantCreateSerializer(serializers.ModelSerializer):
         fields = ['id', 'email', 'first_name', 'last_name', 'profile_data']
         read_only_fields = ['id']
         extra_kwargs = {
-            'email': {'required': True},
+            "email": {
+                "required": True,
+                "validators": [
+                    UniqueValidator(
+                        queryset=User.objects.all(),
+                        lookup="iexact"
+                    )
+                ]
+            }
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance:
             self.fields['email'].read_only = True
+
+    def validate_email(self, value):
+        return value.strip().lower()
 
 
     @transaction.atomic

@@ -56,6 +56,55 @@ class TestParticipantViewSet:
             assert new_user.role == UserRole.PARTICIPANT
             assert not new_user.is_active
 
+    @pytest.mark.parametrize(
+        "initial_email, duplicate_email",
+        [
+            ("new_participant@example.com", "New_Participant@Example.com"),
+            ("testuser@example.com", "TESTUSER@example.com"),
+            ("user@example.com", "User@Example.com"),
+            ("user@example.com", "User@Example.com "),
+            ("user@example.com", "user@example.com"),
+            ("User@example.com", "user@example.com"),
+        ]
+    )
+    def test_create_participant_duplicate_email_case_insensitive(
+            self, api_client, researcher_user, initial_email, duplicate_email
+    ):
+        """Test that creating a participant with the same email (different casing) fails
+        Also ensures emails are normalized to lowercase before validation.
+        """
+        api_client.force_authenticate(user=researcher_user)
+        url = reverse("participant-list")
+
+        # Create initial participant
+        payload1 = {
+            "email": initial_email,
+            "first_name": "Original",
+            "last_name": "User",
+            "profile_data": {
+                "date_of_birth": "2010-01-01",
+                "gender": "M",
+                "demographics": "Info"
+            }
+        }
+        response1 = api_client.post(url, payload1, format="json")
+        assert response1.status_code == status.HTTP_201_CREATED
+
+        # Attempt duplicate email with different cases
+        payload2 = {
+            "email": duplicate_email,
+            "first_name": "Duplicate",
+            "last_name": "User",
+            "profile_data": {
+                "date_of_birth": "2010-01-01",
+                "gender": "M",
+                "demographics": "Info"
+            }
+        }
+        response2 = api_client.post(url, payload2, format="json")
+        assert response2.status_code == status.HTTP_400_BAD_REQUEST
+        assert "email" in response2.data
+
     def test_invite_participant(self, api_client, researcher_user, participant_user, mock_email_manager):
         """Test inviting an inactive participant."""
         api_client.force_authenticate(user=researcher_user)
