@@ -352,6 +352,7 @@ export default function AddParticipantForm() {
                       type="date"
                       name="dateOfBirth"
                       value={formData.dateOfBirth}
+                      onClick={(e) => e.target.showPicker?.()}
                       onChange={handleChange}
                       onBlur={() => {
                         if (!formData.dateOfBirth) {
