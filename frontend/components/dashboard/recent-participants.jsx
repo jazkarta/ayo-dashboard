@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/utils";
-//import participantService from "@/services/participantService";
+import participantService from "@/services/participantService";
 
 const STATUS = {
   active: { label: "Active", variant: "success" },
