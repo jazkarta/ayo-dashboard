@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CheckCircle2Icon, Loader2, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
+import toast from "react-hot-toast";
 import { Textarea } from "@/components/ui/textarea";
 import participantService from "@/services/participantService";
 
@@ -102,7 +102,8 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
       const res = await participantService.acceptParticipantInvitation(invitationId, guardianData);
       console.log(res)
       setSubmitted(true);
-      
+      toast.success("Guardian information has been saved successfully.");
+
       if (onSuccess) {
         setTimeout(() => {
           onSuccess();
@@ -112,11 +113,11 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
       console.error("Error submitting guardian info:", err);
       const apiErrors = err?.response?.data;
       if (apiErrors?.non_field_errors?.length) {
-        setErrors((prev) => ({ ...prev, form: apiErrors.non_field_errors[0] }));
+        toast.error(apiErrors.non_field_errors[0]);
       } else if (apiErrors?.detail) {
-        setErrors((prev) => ({ ...prev, form: apiErrors.detail }));
+        toast.error(apiErrors.detail);
       } else {
-        setErrors((prev) => ({ ...prev, form: "Something went wrong. Please try again." }));
+        toast.error("Something went wrong. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -125,18 +126,6 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
 
   return (
     <div className="w-full">
-      {submitted && (
-        <div className="mb-6">
-          <Alert className="border-green-500 bg-green-50">
-            <CheckCircle2Icon className="h-4 w-4 text-green-500" />
-            <AlertTitle className="text-green-700">Success!</AlertTitle>
-            <AlertDescription className="text-green-600">
-              Guardian information has been saved successfully.
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
-
       <Card className="w-full">
         <CardHeader>
           <CardTitle>Guardian Information</CardTitle>
@@ -324,16 +313,6 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
               )}
             </div>
           </div>
-
-          {errors.form && (
-            <div className="mt-4">
-              <Alert className="border-destructive bg-red-50">
-                <AlertDescription className="text-destructive">
-                  {errors.form}
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
 
           {/* Action Buttons */}
           <div className="mt-6 flex justify-end gap-3">

@@ -13,7 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import participantService from "../../services/participantService.js";
+import toast from "react-hot-toast";
+//import participantService from "../../services/participantService.js";
 
 const columnHelper = createColumnHelper();
 
@@ -85,7 +86,7 @@ export default function ParticipantsTable() {
         previous: response.data?.previous || null,
       });
     } catch (error) {
-      console.error(error);
+      toast.error("Failed to load participants. Please try again.");
       setData([]);
       setPagination({ count: 0, next: null, previous: null });
     } finally {

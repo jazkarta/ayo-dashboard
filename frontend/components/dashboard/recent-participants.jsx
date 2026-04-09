@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
 import {
   Card,
   CardContent,
@@ -14,7 +15,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/utils";
-import participantService from "@/services/participantService";
+//import participantService from "@/services/participantService";
 
 const STATUS = {
   active: { label: "Active", variant: "success" },
@@ -47,7 +48,7 @@ export function RecentParticipants() {
         const data = res.data?.results ?? res.data ?? [];
         setParticipants(data.slice(0, 5));
       } catch (err) {
-        console.error("Failed to fetch participants:", err);
+        toast.error("Failed to load participants.");
       } finally {
         setLoading(false);
       }

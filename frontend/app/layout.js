@@ -1,5 +1,6 @@
 import { Raleway } from "next/font/google";
 import { KeycloakProvider } from "@/context/KeycloakContext";
+import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
 /**
@@ -36,6 +37,7 @@ export default function RootLayout({ children }) {
       <body className={`${raleway.variable} font-sans antialiased`}>
         <KeycloakProvider>
           {children}
+          <Toaster position="top-right" />
         </KeycloakProvider>
       </body>
     </html>

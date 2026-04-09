@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CheckCircle2Icon, Loader2, XIcon } from "lucide-react";
+import toast from "react-hot-toast";
 import participantService from "@/services/participantService";
 
 const createUser = async (data) => {
@@ -32,8 +33,6 @@ export default function AddParticipantForm() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [inviteError, setInviteError] = useState(false);
   const [userCreated, setUserCreated] = useState(false);
   const [createdParticipantId, setCreatedParticipantId] = useState(null);
   const [invitationId, setInvitationId] = useState(null);
@@ -166,8 +165,7 @@ export default function AddParticipantForm() {
         setErrors({ email: apiErrors.email[0] });
         setCurrentStep(1);
       } else {
-        setInviteError(true);
-        setTimeout(() => setInviteError(false), 4000);
+        toast.error("Something went wrong. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -176,7 +174,7 @@ export default function AddParticipantForm() {
 
   const handleSendInvite = async () => {
     if (!createdParticipantId) {
-      console.error("No participant ID available to send invite");
+      toast.error("No participant ID available to send invite.");
       return;
     }
 
@@ -187,11 +185,8 @@ export default function AddParticipantForm() {
         const newInvitationId = res.data?.id;
         setInvitationId(newInvitationId);
 
-        setSubmitted(true);
-        setTimeout(() => {
-          setSubmitted(false);
-          handleClose();
-        }, 1000);
+        toast.success("Participant invited successfully!");
+        setTimeout(() => handleClose(), 1000);
 
         // @TODO: For now checking the invitation id and redirectling to accept page, after email setup it will be from email link.
         // Verify the invitation
@@ -204,8 +199,7 @@ export default function AddParticipantForm() {
         // }
       }
     } catch (err) {
-      setInviteError(true);
-      setTimeout(() => setInviteError(false), 4000);
+      toast.error("Failed to send invite. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -216,27 +210,6 @@ export default function AddParticipantForm() {
       <Button onClick={() => setIsModalOpen(true)} className="mr-5 font-medium mt-6">
         Add Participant
       </Button>
-
-      {submitted && (
-        <div className="fixed right-4 top-4 z-50 w-[320px]">
-          <Alert>
-            <CheckCircle2Icon className="text-green-500" />
-            <AlertTitle>Participant invited successfully!</AlertTitle>
-          </Alert>
-        </div>
-      )}
-
-      {inviteError && (
-        <div className="fixed right-4 top-4 z-50 w-[320px]">
-          <Alert className="border-destructive bg-red-50">
-            <XIcon className="h-4 w-4 text-destructive" />
-            <AlertTitle className="text-destructive">Something went wrong!</AlertTitle>
-            <AlertDescription className="text-destructive">
-              Failed to send invite. Please try again.
-            </AlertDescription>
-          </Alert>
-        </div>
-      )}
 
       {isModalOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
