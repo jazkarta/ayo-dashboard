@@ -211,10 +211,10 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
                       <button
                         type="button"
                         onClick={refreshSuggestions}
-                        title="Regenerate usernames"
-                        className="text-blue-400 hover:text-blue-600 transition-colors cursor-pointer"
+                        className="flex items-center gap-1.5 text-xs font-medium text-blue-500 hover:text-blue-700 transition-colors cursor-pointer"
                       >
-                        <RefreshCw className="h-4 w-4" />
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Regenerate Username
                       </button>
                     )}
                   </div>
