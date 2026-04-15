@@ -29,7 +29,7 @@ const sendInvite = async (id, email) => {
 
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-export default function AddParticipantForm() {
+export default function AddParticipantForm({ onSuccess = null }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -179,17 +179,10 @@ export default function AddParticipantForm() {
         setInvitationId(newInvitationId);
 
         toast.success("Participant invited successfully!");
-        setTimeout(() => handleClose(), 1000);
-
-        // @TODO: For now checking the invitation id and redirectling to accept page, after email setup it will be from email link.
-        // Verify the invitation
-        // if (newInvitationId) {
-        //   const verifyRes = await participantService.getParticipantInvitation(newInvitationId);
-        //   if (verifyRes.status === 200) {
-        //     window.location.href = `/invitation/${newInvitationId}/accept`;
-        //     return;
-        //   }
-        // }
+        setTimeout(() => {
+          handleClose();
+          onSuccess?.();
+        }, 1000);
       }
     } catch (err) {
       toast.error("Failed to send invite. Please try again.");

@@ -66,7 +66,7 @@ const columns = [
   }),
 ];
 
-export default function ParticipantsTable() {
+export default function ParticipantsTable({ refreshKey = 0 }) {
   const [globalFilter, setGlobalFilter] = useState("");
   const [data, setData] = useState([]);
   const [pagination, setPagination] = useState({ count: 0, next: null, previous: null });
@@ -96,7 +96,7 @@ export default function ParticipantsTable() {
 
   useEffect(() => {
     fetchParticipants(currentUrl);
-  }, [currentUrl]);
+  }, [currentUrl, refreshKey]);
 
   const table = useReactTable({
     data,
