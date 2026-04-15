@@ -7,6 +7,10 @@ const participantService = {
     return apiClient.get(url);
   },
 
+  checkIsEmailAvailable(email) {
+    return apiClient.get(`${urlBase}check-email/?email=${email}`);
+  },
+
   createParticipant(data) {
     return apiClient.post(`${urlBase}`, data);
   },
