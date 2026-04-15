@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, X } from "lucide-react";
+import { Loader2, X, RefreshCw } from "lucide-react";
 import toast from "react-hot-toast";
 import { Textarea } from "@/components/ui/textarea";
 import participantService from "@/services/participantService";
@@ -27,6 +27,18 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
     }).catch(() => {}).finally(() => setLoadingSuggestions(false));
   }, []);
 
+  const refreshSuggestions = async () => {
+    setLoadingSuggestions(true);
+    try {
+      const res = await participantService.suggestUsername();
+      setSuggestedUsernames(res.data.usernames || []);
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -39,14 +51,6 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
-    if (name === "username") {
-      if (/\s/.test(value)) {
-        setErrors((prev) => ({ ...prev, username: "Spaces are not allowed in username." }));
-        return;
-      }
-    }
-
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
@@ -97,10 +101,7 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
         guardianData.invitation_id = invitationId;
       }
 
-      console.log("Guardian data to submit:", guardianData);
-
       const res = await participantService.acceptParticipantInvitation(invitationId, guardianData);
-      console.log(res)
       setSubmitted(true);
       toast.success("Guardian information has been saved successfully.");
 
@@ -179,9 +180,10 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
                   id="username"
                   name="username"
                   value={formData.username}
-                  onChange={handleChange}
+                  readOnly
                   disabled={loading}
-                  className={`pr-8 ${errors.username ? "border-destructive" : ""}`}
+                  placeholder="Select a username below"
+                  className={`pr-8 cursor-default ${errors.username ? "border-destructive" : ""}`}
                 />
                 {formData.username && (
                   <button
@@ -203,7 +205,18 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
                       <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-600" />
                       <p className="text-xs font-semibold text-blue-600 tracking-wide capitalize">Suggested Usernames</p>
                     </div>
-                    {loadingSuggestions && <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />}
+                    {loadingSuggestions ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={refreshSuggestions}
+                        title="Regenerate usernames"
+                        className="text-blue-400 hover:text-blue-600 transition-colors cursor-pointer"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                   {loadingSuggestions ? (
                     <div className="flex flex-wrap gap-2">
