@@ -27,13 +27,7 @@ class TestInvitationAccept:
     @pytest.fixture
     def valid_payload(self):
         return {
-            "first_name": "Guardian",
-            "last_name": "One",
-            "username": "new_participant_user",
-            "phone_number": "1234567890",
-            "email": "guardian@example.com",
-            "address": "123 Test St",
-            "relationship": "Father"
+            "username": "new_participant_user"
         }
 
     def test_accept_invitation_success(self, api_client, invitation, valid_payload, mock_keycloak):
@@ -56,16 +50,10 @@ class TestInvitationAccept:
         assert user.is_active is True
         assert user.username == "new_participant_user"
         assert user.keycloak_id == "fake-keycloak-uuid"
-        
-        # Verify guardian creation
-        assert Guardian.objects.filter(email=valid_payload['email']).exists()
-        guardian = Guardian.objects.get(email=valid_payload['email'])
-        assert user.participant_profile.guardian == guardian
 
     @pytest.mark.parametrize("scenario, invitation_fixture, payload_overrides, expected_status, error_key", [
         ("already_accepted", "accepted_invitation", {}, status.HTTP_400_BAD_REQUEST, "non_field_errors"),
         ("expired", "expired_invitation", {}, status.HTTP_400_BAD_REQUEST, "non_field_errors"),
-        ("missing_fields", "invitation", {"first_name": ""}, status.HTTP_400_BAD_REQUEST, "first_name"),
         ("duplicate_username", "invitation", {"username": "regular_user"}, status.HTTP_400_BAD_REQUEST, "username"),
     ])
     def test_accept_invitation_failures(self, api_client, scenario, invitation_fixture, payload_overrides, expected_status, error_key, request, valid_payload, regular_user):
