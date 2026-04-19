@@ -193,14 +193,7 @@ class InvitationSendSerializer(serializers.Serializer):
         return invitation
 
 class InvitationAcceptSerializer(serializers.Serializer):
-    first_name = serializers.CharField(max_length=256, required=True)
-    last_name = serializers.CharField(max_length=256, required=True)
     username = serializers.CharField(max_length=150, required=True)
-    phone_number = serializers.CharField(max_length=15, required=True)
-    email = serializers.EmailField(max_length=256, required=True)
-
-    address = serializers.CharField(max_length=2056, required=False, allow_blank=True)
-    relationship = serializers.CharField(max_length=256, required=False, allow_blank=True)
 
     def validate_username(self, value):
         if User.objects.filter(username__iexact=value).exists():
@@ -231,24 +224,9 @@ class InvitationAcceptSerializer(serializers.Serializer):
 
         logger.info(f"Invitation {invitation.id} accepted by user {invitation.user.username}")
 
-        # Create guardian profile
-        guardian = Guardian.objects.create(
-            first_name=validated_data['first_name'],
-            last_name=validated_data['last_name'],
-            phone_number=validated_data['phone_number'],
-            email=validated_data['email'],
-            address=validated_data.get('address', ''),
-            relationship=validated_data.get('relationship', '')
-        )
-
-        logger.info(f"Guardian profile created for user {invitation.user.username} with ID {guardian.id}")
-
         # Activate the user
         user = invitation.user
         user.username = validated_data['username'].lower()
-        user.participant_profile.guardian = guardian
-        user.participant_profile.save()
-        logger.info(f"User {user.username} activated and linked to guardian profile {guardian.id}")
 
         keycloak_id = keycloak_manager.create_user(
             user.username, user.email,
