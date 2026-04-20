@@ -54,16 +54,6 @@ const columns = [
     header: "Demographics",
     cell: (info) => info.getValue() || "-",
   }),
-  columnHelper.accessor((row) => row.profile_data?.guardian, {
-    id: "guardian",
-    header: "Guardian",
-    cell: (info) => {
-      const guardian = info.getValue();
-      if (!guardian) return "-";
-      const name = `${guardian.first_name || ""} ${guardian.last_name || ""}`.trim();
-      return name || "-";
-    },
-  }),
 ];
 
 export default function ParticipantsTable({ refreshKey = 0 }) {
@@ -111,10 +101,7 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
         ) ||
         ["date_of_birth", "demographics"].some((key) =>
           String(row.original.profile_data?.[key] || "").toLowerCase().includes(search)
-        ) ||
-        `${row.original.profile_data?.guardian?.first_name || ""} ${row.original.profile_data?.guardian?.last_name || ""}`
-          .toLowerCase()
-          .includes(search)
+        )
       );
     },
     getCoreRowModel: getCoreRowModel(),
@@ -157,13 +144,13 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   <Loader2 className="animate-spin h-8 w-8 mx-auto" />
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   No participants found.
                 </TableCell>
               </TableRow>
