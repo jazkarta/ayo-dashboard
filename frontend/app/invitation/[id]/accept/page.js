@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import GuardianInfoForm from "@/components/dashboard/add-guardian-form";
 import participantService from "@/services/participantService";
-import { CheckCircle2Icon } from "lucide-react";
+import { CheckCircle2Icon, XCircleIcon, ClockIcon, BanIcon } from "lucide-react";
 
 export default function InvitationAcceptPage() {
   const params = useParams();
@@ -73,6 +73,9 @@ export default function InvitationAcceptPage() {
     return (
       <div className="min-h-screen w-full bg-white flex items-center justify-center p-4">
         <div className="text-center space-y-4 max-w-md">
+          <div className="flex justify-center">
+            <BanIcon className="h-16 w-16 text-amber-500" />
+          </div>
           <h1 className="text-2xl font-semibold text-slate-800">Invitation No Longer Active</h1>
           <p className="text-slate-600">
             This invitation has been deactivated. Please contact the person who sent you the invitation.
@@ -86,6 +89,9 @@ export default function InvitationAcceptPage() {
     return (
       <div className="min-h-screen w-full bg-white flex items-center justify-center p-4">
         <div className="text-center space-y-4 max-w-md">
+          <div className="flex justify-center">
+            <ClockIcon className="h-16 w-16 text-amber-500" />
+          </div>
           <h1 className="text-2xl font-semibold text-slate-800">Invitation Expired</h1>
           <p className="text-slate-600">
             This invitation link has expired. Please contact the person who sent you the invitation to request a new one.
@@ -99,6 +105,9 @@ export default function InvitationAcceptPage() {
     return (
       <div className="min-h-screen w-full bg-white flex items-center justify-center p-4">
         <div className="text-center space-y-4 max-w-md">
+          <div className="flex justify-center">
+            <XCircleIcon className="h-16 w-16 text-red-500" />
+          </div>
           <h1 className="text-2xl font-semibold text-slate-800">Invalid Invitation</h1>
           <p className="text-slate-600">
             This invitation link is invalid or no longer exists. Please contact the person who sent you the invitation.

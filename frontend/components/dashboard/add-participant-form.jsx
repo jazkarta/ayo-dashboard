@@ -40,6 +40,7 @@ export default function AddParticipantForm({ onSuccess = null }) {
   const [createdParticipantId, setCreatedParticipantId] = useState(null);
   const [invitationId, setInvitationId] = useState(null);
   const [errors, setErrors] = useState({});
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -313,7 +314,7 @@ export default function AddParticipantForm({ onSuccess = null }) {
                     <Label className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
                       Date of Birth
                     </Label>
-                    <Popover>
+                    <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
@@ -337,6 +338,7 @@ export default function AddParticipantForm({ onSuccess = null }) {
                             const value = date ? format(date, "yyyy-MM-dd") : "";
                             setFormData((prev) => ({ ...prev, dateOfBirth: value }));
                             setErrors((prev) => ({ ...prev, dateOfBirth: "" }));
+                            setCalendarOpen(false);
                           }}
                           disabled={(date) => date >= new Date(new Date().setHours(0, 0, 0, 0))}
                           initialFocus
