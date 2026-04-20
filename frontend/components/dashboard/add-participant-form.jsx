@@ -13,7 +13,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CheckCircle2Icon, Loader2, XIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CheckCircle2Icon, CalendarIcon, Loader2, XIcon } from "lucide-react";
+import { format } from "date-fns";
 import toast from "react-hot-toast";
 import participantService from "@/services/participantService";
 
@@ -157,6 +160,10 @@ export default function AddParticipantForm({ onSuccess = null }) {
       if (apiErrors?.email) {
         setErrors({ email: apiErrors.email[0] });
         setCurrentStep(1);
+      } else if (apiErrors?.profile_data?.date_of_birth || apiErrors?.date_of_birth) {
+        const dobError = apiErrors?.profile_data?.date_of_birth?.[0] || apiErrors?.date_of_birth?.[0];
+        setErrors({ dateOfBirth: dobError });
+        setCurrentStep(2);
       } else {
         toast.error("Something went wrong. Please try again.");
       }
@@ -303,38 +310,39 @@ export default function AddParticipantForm({ onSuccess = null }) {
               {currentStep === 2 && (
                 <div className="space-y-4">
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="dateOfBirth" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
+                    <Label className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
                       Date of Birth
                     </Label>
-                    <Input
-                      id="dateOfBirth"
-                      type="date"
-                      name="dateOfBirth"
-                      value={formData.dateOfBirth}
-                      onClick={(e) => e.target.showPicker?.()}
-                      onChange={handleChange}
-                      onBlur={() => {
-                        if (!formData.dateOfBirth) {
-                          setErrors((prev) => ({
-                            ...prev,
-                            dateOfBirth: "Date of birth is required.",
-                          }));
-                        } else {
-                          const dob = new Date(formData.dateOfBirth);
-                          const today = new Date();
-                          today.setHours(0, 0, 0, 0);
-                          if (dob >= today) {
-                            setErrors((prev) => ({
-                              ...prev,
-                              dateOfBirth: "Date of birth must be in the past.",
-                            }));
-                          } else {
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={`w-full justify-start text-left font-normal ${!formData.dateOfBirth ? "text-muted-foreground" : ""} ${errors.dateOfBirth ? "border-destructive" : ""}`}
+                          disabled={loading}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {formData.dateOfBirth
+                            ? format(new Date(formData.dateOfBirth), "PPP")
+                            : "Pick a date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          captionLayout="dropdown"
+                          fromYear={1900}
+                          toYear={new Date().getFullYear()}
+                          selected={formData.dateOfBirth ? new Date(formData.dateOfBirth) : undefined}
+                          onSelect={(date) => {
+                            const value = date ? format(date, "yyyy-MM-dd") : "";
+                            setFormData((prev) => ({ ...prev, dateOfBirth: value }));
                             setErrors((prev) => ({ ...prev, dateOfBirth: "" }));
-                          }
-                        }
-                      }}
-                      className={errors.dateOfBirth ? "border-destructive" : ""}
-                    />
+                          }}
+                          disabled={(date) => date >= new Date(new Date().setHours(0, 0, 0, 0))}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
                     {errors.dateOfBirth && (
                       <p className="text-xs text-destructive">{errors.dateOfBirth}</p>
                     )}

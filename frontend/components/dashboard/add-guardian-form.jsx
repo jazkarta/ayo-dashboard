@@ -7,17 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, X, RefreshCw } from "lucide-react";
 import toast from "react-hot-toast";
-import { Textarea } from "@/components/ui/textarea";
 import participantService from "@/services/participantService";
-
-const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-const isValidPhone = (phone) => /^[\d\s\-\+\(\)]+$/.test(phone) && phone.length >= 10;
-const hasSpaces = (value) => /\s/.test(value);
 
 export default function GuardianInfoForm({ invitationId = null, onSuccess = null }) {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState({});
+  const [username, setUsername] = useState("");
   const [suggestedUsernames, setSuggestedUsernames] = useState([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(true);
 
@@ -39,76 +35,27 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
     }
   };
 
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    username: "",
-    email: "",
-    phoneNumber: "",
-    address: "",
-    relationship: "",
-  });
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-    if (!formData.firstName.trim()) newErrors.firstName = "First name is required.";
-    if (!formData.lastName.trim()) newErrors.lastName = "Last name is required.";
-    if (!formData.username.trim()) {
-      newErrors.username = "Username is required.";
-    } else if (hasSpaces(formData.username)) {
-      newErrors.username = "Username must not contain spaces.";
-    }
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required.";
-    } else if (!isValidEmail(formData.email)) {
-      newErrors.email = "Please enter a valid email address.";
-    }
-    if (!formData.phoneNumber.trim()) {
-      newErrors.phoneNumber = "Phone number is required.";
-    } else if (!isValidPhone(formData.phoneNumber)) {
-      newErrors.phoneNumber = "Please enter a valid phone number.";
-    }
-    if (!formData.address.trim()) newErrors.address = "Address is required.";
-    if (!formData.relationship) newErrors.relationship = "Relationship is required.";
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const handleSubmit = async () => {
-    if (!validateForm()) return;
-
+    if (!username.trim()) {
+      setErrors({ username: "Username is required." });
+      return;
+    }
+    if (/\s/.test(username)) {
+      setErrors({ username: "Username must not contain spaces." });
+      return;
+    }
+    setErrors({});
     setLoading(true);
     try {
-      const guardianData = {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        username: formData.username,
-        email: formData.email,
-        phone_number: formData.phoneNumber,
-        address: formData.address,
-        relationship: formData.relationship,
-      };
+      const guardianData = { username };
+      if (invitationId) guardianData.invitation_id = invitationId;
 
-      if (invitationId) {
-        guardianData.invitation_id = invitationId;
-      }
-
-      const res = await participantService.acceptParticipantInvitation(invitationId, guardianData);
+      await participantService.acceptParticipantInvitation(invitationId, guardianData);
       setSubmitted(true);
-      toast.success("Guardian information has been saved successfully.");
+      toast.success("Participant information has been saved successfully.");
 
       if (onSuccess) {
-        setTimeout(() => {
-          onSuccess();
-        }, 1500);
+        setTimeout(() => onSuccess(), 1500);
       }
     } catch (err) {
       console.error("Error submitting guardian info:", err);
@@ -129,48 +76,11 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
     <div className="w-full">
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>Guardian Information</CardTitle>
+          <CardTitle>Participant Information</CardTitle>
         </CardHeader>
 
         <CardContent>
           <div className="space-y-4">
-            {/* Row 1: First Name and Last Name */}
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="firstName" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
-                  First Name
-                </Label>
-                <Input
-                  id="firstName"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  disabled={loading}
-                  className={errors.firstName ? "border-destructive" : ""}
-                />
-                {errors.firstName && (
-                  <p className="text-xs text-destructive">{errors.firstName}</p>
-                )}
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="lastName" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
-                  Last Name
-                </Label>
-                <Input
-                  id="lastName"
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  disabled={loading}
-                  className={errors.lastName ? "border-destructive" : ""}
-                />
-                {errors.lastName && (
-                  <p className="text-xs text-destructive">{errors.lastName}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Username */}
             <div className="flex flex-col gap-2">
               <Label htmlFor="username" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
                 Username
@@ -179,16 +89,16 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
                 <Input
                   id="username"
                   name="username"
-                  value={formData.username}
+                  value={username}
                   readOnly
                   disabled={loading}
                   placeholder="Select a username below"
                   className={`pr-8 cursor-default ${errors.username ? "border-destructive" : ""}`}
                 />
-                {formData.username && (
+                {username && (
                   <button
                     type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, username: "" }))}
+                    onClick={() => setUsername("")}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -221,11 +131,7 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
                   {loadingSuggestions ? (
                     <div className="flex flex-wrap gap-2">
                       {[80, 96, 72, 88].map((w) => (
-                        <div
-                          key={w}
-                          className="h-6 rounded-full bg-blue-200 animate-pulse"
-                          style={{ width: w }}
-                        />
+                        <div key={w} className="h-6 rounded-full bg-blue-200 animate-pulse" style={{ width: w }} />
                       ))}
                     </div>
                   ) : (
@@ -235,8 +141,8 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
                           key={name}
                           type="button"
                           onClick={() => {
-                            setFormData((prev) => ({ ...prev, username: name }));
-                            setErrors((prev) => ({ ...prev, username: "" }));
+                            setUsername(name);
+                            setErrors({});
                           }}
                           className="rounded-full border border-blue-300 bg-white text-blue-700 px-3 py-1 text-xs font-medium shadow-sm hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all cursor-pointer"
                         >
@@ -248,86 +154,8 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
                 </div>
               )}
             </div>
-
-            {/* Email */}
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="email" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                disabled={loading}
-                className={errors.email ? "border-destructive" : ""}
-              />
-              {errors.email && (
-                <p className="text-xs text-destructive">{errors.email}</p>
-              )}
-            </div>
-
-            {/* Phone Number */}
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="phoneNumber" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
-                Phone Number
-              </Label>
-              <Input
-                id="phoneNumber"
-                name="phoneNumber"
-                value={formData.phoneNumber}
-                onChange={handleChange}
-                disabled={loading}
-                className={errors.phoneNumber ? "border-destructive" : ""}
-                placeholder="+1 (123) 456-7890"
-              />
-              {errors.phoneNumber && (
-                <p className="text-xs text-destructive">{errors.phoneNumber}</p>
-              )}
-            </div>
-
-            {/* Address */}
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="address" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
-                Address
-              </Label>
-              <Textarea
-                id="address"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                disabled={loading}
-                className={errors.address ? "border-destructive" : ""}
-                placeholder="Enter your address."
-                rows={4}
-              />
-              {errors.address && (
-                <p className="text-xs text-destructive">{errors.address}</p>
-              )}
-            </div>
-
-            {/* Relationship */}
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="relationship" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
-                Relationship
-              </Label>
-              <Input
-                id="relationship"
-                name="relationship"
-                value={formData.relationship}
-                onChange={handleChange}
-                disabled={loading}
-                className={errors.relationship ? "border-destructive" : ""}
-                placeholder="e.g., Mother, Father, Guardian"
-              />
-              {errors.relationship && (
-                <p className="text-xs text-destructive">{errors.relationship}</p>
-              )}
-            </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="mt-6 flex justify-end gap-3">
             <Button
               onClick={handleSubmit}
