@@ -17,6 +17,10 @@ const researcherService = {
   createResearcher(data) {
     return apiClient.post(`${urlBase}`, data);
   },
+
+  deleteResearcher(id) {
+    return apiClient.delete(`${urlBase}${id}/`);
+  }
 };
 
 export default researcherService;
