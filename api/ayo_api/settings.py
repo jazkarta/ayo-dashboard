@@ -45,6 +45,7 @@ LOCAL_APPS = [
     'users.apps.UsersConfig',
     'participant.apps.ParticipantConfig',
     'chat.apps.ChatConfig',
+    'researcher.apps.ResearcherConfig',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

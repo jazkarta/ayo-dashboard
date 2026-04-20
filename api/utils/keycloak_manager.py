@@ -47,13 +47,14 @@ class KeycloakSync:
     # Update
     # ------------------------------------------------------------------
 
-    def update_user(self, keycloak_id, username=None, email=None, first_name=None, last_name=None, role=None):
+    def update_user(self, keycloak_id, username=None, email=None, first_name=None, last_name=None, role=None, enabled=None):
         """
         Update an existing Keycloak user identified by *keycloak_id*.
 
         Only the fields that are explicitly passed (not None) are sent to
         Keycloak. If *role* is provided the existing realm roles are replaced
-        with the new one.
+        with the new one. Pass ``enabled=False`` to disable (deactivate) the
+        account in Keycloak.
         """
         if not keycloak_id:
             logger.warning("update_user called without a keycloak_id – skipping.")
@@ -67,6 +68,8 @@ class KeycloakSync:
                 payload["firstName"] = first_name
             if last_name is not None:
                 payload["lastName"] = last_name
+            if enabled is not None:
+                payload["enabled"] = enabled
 
             if payload:
                 self.keycloak_admin.update_user(user_id=keycloak_id, payload=payload)
