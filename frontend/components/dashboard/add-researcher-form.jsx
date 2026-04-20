@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, XIcon } from "lucide-react";
 import toast from "react-hot-toast";
+import researcherService from "@/services/researcherService";
 
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -16,8 +17,8 @@ export default function AddResearcherForm({ onSuccess = null }) {
   const [errors, setErrors] = useState({});
 
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
+    first_name: "",
+    last_name: "",
     email: "",
   });
 
@@ -29,8 +30,10 @@ export default function AddResearcherForm({ onSuccess = null }) {
 
   const validate = () => {
     const newErrors = {};
-    if (!formData.firstName.trim()) newErrors.firstName = "First name is required.";
-    if (!formData.lastName.trim()) newErrors.lastName = "Last name is required.";
+    if (!formData.first_name.trim())
+      newErrors.first_name = "First name is required.";
+    if (!formData.last_name.trim())
+      newErrors.last_name = "Last name is required.";
     if (!formData.email.trim()) {
       newErrors.email = "Email is required.";
     } else if (!isValidEmail(formData.email)) {
@@ -43,20 +46,26 @@ export default function AddResearcherForm({ onSuccess = null }) {
   const handleClose = () => {
     setIsModalOpen(false);
     setErrors({});
-    setFormData({ firstName: "", lastName: "", email: "" });
+    setFormData({ first_name: "", last_name: "", email: "" });
   };
 
   const handleSubmit = async () => {
     if (!validate()) return;
     setLoading(true);
     try {
-      // TODO: wire up to researcher API endpoint
-      // await new Promise((r) => setTimeout(r, 500));
-      toast.success("Researcher added successfully!");
-      handleClose();
-      onSuccess?.();
-    } catch {
-      toast.error("Something went wrong. Please try again.");
+      const res = await researcherService.createResearcher(formData);
+      if (res.status === 201) {
+        toast.success("Researcher added successfully!");
+        handleClose();
+        onSuccess?.();
+      }
+    } catch (err) {
+      const apiErrors = err.response?.data;
+      if (apiErrors?.email) {
+        setErrors({ email: apiErrors.email[0] });
+      } else {
+        toast.error("Something went wrong. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -64,7 +73,10 @@ export default function AddResearcherForm({ onSuccess = null }) {
 
   return (
     <>
-      <Button onClick={() => setIsModalOpen(true)} className="mr-5 font-medium mt-6">
+      <Button
+        onClick={() => setIsModalOpen(true)}
+        className="mr-5 font-medium mt-6"
+      >
         Add Researcher
       </Button>
 
@@ -74,7 +86,12 @@ export default function AddResearcherForm({ onSuccess = null }) {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Add Researcher</CardTitle>
-                <Button variant="ghost" size="icon" onClick={handleClose} disabled={loading}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleClose}
+                  disabled={loading}
+                >
                   <XIcon className="h-4 w-4" />
                 </Button>
               </div>
@@ -84,41 +101,54 @@ export default function AddResearcherForm({ onSuccess = null }) {
               <div className="space-y-4">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="firstName" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
+                    <Label
+                      htmlFor="first_name"
+                      className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]"
+                    >
                       First Name
                     </Label>
                     <Input
-                      id="firstName"
-                      name="firstName"
-                      value={formData.firstName}
+                      id="first_name"
+                      name="first_name"
+                      value={formData.first_name}
                       onChange={handleChange}
                       disabled={loading}
-                      className={errors.firstName ? "border-destructive" : ""}
+                      className={errors.first_name ? "border-destructive" : ""}
                     />
-                    {errors.firstName && (
-                      <p className="text-xs text-destructive">{errors.firstName}</p>
+                    {errors.first_name && (
+                      <p className="text-xs text-destructive">
+                        {errors.first_name}
+                      </p>
                     )}
                   </div>
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="lastName" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
+                    <Label
+                      htmlFor="last_name"
+                      className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]"
+                    >
                       Last Name
                     </Label>
                     <Input
-                      id="lastName"
-                      name="lastName"
-                      value={formData.lastName}
+                      id="last_name"
+                      name="last_name"
+                      value={formData.last_name}
                       onChange={handleChange}
                       disabled={loading}
-                      className={errors.lastName ? "border-destructive" : ""}
+                      className={errors.last_name ? "border-destructive" : ""}
                     />
-                    {errors.lastName && (
-                      <p className="text-xs text-destructive">{errors.lastName}</p>
+                    {errors.last_name && (
+                      <p className="text-xs text-destructive">
+                        {errors.last_name}
+                      </p>
                     )}
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="email" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
+                  <Label
+                    htmlFor="email"
+                    className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]"
+                  >
                     Email
                   </Label>
                   <Input
@@ -137,7 +167,11 @@ export default function AddResearcherForm({ onSuccess = null }) {
               </div>
 
               <div className="flex justify-between pt-6">
-                <Button variant="outline" onClick={handleClose} disabled={loading}>
+                <Button
+                  variant="outline"
+                  onClick={handleClose}
+                  disabled={loading}
+                >
                   Cancel
                 </Button>
                 <Button onClick={handleSubmit} disabled={loading}>
