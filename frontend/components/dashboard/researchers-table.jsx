@@ -9,10 +9,11 @@ import {
 } from "@tanstack/react-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, CircleIcon, Pencil, Trash2 } from "lucide-react";
+import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, CircleIcon, Pencil, Trash2, XIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import researcherService from "@/services/researcherService";
 
@@ -24,6 +25,94 @@ function SortIcon({ field, ordering }) {
   if (ordering === field) return <ArrowUp className="h-3.5 w-3.5" />;
   if (ordering === `-${field}`) return <ArrowDown className="h-3.5 w-3.5" />;
   return <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />;
+}
+
+function EditDialog({ researcher, onClose, onSaved }) {
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({ first_name: researcher?.first_name || "", last_name: researcher?.last_name || "" });
+  const [errors, setErrors] = useState({});
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.first_name.trim()) newErrors.first_name = "First name is required.";
+    if (!formData.last_name.trim()) newErrors.last_name = "Last name is required.";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!validate()) return;
+    setSaving(true);
+    try {
+      await researcherService.editResearcher(researcher.id, formData);
+      toast.success("Researcher updated successfully.");
+      onSaved();
+    } catch {
+      toast.error("Failed to update researcher. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Edit Researcher</CardTitle>
+            <Button variant="ghost" size="icon" onClick={onClose} disabled={saving}>
+              <XIcon className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit_first_name" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
+                First Name
+              </Label>
+              <Input
+                id="edit_first_name"
+                name="first_name"
+                value={formData.first_name}
+                onChange={handleChange}
+                disabled={saving}
+                className={errors.first_name ? "border-destructive" : ""}
+              />
+              {errors.first_name && <p className="text-xs text-destructive">{errors.first_name}</p>}
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit_last_name" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
+                Last Name
+              </Label>
+              <Input
+                id="edit_last_name"
+                name="last_name"
+                value={formData.last_name}
+                onChange={handleChange}
+                disabled={saving}
+                className={errors.last_name ? "border-destructive" : ""}
+              />
+              {errors.last_name && <p className="text-xs text-destructive">{errors.last_name}</p>}
+            </div>
+          </div>
+          <div className="flex justify-between pt-6">
+            <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 function DeleteDialog({ researcher, onClose, onDeleted }) {
@@ -80,6 +169,7 @@ export default function ResearchersTable({ refreshKey = 0 }) {
   const [currentUrl, setCurrentUrl] = useState("/researchers/");
   const [loading, setLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
   const [internalRefresh, setInternalRefresh] = useState(0);
 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -93,7 +183,7 @@ export default function ResearchersTable({ refreshKey = 0 }) {
   }, [search]);
 
   const handleEdit = useCallback((researcher) => {
-    console.log("Edit researcher:", researcher);
+    setEditTarget(researcher);
   }, []);
 
   const handleDelete = useCallback((researcher) => {
@@ -322,6 +412,13 @@ export default function ResearchersTable({ refreshKey = 0 }) {
       </CardContent>
     </Card>
 
+    {editTarget && (
+      <EditDialog
+        researcher={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSaved={() => { setEditTarget(null); setInternalRefresh((k) => k + 1); }}
+      />
+    )}
     <DeleteDialog
       researcher={deleteTarget}
       onClose={() => setDeleteTarget(null)}

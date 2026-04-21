@@ -20,6 +20,10 @@ const researcherService = {
 
   deleteResearcher(id) {
     return apiClient.delete(`${urlBase}${id}/`);
+  },
+
+  editResearcher(id, data) {
+    return apiClient.put(`${urlBase}${id}/`, data);
   }
 };
 
