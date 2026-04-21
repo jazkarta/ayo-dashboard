@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 # Fields that, when changed, should be synced to Keycloak
-KEYCLOAK_TRACKED_FIELDS = {"first_name", "last_name", "email", "username", "role"}
+KEYCLOAK_TRACKED_FIELDS = {"first_name", "last_name", "email", "username", "role", "is_active"}
 
 
 # ---------------------------------------------------------------------------
@@ -90,6 +90,7 @@ def sync_user_to_keycloak(sender, instance, created, **kwargs):
             first_name=instance.first_name if "first_name" in changed else None,
             last_name=instance.last_name if "last_name" in changed else None,
             role=instance.role if "role" in changed else None,
+            enabled=instance.is_active if "is_active" in changed else None,
         )
         logger.info(f"Keycloak user {instance.keycloak_id} updated successfully.")
 
