@@ -226,10 +226,9 @@ export default function ResearchersTable({ refreshKey = 0 }) {
         <div className="flex items-center gap-2">
           {ordering && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => { setOrdering(""); setCurrentUrl("/researchers/"); }}
-              className="text-muted-foreground text-xs"
             >
               Reset sort
             </Button>

@@ -3,8 +3,15 @@ import apiClient from "./axiosService.js";
 const urlBase = '/participants/'
 
 const participantService = {
-  getAllParticipants(url = urlBase) {
-    return apiClient.get(url);
+  getAllParticipants(url = urlBase, search = "", ordering = "") {
+    if (url.includes('?')) {
+      return apiClient.get(url);
+    }
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (ordering) params.set('ordering', ordering);
+    const queryString = params.toString();
+    return apiClient.get(queryString ? `${url}?${queryString}` : url);
   },
 
   checkIsEmailAvailable(email) {
@@ -29,6 +36,10 @@ const participantService = {
 
   suggestUsername() {
     return apiClient.get(`${urlBase}suggest-username/`, { public: true });
+  },
+
+  deleteParticipant(id) {
+    return apiClient.delete(`${urlBase}${id}/`);
   }
 };
 
