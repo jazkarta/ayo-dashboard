@@ -58,6 +58,9 @@ export default function InvitationAcceptPage() {
             <CheckCircle2Icon className="h-16 w-16 text-green-500" />
           </div>
           <h1 className="text-2xl font-semibold text-slate-800">Invitation Already Accepted</h1>
+          <p className="text-slate-600">
+            Looks like you already accepted this invitation. Head to login to get started!
+          </p> 
           <a
             href="https://chat-ayo.jazkarta.com/login"
             className="inline-block mt-2 px-6 py-2 bg-slate-800 text-white text-sm font-medium rounded-md hover:bg-slate-700 transition-colors"
@@ -78,7 +81,7 @@ export default function InvitationAcceptPage() {
           </div>
           <h1 className="text-2xl font-semibold text-slate-800">Invitation No Longer Active</h1>
           <p className="text-slate-600">
-            This invitation has been deactivated. Please contact the person who sent you the invitation.
+            Oops! This invite has been turned off. Please contact the person who sent you the invitation.
           </p>
         </div>
       </div>
@@ -94,7 +97,7 @@ export default function InvitationAcceptPage() {
           </div>
           <h1 className="text-2xl font-semibold text-slate-800">Invitation Expired</h1>
           <p className="text-slate-600">
-            This invitation link has expired. Please contact the person who sent you the invitation to request a new one.
+            Oh no! This invitation link is too old to use. Please contact the person who sent you the invitation to request a new one.
           </p>
         </div>
       </div>
@@ -122,7 +125,7 @@ export default function InvitationAcceptPage() {
       <div className="min-h-screen w-full bg-white flex items-center justify-center p-4">
         <div className="text-center space-y-4">
           <div className="inline-block h-10 w-10 rounded-full border-4 border-slate-200 border-t-slate-800 animate-spin" />
-          <p className="text-slate-600 text-sm">Redirecting User to chat-ayo.jazkarta.com</p>
+          <p className="text-slate-600 text-sm">You're all set! Taking you to the chat-ayo.jazkarta.com now...</p>
         </div>
       </div>
     );
