@@ -24,6 +24,10 @@ const researcherService = {
 
   editResearcher(id, data) {
     return apiClient.put(`${urlBase}${id}/`, data);
+  },
+
+  deactivateResearcher(id) {
+    return apiClient.post(`${urlBase}${id}/deactivate/`);
   }
 };
 

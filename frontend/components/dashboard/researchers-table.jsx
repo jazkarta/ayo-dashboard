@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, CircleIcon, Pencil, Trash2, XIcon } from "lucide-react";
+import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, CircleIcon, Pencil, Trash2, XIcon, UserX } from "lucide-react";
 import toast from "react-hot-toast";
 import researcherService from "@/services/researcherService";
 
@@ -190,6 +190,16 @@ export default function ResearchersTable({ refreshKey = 0 }) {
     setDeleteTarget(researcher);
   }, []);
 
+  const handleDeactivate = useCallback(async (researcher) => {
+    try {
+      await researcherService.deactivateResearcher(researcher.id);
+      toast.success(`${researcher.first_name} ${researcher.last_name} has been deactivated.`);
+      setInternalRefresh((k) => k + 1);
+    } catch {
+      toast.error("Failed to deactivate researcher. Please try again.");
+    }
+  }, []);
+
   const toggleOrdering = (field) => {
     setCurrentUrl("/researchers/");
     setOrdering((prev) => {
@@ -288,6 +298,14 @@ export default function ResearchersTable({ refreshKey = 0 }) {
               <Pencil className="h-3.5 w-3.5" />
             </button>
             <button
+              onClick={() => handleDeactivate(researcher)}
+              disabled={!researcher.is_active}
+              className="flex h-8 w-8 items-center justify-center rounded-sm shadow-sm border border-slate-200 bg-white text-slate-500 hover:text-orange-600 hover:border-orange-200 hover:shadow-md transition-all duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-slate-500 disabled:hover:border-slate-200 disabled:hover:shadow-sm"
+              title={researcher.is_active ? "Deactivate" : "Already inactive"}
+            >
+              <UserX className="h-3.5 w-3.5" />
+            </button>
+            <button
               onClick={() => handleDelete(researcher)}
               className="flex h-8 w-8 items-center justify-center rounded-sm shadow-sm border border-slate-200 bg-white text-slate-500 hover:text-red-600 hover:border-red-200 hover:shadow-md transition-all duration-150 cursor-pointer"
               title="Delete"
@@ -298,7 +316,7 @@ export default function ResearchersTable({ refreshKey = 0 }) {
         );
       },
     }),
-  ], [ordering, handleEdit, handleDelete]);
+  ], [ordering, handleEdit, handleDeactivate, handleDelete]);
 
   const table = useReactTable({
     data,
