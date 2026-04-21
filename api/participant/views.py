@@ -2,7 +2,8 @@ import logging
 
 from datetime import timedelta
 from django.utils import timezone
-from rest_framework import viewsets, status, mixins
+from rest_framework import viewsets, status, mixins, filters
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
@@ -34,7 +35,12 @@ class ParticipantViewSet(viewsets.ModelViewSet):
     """
     serializer_class = ParticipantCreateSerializer
     permission_classes = [IsResearcher]
-    queryset = User.objects.filter(role=UserRole.PARTICIPANT)
+    queryset = User.objects.filter(role=UserRole.PARTICIPANT).order_by('-date_joined')
+
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['is_active']
+    search_fields = ['first_name', 'last_name', 'email']
+    ordering_fields = ['first_name', 'last_name', 'email', 'date_joined']
 
     def get_queryset(self):
         qs = super().get_queryset()
