@@ -40,6 +40,10 @@ const participantService = {
 
   deleteParticipant(id) {
     return apiClient.delete(`${urlBase}${id}/`);
+  },
+
+  editParticipant(id, data) {
+    return apiClient.patch(`${urlBase}${id}/`, data);
   }
 };
 

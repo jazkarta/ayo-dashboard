@@ -12,7 +12,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, Pencil, Trash2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, Pencil, Trash2, CalendarIcon, XIcon } from "lucide-react";
+import { format } from "date-fns";
 import toast from "react-hot-toast";
 import participantService from "../../services/participantService.js";
 
@@ -24,6 +28,171 @@ function SortIcon({ field, ordering }) {
   if (ordering === field) return <ArrowUp className="h-3.5 w-3.5" />;
   if (ordering === `-${field}`) return <ArrowDown className="h-3.5 w-3.5" />;
   return <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />;
+}
+
+function EditDialog({ participant, onClose, onSaved }) {
+  const [saving, setSaving] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    first_name: participant?.first_name || "",
+    last_name: participant?.last_name || "",
+    dateOfBirth: participant?.profile_data?.date_of_birth || "",
+    demographics: participant?.profile_data?.demographics || "",
+  });
+  const [errors, setErrors] = useState({});
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.first_name.trim()) newErrors.first_name = "First name is required.";
+    if (!formData.last_name.trim()) newErrors.last_name = "Last name is required.";
+    if (!formData.dateOfBirth) {
+      newErrors.dateOfBirth = "Date of birth is required.";
+    } else {
+      const dob = new Date(formData.dateOfBirth);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (dob >= today) newErrors.dateOfBirth = "Date of birth must be in the past.";
+    }
+    if (!formData.demographics.trim()) newErrors.demographics = "Demographics is required.";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!validate()) return;
+    setSaving(true);
+    try {
+      await participantService.editParticipant(participant.id, {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        profile_data: {
+          date_of_birth: formData.dateOfBirth,
+          demographics: formData.demographics,
+        },
+      });
+      toast.success("Participant updated successfully.");
+      onSaved();
+    } catch {
+      toast.error("Failed to update participant. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+      <Card className="w-full max-w-lg">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Edit Participant</CardTitle>
+            <Button variant="ghost" size="icon" onClick={onClose} disabled={saving}>
+              <XIcon className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="edit_first_name" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
+                  First Name
+                </Label>
+                <Input
+                  id="edit_first_name"
+                  name="first_name"
+                  value={formData.first_name}
+                  onChange={handleChange}
+                  disabled={saving}
+                  className={errors.first_name ? "border-destructive" : ""}
+                />
+                {errors.first_name && <p className="text-xs text-destructive">{errors.first_name}</p>}
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="edit_last_name" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
+                  Last Name
+                </Label>
+                <Input
+                  id="edit_last_name"
+                  name="last_name"
+                  value={formData.last_name}
+                  onChange={handleChange}
+                  disabled={saving}
+                  className={errors.last_name ? "border-destructive" : ""}
+                />
+                {errors.last_name && <p className="text-xs text-destructive">{errors.last_name}</p>}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
+                Date of Birth
+              </Label>
+              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    disabled={saving}
+                    className={`w-full justify-start text-left font-normal ${!formData.dateOfBirth ? "text-muted-foreground" : ""} ${errors.dateOfBirth ? "border-destructive" : ""}`}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.dateOfBirth ? format(new Date(formData.dateOfBirth), "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    captionLayout="dropdown"
+                    fromYear={1900}
+                    toYear={new Date().getFullYear()}
+                    selected={formData.dateOfBirth ? new Date(formData.dateOfBirth) : undefined}
+                    onSelect={(date) => {
+                      const value = date ? format(date, "yyyy-MM-dd") : "";
+                      setFormData((prev) => ({ ...prev, dateOfBirth: value }));
+                      setErrors((prev) => ({ ...prev, dateOfBirth: "" }));
+                      setCalendarOpen(false);
+                    }}
+                    disabled={(date) => date >= new Date(new Date().setHours(0, 0, 0, 0))}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              {errors.dateOfBirth && <p className="text-xs text-destructive">{errors.dateOfBirth}</p>}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit_demographics" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
+                Demographics
+              </Label>
+              <Input
+                id="edit_demographics"
+                name="demographics"
+                placeholder="e.g. Bangladesh, India"
+                value={formData.demographics}
+                onChange={handleChange}
+                disabled={saving}
+                className={errors.demographics ? "border-destructive" : ""}
+              />
+              {errors.demographics && <p className="text-xs text-destructive">{errors.demographics}</p>}
+            </div>
+          </div>
+
+          <div className="flex justify-between pt-6">
+            <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 function DeleteDialog({ participant, onClose, onDeleted }) {
@@ -80,6 +249,7 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
   const [currentUrl, setCurrentUrl] = useState("/participants/");
   const [loading, setLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
   const [internalRefresh, setInternalRefresh] = useState(0);
 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -93,7 +263,7 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
   }, [search]);
 
   const handleEdit = useCallback((participant) => {
-    console.log("Edit participant:", participant);
+    setEditTarget(participant);
   }, []);
 
   const handleDelete = useCallback((participant) => {
@@ -321,6 +491,13 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
       </CardContent>
     </Card>
 
+    {editTarget && (
+      <EditDialog
+        participant={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSaved={() => { setEditTarget(null); setInternalRefresh((k) => k + 1); }}
+      />
+    )}
     <DeleteDialog
       participant={deleteTarget}
       onClose={() => setDeleteTarget(null)}
