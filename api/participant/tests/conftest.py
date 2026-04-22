@@ -1,10 +1,25 @@
 import pytest
+from unittest.mock import MagicMock
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from users.models.user import UserRole
 from model_bakery import baker
 
 User = get_user_model()
+
+
+@pytest.fixture(autouse=True)
+def mock_signal_keycloak(mocker):
+    mock_cls = mocker.patch("users.signals.KeycloakSync")
+    mock_cls.return_value = MagicMock()
+    return mock_cls
+
+
+@pytest.fixture(autouse=True)
+def mock_signal_librechat(mocker):
+    mock_cls = mocker.patch("users.signals.LibreChatSync")
+    mock_cls.return_value = MagicMock()
+    return mock_cls
 
 @pytest.fixture
 def researcher_user(db):

@@ -168,16 +168,7 @@ class ResearcherDeactivateSerializer(serializers.Serializer):
         instance.is_active = False
         instance.save(update_fields=['is_active'])
 
-        if instance.keycloak_id:
-            keycloak = KeycloakSync()
-            keycloak.update_user(
-                keycloak_id=instance.keycloak_id,
-                enabled=False,
-            )
-            logger.info(
-                f"Researcher {instance.email} deactivated in Django and Keycloak."
-            )
-        else:
+        if not instance.keycloak_id:
             logger.warning(
                 f"Researcher {instance.email} has no keycloak_id – "
                 "deactivated in Django only."

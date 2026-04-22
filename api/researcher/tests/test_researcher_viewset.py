@@ -224,11 +224,12 @@ class TestResearcherDeactivate:
         assert researcher_user.is_active is False
 
     def test_deactivate_calls_keycloak_with_enabled_false(
-        self, admin_client, mock_keycloak, researcher_user
+        self, admin_client, mock_signal_keycloak, researcher_user
     ):
         admin_client.post(deactivate_url(researcher_user.pk))
-        mock_keycloak.update_user.assert_called_once()
-        call_kwargs = mock_keycloak.update_user.call_args.kwargs
+        instance = mock_signal_keycloak.return_value
+        instance.update_user.assert_called_once()
+        call_kwargs = instance.update_user.call_args.kwargs
         assert call_kwargs["keycloak_id"] == researcher_user.keycloak_id
         assert call_kwargs["enabled"] is False
 
