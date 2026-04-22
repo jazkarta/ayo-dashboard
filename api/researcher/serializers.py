@@ -17,12 +17,13 @@ class ResearcherReadSerializer(serializers.ModelSerializer):
     """Read-only serializer for representing researcher data in responses."""
 
     full_name = serializers.SerializerMethodField()
+    is_admin_researcher = serializers.BooleanField(source='is_staff', read_only=True)
 
     class Meta:
         model = User
         fields = [
             'id', 'email', 'first_name', 'last_name', 'full_name',
-            'username', 'is_active', 'keycloak_id', 'role',
+            'username', 'is_active', 'is_admin_researcher', 'keycloak_id', 'role',
         ]
         read_only_fields = fields
 
@@ -141,6 +142,23 @@ class ResearcherUpdateSerializer(serializers.ModelSerializer):
                 "skipping Keycloak update."
             )
 
+        return instance
+
+    def to_representation(self, instance):
+        return ResearcherReadSerializer(instance, context=self.context).data
+
+
+class ResearcherToggleAdminSerializer(serializers.Serializer):
+    """
+    Toggles Django admin privileges (is_staff) on a researcher.
+    Grants if not already admin; revokes if already admin.
+    Only a researcher who is already a Django admin may invoke this.
+    """
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        instance.is_staff = not instance.is_staff
+        instance.save(update_fields=['is_staff'])
         return instance
 
     def to_representation(self, instance):

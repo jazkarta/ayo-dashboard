@@ -9,11 +9,12 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
 from users.models.user import UserRole
-from .permissions import IsAdminOrResearcher
+from .permissions import IsAdmin, IsAdminOrResearcher, IsResearcherAdmin
 from .serializers import (
     ResearcherCreateSerializer,
     ResearcherUpdateSerializer,
     ResearcherDeactivateSerializer,
+    ResearcherToggleAdminSerializer,
     ResearcherReadSerializer,
 )
 
@@ -33,7 +34,8 @@ class ResearcherViewSet(viewsets.ModelViewSet):
     update      PUT  /api/researchers/{id}/
     partial_update PATCH /api/researchers/{id}/
     destroy     DELETE /api/researchers/{id}/
-    deactivate  POST /api/researchers/{id}/deactivate/
+    deactivate    POST /api/researchers/{id}/deactivate/
+    toggle_admin  POST /api/researchers/{id}/toggle-admin/
     """
 
     queryset = User.objects.filter(role=UserRole.RESEARCHER).order_by('-date_joined')
@@ -43,6 +45,13 @@ class ResearcherViewSet(viewsets.ModelViewSet):
     search_fields = ['first_name', 'last_name', 'email']
     ordering_fields = ['first_name', 'last_name', 'email', 'date_joined']
 
+    def get_permissions(self):
+        if self.action in ('create', 'destroy', 'deactivate'):
+            return [IsAdmin()]
+        if self.action == 'toggle_admin':
+            return [IsResearcherAdmin()]
+        return super().get_permissions()
+
     def get_serializer_class(self):
         if self.action == 'create':
             return ResearcherCreateSerializer
@@ -50,7 +59,28 @@ class ResearcherViewSet(viewsets.ModelViewSet):
             return ResearcherUpdateSerializer
         if self.action == 'deactivate':
             return ResearcherDeactivateSerializer
+        if self.action == 'toggle_admin':
+            return ResearcherToggleAdminSerializer
         return ResearcherReadSerializer
+
+    @swagger_auto_schema(
+        operation_description="Toggle Django admin privileges on a researcher. Grants admin if not already assigned; revokes if already assigned. Only researchers who are also Django admins can perform this action.",
+        responses={
+            200: openapi.Response('Researcher admin status toggled', ResearcherReadSerializer),
+        }
+    )
+    @action(detail=True, methods=['post'], url_path='toggle-admin')
+    def toggle_admin(self, request, pk=None):
+        researcher = self.get_object()
+        serializer = ResearcherToggleAdminSerializer(
+            instance=researcher,
+            data={},
+            context=self.get_serializer_context(),
+        )
+        serializer.is_valid(raise_exception=True)
+        researcher = serializer.save()
+        logger.info(f"Researcher {researcher.email} admin status toggled by {request.user.email}.")
+        return Response(serializer.to_representation(researcher), status=status.HTTP_200_OK)
 
     @swagger_auto_schema(
         operation_description="Deactivate a researcher (sets is_active=False in Django and Keycloak).",
