@@ -1,5 +1,9 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BookOpen, Users } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
 import {
   Card,
   CardContent,
@@ -10,22 +14,45 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { recentResearchers } from "@/utils/data";
+import researcherService from "@/services/researcherService";
 
-const statusConfig = {
-  active: { label: "Active", variant: "success" },
-  pending: { label: "Pending", variant: "warning" },
-  inactive: { label: "Inactive", variant: "outline" },
+const getName = (r) =>
+  r.full_name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || "Unknown";
+
+const getInitials = (r) => {
+  const name = getName(r);
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 };
 
 export function RecentResearchers() {
+  const [researchers, setResearchers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchResearchers = async () => {
+      try {
+        const res = await researcherService.getAllResearchers();
+        const data = res.data?.results ?? res.data ?? [];
+        setResearchers(data.slice(0, 5));
+      } catch {
+        toast.error("Failed to load researchers.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchResearchers();
+  }, []);
+
   return (
     <Card className="animate-fade-in flex flex-col">
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
         <div>
-          <CardTitle className="text-base font-semibold">
-            Researchers
-          </CardTitle>
+          <CardTitle className="text-base font-semibold">Researchers</CardTitle>
           <CardDescription className="mt-1">
             Active research staff and their studies
           </CardDescription>
@@ -37,55 +64,48 @@ export function RecentResearchers() {
           </Link>
         </Button>
       </CardHeader>
+
       <CardContent className="p-0 flex-1">
-        <div className="divide-y divide-border">
-          {recentResearchers.map((researcher) => {
-            const status = statusConfig[researcher.status] ?? {
-              label: researcher.status,
-              variant: "outline",
-            };
-            return (
+        {loading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : researchers.length === 0 ? (
+          <p className="text-center py-10 text-sm text-muted-foreground">
+            No researchers found
+          </p>
+        ) : (
+          <div className="divide-y divide-border">
+            {researchers.map((researcher, index) => (
               <div
-                key={researcher.id}
+                key={researcher.id ?? index}
                 className="flex items-center gap-4 px-6 py-3.5 hover:bg-muted/40 transition-colors"
               >
-                {/* Avatar */}
                 <Avatar className="h-9 w-9 shrink-0">
                   <AvatarFallback className="text-xs font-semibold bg-secondary text-secondary-foreground">
-                    {researcher.initials}
+                    {getInitials(researcher)}
                   </AvatarFallback>
                 </Avatar>
 
-                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">
-                    {researcher.name}
+                    {getName(researcher)}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {researcher.department} · {researcher.specialty}
+                    {researcher.email || researcher.username || "—"}
                   </p>
                 </div>
 
-                {/* Stats */}
-                <div className="hidden sm:flex items-center gap-3 shrink-0">
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <BookOpen className="h-3 w-3" />
-                    <span>{researcher.activeStudies}</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Users className="h-3 w-3" />
-                    <span>{researcher.totalParticipants}</span>
-                  </div>
-                </div>
-
-                {/* Status */}
-                <Badge variant={status.variant} className="shrink-0">
-                  {status.label}
+                <Badge
+                  variant={researcher.is_active ? "success" : "outline"}
+                  className="shrink-0"
+                >
+                  {researcher.is_active ? "Active" : "Inactive"}
                 </Badge>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
