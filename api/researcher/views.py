@@ -9,7 +9,7 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
 from users.models.user import UserRole
-from .permissions import IsAdminOrResearcher
+from .permissions import IsAdmin, IsAdminOrResearcher
 from .serializers import (
     ResearcherCreateSerializer,
     ResearcherUpdateSerializer,
@@ -42,6 +42,11 @@ class ResearcherViewSet(viewsets.ModelViewSet):
     filterset_fields = ['is_active']
     search_fields = ['first_name', 'last_name', 'email']
     ordering_fields = ['first_name', 'last_name', 'email', 'date_joined']
+
+    def get_permissions(self):
+        if self.action in ('create', 'destroy', 'deactivate'):
+            return [IsAdmin()]
+        return super().get_permissions()
 
     def get_serializer_class(self):
         if self.action == 'create':

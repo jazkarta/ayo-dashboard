@@ -125,12 +125,6 @@ class TestResearcherCreate:
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert not User.objects.filter(email="rollback@example.com").exists()
 
-    def test_create_by_researcher_allowed(self, researcher_client, mock_keycloak):
-        """Researchers (not just admins) should be able to create researchers."""
-        payload = {"email": "byresearcher@example.com", "first_name": "By", "last_name": "Researcher"}
-        response = researcher_client.post(BASE_URL, payload, format="json")
-        assert response.status_code == status.HTTP_201_CREATED
-
 
 # ===========================================================================
 # TestResearcherUpdate
@@ -398,7 +392,15 @@ class TestResearcherPermissions:
         response = researcher_client.get(BASE_URL)
         assert response.status_code == status.HTTP_200_OK
 
-    def test_researcher_allowed_create(self, researcher_client, mock_keycloak):
+    def test_researcher_denied_create(self, researcher_client, mock_keycloak):
         payload = {"email": "newbyrc@example.com", "first_name": "New", "last_name": "RC"}
         response = researcher_client.post(BASE_URL, payload, format="json")
-        assert response.status_code == status.HTTP_201_CREATED
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_researcher_denied_deactivate(self, researcher_client, researcher_user):
+        response = researcher_client.post(deactivate_url(researcher_user.pk))
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_researcher_denied_delete(self, researcher_client, researcher_user):
+        response = researcher_client.delete(detail_url(researcher_user.pk))
+        assert response.status_code == status.HTTP_403_FORBIDDEN
