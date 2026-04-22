@@ -29,6 +29,10 @@ def deactivate_url(pk):
     return f"{BASE_URL}{pk}/deactivate/"
 
 
+def toggle_admin_url(pk):
+    return f"{BASE_URL}{pk}/toggle-admin/"
+
+
 # ===========================================================================
 # TestResearcherCreate
 # ===========================================================================
@@ -245,6 +249,44 @@ class TestResearcherDeactivate:
 
 
 # ===========================================================================
+# TestResearcherToggleAdmin
+# ===========================================================================
+
+@pytest.mark.django_db
+class TestResearcherToggleAdmin:
+
+    def test_toggle_admin_sets_is_staff_true(
+        self, researcher_admin_client, researcher_user
+    ):
+        researcher_admin_client.post(toggle_admin_url(researcher_user.pk))
+        researcher_user.refresh_from_db()
+        assert researcher_user.is_staff is True
+
+    def test_toggle_admin_response_contains_is_admin_researcher_true(
+        self, researcher_admin_client, researcher_user
+    ):
+        response = researcher_admin_client.post(toggle_admin_url(researcher_user.pk))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["is_admin_researcher"] is True
+
+    def test_toggle_admin_revokes_when_already_admin(
+        self, researcher_admin_client, researcher_admin_user
+    ):
+        """Calling toggle-admin on an already-admin researcher must revoke admin."""
+        response = researcher_admin_client.post(toggle_admin_url(researcher_admin_user.pk))
+        assert response.status_code == status.HTTP_200_OK
+        researcher_admin_user.refresh_from_db()
+        assert researcher_admin_user.is_staff is False
+        assert response.data["is_admin_researcher"] is False
+
+    def test_toggle_admin_nonexistent_researcher_returns_404(
+        self, researcher_admin_client
+    ):
+        response = researcher_admin_client.post(toggle_admin_url(99999))
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+# ===========================================================================
 # TestResearcherList
 # ===========================================================================
 
@@ -404,3 +446,17 @@ class TestResearcherPermissions:
     def test_researcher_denied_delete(self, researcher_client, researcher_user):
         response = researcher_client.delete(detail_url(researcher_user.pk))
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_researcher_without_staff_denied_toggle_admin(
+        self, researcher_client, researcher_user
+    ):
+        """A researcher who is not is_staff must be denied toggle-admin."""
+        response = researcher_client.post(toggle_admin_url(researcher_user.pk))
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_researcher_admin_allowed_toggle_admin(
+        self, researcher_admin_client, researcher_user
+    ):
+        """A researcher who is also is_staff=True must be allowed."""
+        response = researcher_admin_client.post(toggle_admin_url(researcher_user.pk))
+        assert response.status_code == status.HTTP_200_OK

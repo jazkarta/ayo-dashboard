@@ -64,6 +64,21 @@ def participant_user(db):
     )
 
 
+@pytest.fixture
+def researcher_admin_user(db):
+    """A researcher who is also a Django admin (role=RESEARCHER and is_staff=True)."""
+    return User.objects.create_user(
+        email="researcher.admin@example.com",
+        password="researchadminpass123",
+        first_name="Rachel",
+        last_name="AdminResearch",
+        role=UserRole.RESEARCHER,
+        is_active=True,
+        is_staff=True,
+        keycloak_id="fake-kc-id-researcher-admin",
+    )
+
+
 # ---------------------------------------------------------------------------
 # API client fixtures
 # ---------------------------------------------------------------------------
@@ -95,6 +110,14 @@ def participant_client(participant_user):
     """APIClient authenticated as a participant (insufficient permissions)."""
     client = APIClient()
     client.force_authenticate(user=participant_user)
+    return client
+
+
+@pytest.fixture
+def researcher_admin_client(researcher_admin_user):
+    """APIClient authenticated as a researcher who is also a Django admin."""
+    client = APIClient()
+    client.force_authenticate(user=researcher_admin_user)
     return client
 
 
