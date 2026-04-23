@@ -28,7 +28,7 @@ class ParticipantProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ParticipantProfile
-        fields = ['date_of_birth', 'gender', 'demographics', 'guardian']
+        fields = ['date_of_birth', 'gender', 'family_id', 'demographics', 'guardian']
         read_only_fields = ['guardian']
 
     def validate_date_of_birth(self, value):
