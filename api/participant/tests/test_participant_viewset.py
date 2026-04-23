@@ -21,6 +21,7 @@ class TestParticipantViewSet:
             "profile_data": {
                 "date_of_birth": "2010-01-01",
                 "gender": "M",
+                "family_id": "FAM001",
                 "demographics": "Some demographic info"
             }
         }, status.HTTP_201_CREATED),
@@ -29,7 +30,7 @@ class TestParticipantViewSet:
             "email": "should_fail@example.com",
             "first_name": "Fail",
             "last_name": "Fail",
-            "profile_data": {"date_of_birth": "2010-01-01", "gender": "F"}
+            "profile_data": {"date_of_birth": "2010-01-01", "gender": "F", "family_id": "FAM002"}
         }, status.HTTP_403_FORBIDDEN),
         # Case 3: Invalid data (future DOB)
         ("researcher_user", {
@@ -38,7 +39,8 @@ class TestParticipantViewSet:
             "last_name": "DOB",
             "profile_data": {
                 "date_of_birth": "2030-01-01",
-                "gender": "M"
+                "gender": "M",
+                "family_id": "FAM003"
             }
         }, status.HTTP_400_BAD_REQUEST),
     ])
@@ -84,6 +86,7 @@ class TestParticipantViewSet:
             "profile_data": {
                 "date_of_birth": "2010-01-01",
                 "gender": "M",
+                "family_id": "FAM001",
                 "demographics": "Info"
             }
         }
@@ -98,6 +101,7 @@ class TestParticipantViewSet:
             "profile_data": {
                 "date_of_birth": "2010-01-01",
                 "gender": "M",
+                "family_id": "FAM002",
                 "demographics": "Info"
             }
         }
