@@ -160,7 +160,7 @@ function DeleteDialog({ researcher, onClose, onDeleted }) {
   );
 }
 
-export default function ResearchersTable({ refreshKey = 0 }) {
+export default function ResearchersTable({ refreshKey = 0, isAdminResearcher = false }) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [ordering, setOrdering] = useState("");
@@ -283,7 +283,7 @@ export default function ResearchersTable({ refreshKey = 0 }) {
         );
       },
     }),
-    columnHelper.display({
+    ...(isAdminResearcher ? [columnHelper.display({
       id: "actions",
       header: "Actions",
       cell: ({ row }) => {
@@ -315,8 +315,8 @@ export default function ResearchersTable({ refreshKey = 0 }) {
           </div>
         );
       },
-    }),
-  ], [ordering, handleEdit, handleDeactivate, handleDelete]);
+    })] : []),
+  ], [ordering, handleEdit, handleDeactivate, handleDelete, isAdminResearcher]);
 
   const table = useReactTable({
     data,
