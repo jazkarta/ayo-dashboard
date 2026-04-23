@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, CircleIcon, Pencil, Trash2, XIcon, UserX } from "lucide-react";
 import toast from "react-hot-toast";
 import researcherService from "@/services/researcherService";
+import { logout } from "@/services/keycloakService";
 
 const columnHelper = createColumnHelper();
 
@@ -135,7 +136,7 @@ function ConfirmDialog({ open, onClose, onConfirm, title, description, confirmTe
   );
 }
 
-export default function ResearchersTable({ refreshKey = 0, isAdminResearcher = false }) {
+export default function ResearchersTable({ refreshKey = 0, isAdminResearcher = false, currentUserId = null, onCurrentUserUpdated = null }) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [ordering, setOrdering] = useState("");
@@ -175,6 +176,10 @@ export default function ResearchersTable({ refreshKey = 0, isAdminResearcher = f
     try {
       await researcherService.deleteResearcher(deleteTarget.id);
       toast.success(`${deleteTarget.first_name} ${deleteTarget.last_name} has been deleted.`);
+      if (deleteTarget.id === currentUserId) {
+        logout();
+        return;
+      }
       setDeleteTarget(null);
       setInternalRefresh((k) => k + 1);
     } catch {
@@ -193,6 +198,10 @@ export default function ResearchersTable({ refreshKey = 0, isAdminResearcher = f
     try {
       await researcherService.deactivateResearcher(deactivateTarget.id);
       toast.success(`${deactivateTarget.first_name} ${deactivateTarget.last_name} has been deactivated.`);
+      if (deactivateTarget.id === currentUserId) {
+        logout();
+        return;
+      }
       setDeactivateTarget(null);
       setInternalRefresh((k) => k + 1);
     } catch {
@@ -214,6 +223,9 @@ export default function ResearchersTable({ refreshKey = 0, isAdminResearcher = f
       toast.success(`${toggleAdminTarget.first_name} ${toggleAdminTarget.last_name} has been ${action}.`);
       setToggleAdminTarget(null);
       setInternalRefresh((k) => k + 1);
+      if (toggleAdminTarget.id === currentUserId) {
+        onCurrentUserUpdated?.();
+      }
     } catch {
       toast.error("Failed to update admin status. Please try again.");
     } finally {

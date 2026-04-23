@@ -9,17 +9,20 @@ import toast from "react-hot-toast";
 export default function ResearchersClient() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isAdminResearcher, setIsAdminResearcher] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const res = await userService.getUserDetails();
+      setIsAdminResearcher(res.data?.is_admin_researcher === true);
+      setCurrentUserId(res.data?.id || null);
+    } catch {
+      toast.error("Failed to fetch user details!!");
+      setIsAdminResearcher(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchCurrentUser = async () => {
-      try {
-        const res = await userService.getUserDetails();
-        setIsAdminResearcher(res.data?.is_admin_researcher === true);
-      } catch {
-        toast.error("Failed to fetch user details!!");
-        setIsAdminResearcher(false);
-      }
-    };
     fetchCurrentUser();
   }, []);
 
@@ -36,7 +39,7 @@ export default function ResearchersClient() {
         )}
       </div>
 
-      <ResearchersTable refreshKey={refreshKey} isAdminResearcher={isAdminResearcher} />
+      <ResearchersTable refreshKey={refreshKey} isAdminResearcher={isAdminResearcher} currentUserId={currentUserId} onCurrentUserUpdated={fetchCurrentUser} />
     </>
   );
 }
