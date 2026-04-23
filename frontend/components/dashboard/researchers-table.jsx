@@ -146,6 +146,8 @@ export default function ResearchersTable({ refreshKey = 0, isAdminResearcher = f
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
+  const [deactivateTarget, setDeactivateTarget] = useState(null);
+  const [deactivateLoading, setDeactivateLoading] = useState(false);
   const [toggleAdminTarget, setToggleAdminTarget] = useState(null);
   const [toggleAdminLoading, setToggleAdminLoading] = useState(false);
   const [internalRefresh, setInternalRefresh] = useState(0);
@@ -182,15 +184,23 @@ export default function ResearchersTable({ refreshKey = 0, isAdminResearcher = f
     }
   };
 
-  const handleDeactivate = useCallback(async (researcher) => {
+  const handleDeactivate = useCallback((researcher) => {
+    setDeactivateTarget(researcher);
+  }, []);
+
+  const confirmDeactivate = async () => {
+    setDeactivateLoading(true);
     try {
-      await researcherService.deactivateResearcher(researcher.id);
-      toast.success(`${researcher.first_name} ${researcher.last_name} has been deactivated.`);
+      await researcherService.deactivateResearcher(deactivateTarget.id);
+      toast.success(`${deactivateTarget.first_name} ${deactivateTarget.last_name} has been deactivated.`);
+      setDeactivateTarget(null);
       setInternalRefresh((k) => k + 1);
     } catch {
       toast.error("Failed to deactivate researcher. Please try again.");
+    } finally {
+      setDeactivateLoading(false);
     }
-  }, []);
+  };
 
   const handleToggleAdmin = useCallback((researcher) => {
     setToggleAdminTarget(researcher);
@@ -458,6 +468,16 @@ export default function ResearchersTable({ refreshKey = 0, isAdminResearcher = f
         onSaved={() => { setEditTarget(null); setInternalRefresh((k) => k + 1); }}
       />
     )}
+    <ConfirmDialog
+      open={!!deactivateTarget}
+      onClose={() => setDeactivateTarget(null)}
+      onConfirm={confirmDeactivate}
+      title="Deactivate Researcher"
+      description={<span>Are you sure you want to deactivate <span className="font-medium text-foreground">{deactivateTarget?.first_name} {deactivateTarget?.last_name}</span>? They will no longer be able to log in.</span>}
+      confirmText="Deactivate"
+      confirmClassName="bg-orange-600 hover:bg-orange-700"
+      loading={deactivateLoading}
+    />
     <ConfirmDialog
       open={!!toggleAdminTarget}
       onClose={() => setToggleAdminTarget(null)}
