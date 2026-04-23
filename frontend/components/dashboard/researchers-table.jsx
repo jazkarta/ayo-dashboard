@@ -115,44 +115,19 @@ function EditDialog({ researcher, onClose, onSaved }) {
   );
 }
 
-function DeleteDialog({ researcher, onClose, onDeleted }) {
-  const [deleting, setDeleting] = useState(false);
-
-  const confirmDelete = async () => {
-    setDeleting(true);
-    try {
-      await researcherService.deleteResearcher(researcher.id);
-      toast.success(`${researcher.first_name} ${researcher.last_name} has been deleted.`);
-      onDeleted();
-    } catch {
-      toast.error("Failed to delete researcher. Please try again.");
-    } finally {
-      setDeleting(false);
-    }
-  };
-
+function ConfirmDialog({ open, onClose, onConfirm, title, description, confirmText, confirmClassName, loading }) {
   return (
-    <AlertDialog open={!!researcher} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <AlertDialog open={open} onOpenChange={(open) => { if (!open) onClose(); }}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Researcher</AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure you want to delete{" "}
-            <span className="font-semibold text-foreground">
-              {researcher?.first_name} {researcher?.last_name}
-            </span>
-            ? This action cannot be undone.
-          </AlertDialogDescription>
+          <AlertDialogTitle className="font-semibold">{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={confirmDelete}
-            disabled={deleting}
-            className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
-          >
-            {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Delete
+          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm} disabled={loading} className={confirmClassName}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {confirmText}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -169,7 +144,10 @@ export default function ResearchersTable({ refreshKey = 0, isAdminResearcher = f
   const [currentUrl, setCurrentUrl] = useState("/researchers/");
   const [loading, setLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
+  const [toggleAdminTarget, setToggleAdminTarget] = useState(null);
+  const [toggleAdminLoading, setToggleAdminLoading] = useState(false);
   const [internalRefresh, setInternalRefresh] = useState(0);
 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -190,6 +168,20 @@ export default function ResearchersTable({ refreshKey = 0, isAdminResearcher = f
     setDeleteTarget(researcher);
   }, []);
 
+  const confirmDelete = async () => {
+    setDeleteLoading(true);
+    try {
+      await researcherService.deleteResearcher(deleteTarget.id);
+      toast.success(`${deleteTarget.first_name} ${deleteTarget.last_name} has been deleted.`);
+      setDeleteTarget(null);
+      setInternalRefresh((k) => k + 1);
+    } catch {
+      toast.error("Failed to delete researcher. Please try again.");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   const handleDeactivate = useCallback(async (researcher) => {
     try {
       await researcherService.deactivateResearcher(researcher.id);
@@ -199,6 +191,25 @@ export default function ResearchersTable({ refreshKey = 0, isAdminResearcher = f
       toast.error("Failed to deactivate researcher. Please try again.");
     }
   }, []);
+
+  const handleToggleAdmin = useCallback((researcher) => {
+    setToggleAdminTarget(researcher);
+  }, []);
+
+  const confirmToggleAdmin = async () => {
+    setToggleAdminLoading(true);
+    try {
+      await researcherService.toggleAdminStatus(toggleAdminTarget.id);
+      const action = toggleAdminTarget.is_admin_researcher ? "revoked from Admin" : "made Admin";
+      toast.success(`${toggleAdminTarget.first_name} ${toggleAdminTarget.last_name} has been ${action}.`);
+      setToggleAdminTarget(null);
+      setInternalRefresh((k) => k + 1);
+    } catch {
+      toast.error("Failed to update admin status. Please try again.");
+    } finally {
+      setToggleAdminLoading(false);
+    }
+  };
 
   const toggleOrdering = (field) => {
     setCurrentUrl("/researchers/");
@@ -312,11 +323,21 @@ export default function ResearchersTable({ refreshKey = 0, isAdminResearcher = f
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
+            <button
+              onClick={() => handleToggleAdmin(researcher)}
+              className={`flex h-8 w-24 items-center justify-center rounded-sm shadow-sm border border-slate-200 bg-white text-xs font-medium text-slate-500 transition-all duration-150 cursor-pointer ${
+                researcher.is_admin_researcher
+                  ? "hover:text-amber-600 hover:border-amber-200 hover:shadow-md"
+                  : "hover:text-green-600 hover:border-green-200 hover:shadow-md"
+              }`}
+            >
+              {researcher.is_admin_researcher ? "Revoke Admin" : "Make Admin"}
+            </button>
           </div>
         );
       },
     })] : []),
-  ], [ordering, handleEdit, handleDeactivate, handleDelete, isAdminResearcher]);
+  ], [ordering, handleEdit, handleDeactivate, handleDelete, handleToggleAdmin, isAdminResearcher]);
 
   const table = useReactTable({
     data,
@@ -437,10 +458,28 @@ export default function ResearchersTable({ refreshKey = 0, isAdminResearcher = f
         onSaved={() => { setEditTarget(null); setInternalRefresh((k) => k + 1); }}
       />
     )}
-    <DeleteDialog
-      researcher={deleteTarget}
+    <ConfirmDialog
+      open={!!toggleAdminTarget}
+      onClose={() => setToggleAdminTarget(null)}
+      onConfirm={confirmToggleAdmin}
+      title={toggleAdminTarget?.is_admin_researcher ? "Revoke Admin" : "Make Admin"}
+      description={toggleAdminTarget?.is_admin_researcher
+        ? <span>Are you sure you want to revoke Admin privileges from <span className="font-medium text-foreground">{toggleAdminTarget?.first_name} {toggleAdminTarget?.last_name}</span>?</span>
+        : <span>Are you sure you want to grant Admin privileges to <span className="font-medium text-foreground">{toggleAdminTarget?.first_name} {toggleAdminTarget?.last_name}</span>?</span>
+      }
+      confirmText={toggleAdminTarget?.is_admin_researcher ? "Revoke Admin" : "Make Admin"}
+      confirmClassName={toggleAdminTarget?.is_admin_researcher ? "bg-amber-600 hover:bg-amber-700" : "bg-green-600 hover:bg-green-700"}
+      loading={toggleAdminLoading}
+    />
+    <ConfirmDialog
+      open={!!deleteTarget}
       onClose={() => setDeleteTarget(null)}
-      onDeleted={() => { setDeleteTarget(null); setInternalRefresh((k) => k + 1); }}
+      onConfirm={confirmDelete}
+      title="Delete Researcher"
+      description={<span>Are you sure you want to delete <span className="font-medium text-foreground">{deleteTarget?.first_name} {deleteTarget?.last_name}</span>? This action cannot be undone.</span>}
+      confirmText="Delete"
+      confirmClassName="bg-red-600 hover:bg-red-700"
+      loading={deleteLoading}
     />
     </>
   );

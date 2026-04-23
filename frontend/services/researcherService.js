@@ -28,6 +28,10 @@ const researcherService = {
 
   deactivateResearcher(id) {
     return apiClient.post(`${urlBase}${id}/deactivate/`);
+  },
+
+  toggleAdminStatus(id) {
+    return apiClient.post(`${urlBase}${id}/toggle-admin/`);
   }
 };
 
