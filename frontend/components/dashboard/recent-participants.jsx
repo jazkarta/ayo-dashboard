@@ -14,7 +14,6 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/utils/utils";
 import participantService from "@/services/participantService";
 
 const STATUS = {
@@ -25,7 +24,7 @@ const STATUS = {
 };
 
 const getName = (participant) =>
-  participant.name || participant.full_name || `${participant.first_name || ""} ${participant.last_name || ""}`.trim() || "Unknown";
+  participant.name || participant.full_name || `${participant.first_name || ""} ${participant.last_name || ""}`.trim() || "";
 
 const getInitials = (participant) => {
   const name = getName(participant);
@@ -87,8 +86,7 @@ export function RecentParticipants() {
         ) : (
           <div className="divide-y divide-border">
             {participants.map((participant, index) => {
-              const status = STATUS[participant.status] ?? { label: participant.status ?? "Unknown", variant: "outline" };
-              const progress = participant.progress ?? 0;
+              const status = STATUS[participant.status] ?? { label: participant.status ?? "", variant: "outline" };
 
               return (
                 <div
@@ -110,22 +108,12 @@ export function RecentParticipants() {
                     </p>
                   </div>
 
-                  <div className="hidden sm:flex flex-col items-end gap-1 w-20 shrink-0">
-                    <span className="text-xs text-muted-foreground">{progress}%</span>
-                    <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={cn(
-                          "h-full rounded-full transition-all",
-                          progress === 100 ? "bg-green-500" : "bg-primary"
-                        )}
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                  </div>
 
-                  <Badge variant={status.variant} className="shrink-0">
-                    {status.label}
-                  </Badge>
+                  {status.label && (
+                    <Badge variant={status.variant} className="shrink-0">
+                      {status.label}
+                    </Badge>
+                  )}
                 </div>
               );
             })}
