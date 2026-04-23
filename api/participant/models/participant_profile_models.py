@@ -33,6 +33,10 @@ class ParticipantProfile(BaseModel):
         max_length=1,
         choices=GENDER_CHOICES,
     )
+    family_id = models.CharField(
+        _('family id'),
+        max_length=255,
+    )
     demographics = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
