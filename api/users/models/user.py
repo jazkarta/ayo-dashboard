@@ -57,5 +57,9 @@ class User(AbstractUser):
         verbose_name = "User"
         verbose_name_plural = "Users"
 
+    @property
+    def is_admin_researcher(self):
+        return self.role == UserRole.RESEARCHER and self.is_staff
+
     def __str__(self):
         return self.email

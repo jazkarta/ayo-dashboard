@@ -17,7 +17,7 @@ class ResearcherReadSerializer(serializers.ModelSerializer):
     """Read-only serializer for representing researcher data in responses."""
 
     full_name = serializers.SerializerMethodField()
-    is_admin_researcher = serializers.BooleanField(source='is_staff', read_only=True)
+    is_admin_researcher = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = User
