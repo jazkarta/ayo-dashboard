@@ -14,14 +14,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { redirect } from "next/navigation";
 import { logout } from "@/services/keycloakService";
-import userService from "@/services/userService";
+import { useUser } from "@/context/UserContext";
 
 export function Header({ title = "Dashboard", subtitle }) {
-  const [user, setUser] = React.useState(null);
-
-  React.useEffect(() => {
-    userService.getUserDetails().then((res) => setUser(res.data)).catch(() => {});
-  }, []);
+  const user = useUser();
 
   const initials = user
     ? `${user.first_name?.[0] ?? ""}${user.last_name?.[0] ?? ""}`.toUpperCase() || user.username?.[0]?.toUpperCase() || "U"

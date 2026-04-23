@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
+import { UserProvider } from "@/context/UserContext";
 
 /**
  * AuthWrapper - Client component that protects dashboard routes with authentication
@@ -19,5 +20,5 @@ export function AuthWrapper({ children }) {
     return null;
   }
 
-  return children;
+  return <UserProvider>{children}</UserProvider>;
 }

@@ -1,17 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import userService from "@/services/userService";
+import { useUser } from "@/context/UserContext";
 
 export function WelcomeMessage() {
-  const [fullName, setFullName] = useState("");
-
-  useEffect(() => {
-    userService
-      .getUserDetails()
-      .then((res) => setFullName(res.data?.full_name || res.data?.username || ""))
-      .catch(() => {});
-  }, []);
+  const user = useUser();
+  const fullName = user?.full_name || user?.username || "";
 
   return (
     <div>
