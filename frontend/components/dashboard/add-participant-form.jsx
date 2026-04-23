@@ -49,6 +49,7 @@ export default function AddParticipantForm({ onSuccess = null }) {
     dateOfBirth: "",
     gender: "",
     demographics: "",
+    familyId: "",
   });
 
   const steps = ["Participant Info", "Participant Details", "Send Invite"];
@@ -90,6 +91,7 @@ export default function AddParticipantForm({ onSuccess = null }) {
 
     if (!formData.gender) newErrors.gender = "Gender is required.";
     if (!formData.demographics.trim()) newErrors.demographics = "Demographics is required.";
+    if (!formData.familyId.trim()) newErrors.familyId = "Family ID is required.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -130,6 +132,7 @@ export default function AddParticipantForm({ onSuccess = null }) {
       dateOfBirth: "",
       gender: "",
       demographics: "",
+      familyId: "",
     });
   };
 
@@ -144,6 +147,7 @@ export default function AddParticipantForm({ onSuccess = null }) {
         date_of_birth: formData.dateOfBirth,
         gender: formData.gender,
         demographics: formData.demographics,
+        family_id: formData.familyId,
       },
     };
 
@@ -164,6 +168,9 @@ export default function AddParticipantForm({ onSuccess = null }) {
       } else if (apiErrors?.profile_data?.date_of_birth || apiErrors?.date_of_birth) {
         const dobError = apiErrors?.profile_data?.date_of_birth?.[0] || apiErrors?.date_of_birth?.[0];
         setErrors({ dateOfBirth: dobError });
+        setCurrentStep(2);
+      } else if (apiErrors?.profile_data?.family_id) {
+        setErrors({ familyId: apiErrors.profile_data.family_id[0] });
         setCurrentStep(2);
       } else {
         toast.error("Something went wrong. Please try again.");
@@ -390,6 +397,23 @@ export default function AddParticipantForm({ onSuccess = null }) {
                     />
                     {errors.demographics && (
                       <p className="text-xs text-destructive">{errors.demographics}</p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="familyId" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
+                      Family ID
+                    </Label>
+                    <Input
+                      id="familyId"
+                      name="familyId"
+                      placeholder="Enter family ID"
+                      value={formData.familyId}
+                      onChange={handleChange}
+                      className={errors.familyId ? "border-destructive" : ""}
+                    />
+                    {errors.familyId && (
+                      <p className="text-xs text-destructive">{errors.familyId}</p>
                     )}
                   </div>
                 </div>

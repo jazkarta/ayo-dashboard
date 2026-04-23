@@ -38,6 +38,7 @@ function EditDialog({ participant, onClose, onSaved }) {
     last_name: participant?.last_name || "",
     dateOfBirth: participant?.profile_data?.date_of_birth || "",
     demographics: participant?.profile_data?.demographics || "",
+    family_id: participant?.profile_data?.family_id || "",
   });
   const [errors, setErrors] = useState({});
 
@@ -60,6 +61,7 @@ function EditDialog({ participant, onClose, onSaved }) {
       if (dob >= today) newErrors.dateOfBirth = "Date of birth must be in the past.";
     }
     if (!formData.demographics.trim()) newErrors.demographics = "Demographics is required.";
+    if (!formData.family_id.trim()) newErrors.family_id = "Family ID is required.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -74,6 +76,7 @@ function EditDialog({ participant, onClose, onSaved }) {
         profile_data: {
           date_of_birth: formData.dateOfBirth,
           demographics: formData.demographics,
+          family_id: formData.family_id,
         },
       });
       toast.success("Participant updated successfully.");
@@ -179,6 +182,22 @@ function EditDialog({ participant, onClose, onSaved }) {
                 className={errors.demographics ? "border-destructive" : ""}
               />
               {errors.demographics && <p className="text-xs text-destructive">{errors.demographics}</p>}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit_family_id" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
+                Family ID
+              </Label>
+              <Input
+                id="edit_family_id"
+                name="family_id"
+                placeholder="Enter family ID"
+                value={formData.family_id}
+                onChange={handleChange}
+                disabled={saving}
+                className={errors.family_id ? "border-destructive" : ""}
+              />
+              {errors.family_id && <p className="text-xs text-destructive">{errors.family_id}</p>}
             </div>
           </div>
 
