@@ -116,3 +116,17 @@ class ConversationDetailSerializer(serializers.ModelSerializer):
         model = ConversationModel
         fields = ['id', 'title', 'conversation_id', 'model_name', 'participant']
 
+
+class ConversationCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConversationModel
+        fields = ['title', 'conversation_id', 'model_name']
+
+    @transaction.atomic
+    def create(self, validated_data):
+        user = self.context['request'].user
+        return ConversationModel.objects.create(user=user, **validated_data)
+
+    def to_representation(self, instance):
+        return ConversationDetailSerializer(instance, context=self.context).data
+

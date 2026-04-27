@@ -1,10 +1,12 @@
 from rest_framework.generics import CreateAPIView
+from rest_framework import mixins
 
-from chat.serializers import ChatCreateSerializer, ConversationListSerializer, ConversationDetailSerializer, ChatSerializer
+from chat.serializers import ChatCreateSerializer, ConversationListSerializer, ConversationDetailSerializer, ChatSerializer, ConversationCreateSerializer
 from rest_framework.viewsets import ReadOnlyModelViewSet
 from chat.models.chat_models import Chat
 from chat.models.conversation_models import ConversationModel
 from django.db.models import OuterRef, Subquery
+from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -14,10 +16,11 @@ class ChatCreateAPIView(CreateAPIView):
     serializer_class = ChatCreateSerializer
 
 
-class ConversationViewSet(ReadOnlyModelViewSet):
+class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_action_classes = {
-        'list': ConversationListSerializer
+        'list': ConversationListSerializer,
+        'create': ConversationCreateSerializer,
     }
 
     def get_queryset(self):
@@ -42,6 +45,18 @@ class ConversationViewSet(ReadOnlyModelViewSet):
             self.action,
             ConversationDetailSerializer
         )
+
+    @action(detail=False, methods=['patch'], url_path='update-title')
+    def update_title(self, request):
+        conversation_id = request.data.get('conversation_id')
+        title = request.data.get('title')
+        try:
+            conversation = ConversationModel.objects.get(conversation_id=conversation_id, user=request.user)
+            conversation.title = title
+            conversation.save()
+            return Response(ConversationDetailSerializer(conversation).data)
+        except ConversationModel.DoesNotExist:
+            return Response({'error': 'Conversation not found'}, status=404)
 
     @action(detail=True, methods=['get'])
     def details(self, request, pk=None):
