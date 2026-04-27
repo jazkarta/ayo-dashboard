@@ -18,3 +18,13 @@ class Chat(BaseModel):
         verbose_name_plural = "Chats"
         db_table = "chat"
         ordering = ["-created_at"]
+
+
+class ChatMedia(BaseModel):
+    filename = models.CharField(max_length=255)
+    type = models.CharField(max_length=100)
+    url = models.URLField(max_length=2048)
+    chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name='media')
+
+    class Meta:
+        db_table = "chat_media"
