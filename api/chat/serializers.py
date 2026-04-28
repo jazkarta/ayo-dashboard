@@ -3,16 +3,29 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
-from chat.models import Chat, ConversationModel
+from chat.models import Chat, ChatMedia, ConversationModel
 
 
 User = get_user_model()
+
+
+class ChatMediaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChatMedia
+        fields = ['id', 'filename', 'type', 'url']
+
+
+class ChatMediaInputSerializer(serializers.Serializer):
+    filename = serializers.CharField(max_length=255)
+    type = serializers.CharField(max_length=100)
+    url = serializers.URLField(max_length=2048)
 
 
 class ChatCreateSerializer(serializers.ModelSerializer):
     conversation_id = serializers.CharField(required=True, write_only=True)
     user_email = serializers.EmailField(required=True, write_only=True)
     model_name = serializers.CharField(required=True, write_only=True)
+    attachments = ChatMediaInputSerializer(many=True, required=False, default=list, write_only=True)
 
     class Meta:
         model = Chat
@@ -66,6 +79,7 @@ class ChatCreateSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
+        attachments = validated_data.pop('attachments', [])
         conversation = validated_data.pop('conversation', None)
         conversation_id = validated_data.pop('conversation_id', None)
         model_name = validated_data.pop('model_name', None)
@@ -87,10 +101,19 @@ class ChatCreateSerializer(serializers.ModelSerializer):
             conversation.save()
 
         chat = Chat.objects.create(conversation=conversation, **validated_data)
+
+        if attachments:
+            ChatMedia.objects.bulk_create([
+                ChatMedia(chat=chat, filename=a['filename'], type=a['type'], url=a['url'])
+                for a in attachments
+            ])
+
         return chat
 
 
 class ChatSerializer(serializers.ModelSerializer):
+    attachments = ChatMediaSerializer(many=True, read_only=True, source='media')
+
     class Meta:
         model = Chat
         fields = '__all__'
