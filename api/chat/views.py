@@ -1,15 +1,35 @@
-from rest_framework.generics import CreateAPIView
-from rest_framework import mixins
+import csv
+from collections import defaultdict
 
-from chat.serializers import ChatCreateSerializer, ConversationListSerializer, ConversationDetailSerializer, ChatSerializer, ConversationCreateSerializer
-from rest_framework.viewsets import ReadOnlyModelViewSet
-from chat.models.chat_models import Chat
-from chat.models.conversation_models import ConversationModel
 from django.db.models import OuterRef, Subquery
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from django.http import StreamingHttpResponse
+
+from django_filters.rest_framework import DjangoFilterBackend
+
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
+
+from rest_framework import filters, mixins, status
 from rest_framework.decorators import action
+from rest_framework.generics import CreateAPIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.viewsets import ReadOnlyModelViewSet
+
+from chat.models.chat_models import Chat, ChatMedia
+from chat.models.conversation_models import ConversationModel
+from chat.serializers import (
+    ChatCreateSerializer,
+    ChatSerializer,
+    ConversationCreateSerializer,
+    ConversationDetailSerializer,
+    ConversationListSerializer,
+)
+
+
+class Echo:
+    def write(self, value):
+        return value
 
 
 class ChatCreateAPIView(CreateAPIView):
@@ -18,17 +38,22 @@ class ChatCreateAPIView(CreateAPIView):
 
 class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    search_fields = ['title', 'user__email', 'user__first_name', 'user__last_name']
     serializer_action_classes = {
         'list': ConversationListSerializer,
         'create': ConversationCreateSerializer,
     }
 
     def get_queryset(self):
+        if self.action == 'export':
+            return ConversationModel.objects.select_related('user')
+
         last_chat_subquery = Chat.objects.filter(
             conversation=OuterRef('pk')
         ).order_by('-created_at')
 
-        queryset = ConversationModel.objects.select_related(
+        return ConversationModel.objects.select_related(
             'user'
         ).prefetch_related(
             'chats'
@@ -37,8 +62,6 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
         ).order_by(
             '-created_at'
         )
-
-        return queryset
 
     def get_serializer_class(self):
         return self.serializer_action_classes.get(
@@ -61,14 +84,76 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
     @action(detail=True, methods=['get'])
     def details(self, request, pk=None):
         instance = self.get_object()
-        chats = instance.chats.all().order_by(
-            '-created_at'
-        )
+        chats = instance.chats.all().order_by('-created_at')
 
         page = self.paginate_queryset(chats)
         if page is not None:
-            serializer = ChatSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+            chat_serializer = ChatSerializer(page, many=True)
+            response = self.get_paginated_response(chat_serializer.data)
+            response.data.update(self.get_serializer(instance).data)
+            return response
 
         serializer = ChatSerializer(chats, many=True)
         return Response(serializer.data)
+
+    @swagger_auto_schema(
+        method='get',
+        responses={
+            200: openapi.Response(
+                description='CSV file with all messages in the conversation',
+                schema=openapi.Schema(type=openapi.TYPE_FILE),
+            )
+        },
+    )
+    @action(detail=True, methods=['get'], url_path='export')
+    def export(self, request, pk=None):
+        instance = self.get_object()
+        participant = instance.user
+        participant_name = (
+            f"{participant.first_name} {participant.last_name}".strip()
+            or participant.username
+        )
+
+        # One query for all media in the conversation grouped by chat — avoids
+        # N+1 queries that would occur if we used prefetch_related with iterator().
+        media_map = defaultdict(list)
+        for item in ChatMedia.objects.filter(
+            chat__conversation=instance
+        ).values('chat_id', 'url'):
+            media_map[item['chat_id']].append(item['url'])
+
+        # Use .iterator() so Django streams rows from the DB one at a time
+        # instead of loading all chats into memory — critical for conversations
+        # with a large number of messages.
+        chats = instance.chats.only(
+            'prompt', 'response', 'created_at'
+        ).order_by('created_at').iterator()
+
+        def rows():
+            yield [
+                'conversation_title', 'conversation_id', 'model_name',
+                'participant_name', 'participant_email', 'message_date',
+                'prompt', 'response', 'attachment_urls',
+            ]
+            for chat in chats:
+                yield [
+                    instance.title or '',
+                    instance.conversation_id,
+                    instance.model_name or '',
+                    participant_name,
+                    participant.email,
+                    chat.created_at.isoformat(),
+                    chat.prompt,
+                    chat.response,
+                    '|'.join(media_map.get(chat.id, [])),
+                ]
+
+        writer = csv.writer(Echo())
+        response = StreamingHttpResponse(
+            (writer.writerow(row) for row in rows()),
+            content_type='text/csv',
+        )
+        response['Content-Disposition'] = (
+            f'attachment; filename="conversation_{instance.conversation_id}.csv"'
+        )
+        return response

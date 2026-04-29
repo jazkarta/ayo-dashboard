@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowLeft, Download, X, RotateCcw } from "lucide-react";
+import { Loader2, ArrowLeft, Download, X, RotateCcw, FileDown } from "lucide-react";
 import toast from "react-hot-toast";
 import conversationService from "@/services/conversationService";
 
@@ -12,38 +12,91 @@ const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 5;
 const ZOOM_STEP = 0.1;
 
+function downloadBlob(blob, filename) {
+  const blobUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(blobUrl);
+}
+
+function parseFilename(disposition, fallback) {
+  if (!disposition) return fallback;
+  const utf8 = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8) return decodeURIComponent(utf8[1].trim());
+  const quoted = disposition.match(/filename="((?:[^"\\]|\\.)+)"/i);
+  if (quoted) return quoted[1].replace(/\\(.)/g, "$1");
+  const plain = disposition.match(/filename=([^;]+)/i);
+  if (plain) return plain[1].trim();
+  return fallback;
+}
+
+async function readBlobMessage(blob) {
+  if (!blob || typeof blob.text !== "function") return null;
+  try {
+    const text = await blob.text();
+    if (!text) return null;
+    try {
+      const parsed = JSON.parse(text);
+      return parsed?.detail || parsed?.message || parsed?.error || null;
+    } catch {
+      return text.length < 300 ? text : null;
+    }
+  } catch {
+    return null;
+  }
+}
+
 export default function ConversationDetails({ id }) {
-  const [data, setData] = useState([]);
-  const [pagination, setPagination] = useState({ count: 0, next: null, previous: null });
+  const [details, setDetails] = useState({
+    title: "",
+    results: [],
+    pagination: { count: 0, next: null, previous: null },
+  });
   const [currentUrl, setCurrentUrl] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [preview, setPreview] = useState(null);
   const [zoom, setZoom] = useState(1);
+  const [exporting, setExporting] = useState(false);
   const overlayRef = useRef(null);
 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL;
   const isAtDefaultZoom = Math.abs(zoom - 1) < 0.001;
 
   useEffect(() => {
+    let cancelled = false;
     const fetchDetails = async () => {
-      setLoading(true);
       try {
         const response = await conversationService.getConversationDetails(id, currentUrl);
-        setData(response.data?.results || []);
-        setPagination({
-          count: response.data?.count || 0,
-          next: response.data?.next || null,
-          previous: response.data?.previous || null,
+        if (cancelled) return;
+        setDetails({
+          title: response.data?.title || "",
+          results: response.data?.results || [],
+          pagination: {
+            count: response.data?.count || 0,
+            next: response.data?.next || null,
+            previous: response.data?.previous || null,
+          },
         });
       } catch {
+        if (cancelled) return;
         toast.error("Failed to load conversation details. Please try again.");
-        setData([]);
-        setPagination({ count: 0, next: null, previous: null });
+        setDetails({
+          title: "",
+          results: [],
+          pagination: { count: 0, next: null, previous: null },
+        });
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     fetchDetails();
+    return () => {
+      cancelled = true;
+    };
   }, [currentUrl, id]);
 
   const openPreview = useCallback((attachment) => {
@@ -89,41 +142,75 @@ export default function ConversationDetails({ id }) {
 
   const handleDownload = async (attachment) => {
     try {
-      const res = await fetch(attachment.url);
+      const res = await fetch(attachment.url, { cache: "reload" });
       const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = attachment.filename || "download";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(blobUrl);
+      downloadBlob(blob, attachment.filename || "download");
     } catch {
       toast.error("Failed to download image.");
     }
   };
 
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    try {
+      const response = await conversationService.exportConversation(id);
+      const blob = response.data;
+      const contentType = (response.headers?.["content-type"] || "").toLowerCase();
+      const isCsv = contentType.includes("csv") || contentType.includes("octet-stream");
+
+      if (!blob || blob.size === 0 || !isCsv) {
+        const message = await readBlobMessage(blob);
+        toast.error(message || "No data to export.");
+        return;
+      }
+
+      const filename = parseFilename(
+        response.headers?.["content-disposition"],
+        `conversation-${id}.csv`,
+      );
+      downloadBlob(blob, filename);
+    } catch (err) {
+      const message = await readBlobMessage(err?.response?.data);
+      toast.error(message || "Failed to export conversation. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  }, [id]);
+
   const goToUrl = (rawUrl) => {
     if (!rawUrl) return;
     const path = baseUrl ? rawUrl.replace(baseUrl, "") : rawUrl;
+    setLoading(true);
     setCurrentUrl(path);
   };
 
   return (
     <>
-      <div className="mx-5 mt-5">
+      <div className="mx-5 mt-5 flex items-center justify-between">
         <Link href="/dashboard/conversations">
           <Button variant="outline" size="sm">
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back
           </Button>
         </Link>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleExport}
+          disabled={exporting}
+        >
+          {exporting ? (
+            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+          ) : (
+            <FileDown className="h-4 w-4 mr-1" />
+          )}
+          Export
+        </Button>
       </div>
 
       <Card className="m-5">
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <CardTitle>Conversation Details</CardTitle>
+          <CardTitle>{details.title}</CardTitle>
         </CardHeader>
 
         <CardContent>
@@ -136,17 +223,14 @@ export default function ConversationDetails({ id }) {
             <div className="h-24 flex items-center justify-center">
               <Loader2 className="animate-spin h-8 w-8" />
             </div>
-          ) : data.length === 0 ? (
+          ) : details.results.length === 0 ? (
             <div className="h-24 flex items-center justify-center text-muted-foreground">
               No messages found.
             </div>
           ) : (
             <div className="flex flex-col gap-4 pt-3">
-              {data.map((item) => (
+              {details.results.map((item) => (
                 <div key={item.id} className="border rounded-md">
-                  <div className="px-3 py-2 border-b bg-muted/40 text-sm font-medium">
-                    Chat object ({item.id})
-                  </div>
                   <div className="grid grid-cols-2 gap-4 p-3">
                     <div className="flex flex-col gap-3 rounded-md border p-3 bg-muted/20">
                       {item.prompt && (
@@ -196,22 +280,22 @@ export default function ConversationDetails({ id }) {
 
           <div className="mt-4 ml-3 flex flex-wrap items-center justify-between gap-2">
             <div className="text-sm text-muted-foreground">
-              Showing {data.length} of {pagination.count} messages
+              Showing {details.results.length} of {details.pagination.count} messages
             </div>
             <div className="flex gap-2">
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => goToUrl(pagination.previous)}
-                disabled={!pagination.previous}
+                onClick={() => goToUrl(details.pagination.previous)}
+                disabled={!details.pagination.previous}
               >
                 Previous
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => goToUrl(pagination.next)}
-                disabled={!pagination.next}
+                onClick={() => goToUrl(details.pagination.next)}
+                disabled={!details.pagination.next}
               >
                 Next
               </Button>
