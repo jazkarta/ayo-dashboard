@@ -41,18 +41,19 @@ export default function ConversationDetails({ id }) {
   }, [currentUrl, id]);
 
   return (
-    <Card className="m-5">
-      <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/conversations">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Back
-            </Button>
-          </Link>
+    <>
+      <div className="mx-5 mt-5">
+        <Link href="/dashboard/conversations">
+          <Button variant="outline" size="sm">
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back
+          </Button>
+        </Link>
+      </div>
+      <Card className="m-5">
+        <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <CardTitle>Conversation Details</CardTitle>
-        </div>
-      </CardHeader>
+        </CardHeader>
 
       <CardContent>
         <div className="grid grid-cols-2 gap-4 px-3 pb-2 border-b text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -125,7 +126,8 @@ export default function ConversationDetails({ id }) {
             </Button>
           </div>
         </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </>
   );
 }
