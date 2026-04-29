@@ -51,10 +51,13 @@ async function readBlobMessage(blob) {
 }
 
 export default function ConversationDetails({ id }) {
-  const [data, setData] = useState([]);
-  const [pagination, setPagination] = useState({ count: 0, next: null, previous: null });
+  const [details, setDetails] = useState({
+    title: "",
+    results: [],
+    pagination: { count: 0, next: null, previous: null },
+  });
   const [currentUrl, setCurrentUrl] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [preview, setPreview] = useState(null);
   const [zoom, setZoom] = useState(1);
   const [exporting, setExporting] = useState(false);
@@ -64,25 +67,36 @@ export default function ConversationDetails({ id }) {
   const isAtDefaultZoom = Math.abs(zoom - 1) < 0.001;
 
   useEffect(() => {
+    let cancelled = false;
     const fetchDetails = async () => {
-      setLoading(true);
       try {
         const response = await conversationService.getConversationDetails(id, currentUrl);
-        setData(response.data?.results || []);
-        setPagination({
-          count: response.data?.count || 0,
-          next: response.data?.next || null,
-          previous: response.data?.previous || null,
+        if (cancelled) return;
+        setDetails({
+          title: response.data?.title || "",
+          results: response.data?.results || [],
+          pagination: {
+            count: response.data?.count || 0,
+            next: response.data?.next || null,
+            previous: response.data?.previous || null,
+          },
         });
       } catch {
+        if (cancelled) return;
         toast.error("Failed to load conversation details. Please try again.");
-        setData([]);
-        setPagination({ count: 0, next: null, previous: null });
+        setDetails({
+          title: "",
+          results: [],
+          pagination: { count: 0, next: null, previous: null },
+        });
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     fetchDetails();
+    return () => {
+      cancelled = true;
+    };
   }, [currentUrl, id]);
 
   const openPreview = useCallback((attachment) => {
@@ -166,6 +180,7 @@ export default function ConversationDetails({ id }) {
   const goToUrl = (rawUrl) => {
     if (!rawUrl) return;
     const path = baseUrl ? rawUrl.replace(baseUrl, "") : rawUrl;
+    setLoading(true);
     setCurrentUrl(path);
   };
 
@@ -195,7 +210,7 @@ export default function ConversationDetails({ id }) {
 
       <Card className="m-5">
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <CardTitle>Conversation Details</CardTitle>
+          <CardTitle>{details.title}</CardTitle>
         </CardHeader>
 
         <CardContent>
@@ -208,17 +223,14 @@ export default function ConversationDetails({ id }) {
             <div className="h-24 flex items-center justify-center">
               <Loader2 className="animate-spin h-8 w-8" />
             </div>
-          ) : data.length === 0 ? (
+          ) : details.results.length === 0 ? (
             <div className="h-24 flex items-center justify-center text-muted-foreground">
               No messages found.
             </div>
           ) : (
             <div className="flex flex-col gap-4 pt-3">
-              {data.map((item) => (
+              {details.results.map((item) => (
                 <div key={item.id} className="border rounded-md">
-                  <div className="px-3 py-2 border-b bg-muted/40 text-sm font-medium">
-                    Chat object ({item.id})
-                  </div>
                   <div className="grid grid-cols-2 gap-4 p-3">
                     <div className="flex flex-col gap-3 rounded-md border p-3 bg-muted/20">
                       {item.prompt && (
@@ -268,22 +280,22 @@ export default function ConversationDetails({ id }) {
 
           <div className="mt-4 ml-3 flex flex-wrap items-center justify-between gap-2">
             <div className="text-sm text-muted-foreground">
-              Showing {data.length} of {pagination.count} messages
+              Showing {details.results.length} of {details.pagination.count} messages
             </div>
             <div className="flex gap-2">
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => goToUrl(pagination.previous)}
-                disabled={!pagination.previous}
+                onClick={() => goToUrl(details.pagination.previous)}
+                disabled={!details.pagination.previous}
               >
                 Previous
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => goToUrl(pagination.next)}
-                disabled={!pagination.next}
+                onClick={() => goToUrl(details.pagination.next)}
+                disabled={!details.pagination.next}
               >
                 Next
               </Button>
