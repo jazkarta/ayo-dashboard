@@ -1,14 +1,32 @@
+import csv
+import io
+
 import pytest
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
 
-from chat.models import Chat, ChatMedia
+from chat.models import Chat, ChatMedia, ConversationModel
+
+User = get_user_model()
 
 CHAT_CREATE_URL = 'chat_create'
 
 
 def conversation_details_url(pk):
     return reverse('conversation-details', kwargs={'pk': pk})
+
+
+def conversation_export_url(pk):
+    return reverse('conversation-export', kwargs={'pk': pk})
+
+
+def parse_csv_response(response):
+    content = b''.join(
+        chunk if isinstance(chunk, bytes) else chunk.encode('utf-8')
+        for chunk in response.streaming_content
+    ).decode('utf-8')
+    return [row for row in csv.reader(io.StringIO(content)) if row]
 
 
 @pytest.mark.django_db
@@ -123,3 +141,149 @@ class TestConversationDetailsAttachments:
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get('results', response.data)
         assert len(results[0]['attachments']) == len(media_items)
+
+
+@pytest.mark.django_db
+class TestConversationExport:
+
+    def test_export_unauthenticated_returns_403(self, api_client, conversation):
+        response = api_client.get(conversation_export_url(conversation.pk))
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_export_returns_streaming_csv(self, api_client, chat_user, conversation, chat):
+        api_client.force_authenticate(user=chat_user)
+        response = api_client.get(conversation_export_url(conversation.pk))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response['Content-Type'] == 'text/csv'
+        assert 'attachment' in response['Content-Disposition']
+        assert conversation.conversation_id in response['Content-Disposition']
+        assert response.streaming is True
+
+    def test_export_csv_has_correct_headers(self, api_client, chat_user, conversation):
+        api_client.force_authenticate(user=chat_user)
+        response = api_client.get(conversation_export_url(conversation.pk))
+
+        rows = parse_csv_response(response)
+        assert rows[0] == [
+            'conversation_title', 'conversation_id', 'model_name',
+            'participant_name', 'participant_email', 'message_date',
+            'prompt', 'response', 'attachment_urls',
+        ]
+
+    def test_export_csv_row_contains_correct_data(self, api_client, chat_user, conversation, chat):
+        api_client.force_authenticate(user=chat_user)
+        response = api_client.get(conversation_export_url(conversation.pk))
+
+        rows = parse_csv_response(response)
+        assert len(rows) == 2  # header + 1 chat
+        data_row = rows[1]
+        assert data_row[1] == conversation.conversation_id
+        assert data_row[2] == conversation.model_name
+        assert data_row[4] == chat_user.email
+        assert data_row[6] == chat.prompt
+        assert data_row[7] == chat.response
+        assert data_row[8] == ''
+
+    def test_export_empty_conversation_returns_only_headers(self, api_client, chat_user, conversation):
+        api_client.force_authenticate(user=chat_user)
+        response = api_client.get(conversation_export_url(conversation.pk))
+
+        rows = parse_csv_response(response)
+        assert len(rows) == 1
+
+    def test_export_multiple_chats_ordered_chronologically(self, api_client, chat_user, conversation):
+        api_client.force_authenticate(user=chat_user)
+        prompts = ['First prompt', 'Second prompt', 'Third prompt']
+        for prompt in prompts:
+            Chat.objects.create(conversation=conversation, prompt=prompt, response='ok')
+
+        response = api_client.get(conversation_export_url(conversation.pk))
+
+        rows = parse_csv_response(response)
+        assert len(rows) == 4  # header + 3 chats
+        assert [row[6] for row in rows[1:]] == prompts
+
+    def test_export_single_attachment_url_in_column(self, api_client, chat_user, conversation, chat, chat_media):
+        api_client.force_authenticate(user=chat_user)
+        response = api_client.get(conversation_export_url(conversation.pk))
+
+        rows = parse_csv_response(response)
+        assert rows[1][8] == chat_media.url
+
+    def test_export_multiple_attachments_are_pipe_separated(self, api_client, chat_user, conversation, chat):
+        api_client.force_authenticate(user=chat_user)
+        urls = [
+            'https://storage.googleapis.com/bucket/file1.pdf',
+            'https://storage.googleapis.com/bucket/file2.pdf',
+        ]
+        for i, url in enumerate(urls):
+            ChatMedia.objects.create(chat=chat, filename=f'file{i}.pdf', type='application/pdf', url=url)
+
+        response = api_client.get(conversation_export_url(conversation.pk))
+
+        rows = parse_csv_response(response)
+        attachment_urls = rows[1][8].split('|')
+        assert sorted(attachment_urls) == sorted(urls)
+
+
+@pytest.mark.django_db
+class TestConversationListSearch:
+
+    def test_search_by_title(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        ConversationModel.objects.create(conversation_id='c1', user=chat_user, title='Climate Discussion', model_name='gpt-4o')
+        ConversationModel.objects.create(conversation_id='c2', user=chat_user, title='Sports Talk', model_name='gpt-4o')
+
+        response = api_client.get(reverse('conversation-list'), {'search': 'Climate'})
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 1
+        assert results[0]['title'] == 'Climate Discussion'
+
+    def test_search_by_participant_email(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        other_user = User.objects.create_user(email='other@example.com', password='pass')
+        ConversationModel.objects.create(conversation_id='c1', user=chat_user, title='My Chat', model_name='gpt-4o')
+        ConversationModel.objects.create(conversation_id='c2', user=other_user, title='Their Chat', model_name='gpt-4o')
+
+        response = api_client.get(reverse('conversation-list'), {'search': 'other@example.com'})
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 1
+        assert results[0]['title'] == 'Their Chat'
+
+    def test_search_by_participant_first_name(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        chat_user.first_name = 'Alice'
+        chat_user.save()
+        ConversationModel.objects.create(conversation_id='c1', user=chat_user, title='Alice Chat', model_name='gpt-4o')
+
+        response = api_client.get(reverse('conversation-list'), {'search': 'Alice'})
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 1
+        assert results[0]['title'] == 'Alice Chat'
+
+    def test_search_no_match_returns_empty(self, api_client, chat_user, conversation):
+        api_client.force_authenticate(user=chat_user)
+
+        response = api_client.get(reverse('conversation-list'), {'search': 'zzznomatch'})
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 0
+
+    def test_no_search_param_returns_all(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        ConversationModel.objects.create(conversation_id='c1', user=chat_user, title='First', model_name='gpt-4o')
+        ConversationModel.objects.create(conversation_id='c2', user=chat_user, title='Second', model_name='gpt-4o')
+
+        response = api_client.get(reverse('conversation-list'))
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 2
