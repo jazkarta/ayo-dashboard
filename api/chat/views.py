@@ -84,14 +84,14 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
     @action(detail=True, methods=['get'])
     def details(self, request, pk=None):
         instance = self.get_object()
-        chats = instance.chats.all().order_by(
-            '-created_at'
-        )
+        chats = instance.chats.all().order_by('-created_at')
 
         page = self.paginate_queryset(chats)
         if page is not None:
-            serializer = ChatSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+            chat_serializer = ChatSerializer(page, many=True)
+            response = self.get_paginated_response(chat_serializer.data)
+            response.data.update(self.get_serializer(instance).data)
+            return response
 
         serializer = ChatSerializer(chats, many=True)
         return Response(serializer.data)
