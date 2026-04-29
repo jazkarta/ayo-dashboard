@@ -140,14 +140,15 @@ export default function ConversationDetails({ id }) {
     return () => el.removeEventListener("wheel", handleWheel);
   }, [preview]);
 
-  const handleDownload = async (attachment) => {
-    try {
-      const res = await fetch(attachment.url, { cache: "reload" });
-      const blob = await res.blob();
-      downloadBlob(blob, attachment.filename || "download");
-    } catch {
-      toast.error("Failed to download image.");
-    }
+  const handleDownload = (attachment) => {
+    const link = document.createElement("a");
+    link.href = attachment.url;
+    link.download = attachment.filename || "download";
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   };
 
   const handleExport = useCallback(async () => {
