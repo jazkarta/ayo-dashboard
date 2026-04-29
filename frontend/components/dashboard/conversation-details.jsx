@@ -142,7 +142,7 @@ export default function ConversationDetails({ id }) {
 
   const handleDownload = async (attachment) => {
     try {
-      const res = await fetch(attachment.url);
+      const res = await fetch(attachment.url, { cache: "reload" });
       const blob = await res.blob();
       downloadBlob(blob, attachment.filename || "download");
     } catch {
