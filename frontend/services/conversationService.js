@@ -19,6 +19,10 @@ const conversationService = {
     }
     return apiClient.get(`${urlBase}${id}/details/`);
   },
+
+  exportConversation(id) {
+    return apiClient.get(`${urlBase}${id}/export/`, { responseType: "blob" });
+  },
 };
 
 export default conversationService;
