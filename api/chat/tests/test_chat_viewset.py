@@ -142,6 +142,16 @@ class TestConversationDetailsAttachments:
         results = response.data.get('results', response.data)
         assert len(results[0]['attachments']) == len(media_items)
 
+    def test_details_includes_conversation_title(self, api_client, chat_user, chat):
+        chat.conversation.title = 'Test Conversation Title'
+        chat.conversation.save()
+        api_client.force_authenticate(user=chat_user)
+
+        response = api_client.get(conversation_details_url(chat.conversation.pk))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['title'] == 'Test Conversation Title'
+
 
 @pytest.mark.django_db
 class TestConversationExport:
