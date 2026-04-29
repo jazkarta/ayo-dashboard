@@ -4,6 +4,12 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 import { Loader2, ArrowLeft, Download, X, RotateCcw, FileDown } from "lucide-react";
 import toast from "react-hot-toast";
 import conversationService from "@/services/conversationService";
@@ -194,19 +200,27 @@ export default function ConversationDetails({ id }) {
             Back
           </Button>
         </Link>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleExport}
-          disabled={exporting}
-        >
-          {exporting ? (
-            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-          ) : (
-            <FileDown className="h-4 w-4 mr-1" />
-          )}
-          Export
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={handleExport}
+                disabled={exporting}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold"
+              >
+                {exporting ? (
+                  <Loader2 className="h-5! w-5! animate-spin" />
+                ) : (
+                  <FileDown className="h-5! w-5!" />
+                )}
+                Export
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="bg-white text-black border">
+              Export as CSV
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       <Card className="m-5">
@@ -233,7 +247,7 @@ export default function ConversationDetails({ id }) {
               {details.results.map((item) => (
                 <div key={item.id} className="border rounded-md">
                   <div className="grid grid-cols-2 gap-4 p-3">
-                    <div className="flex flex-col gap-3 rounded-md border p-3 bg-muted/20">
+                    <div className="flex flex-col gap-3 rounded-md border p-3 bg-muted/20 max-h-96 overflow-y-auto">
                       {item.prompt && (
                         <p className="text-sm whitespace-pre-wrap">{item.prompt}</p>
                       )}
@@ -270,7 +284,7 @@ export default function ConversationDetails({ id }) {
                         </div>
                       )}
                     </div>
-                    <div className="rounded-md border p-3 bg-muted/20">
+                    <div className="rounded-md border p-3 bg-muted/20 max-h-96 overflow-y-auto">
                       <p className="text-sm whitespace-pre-wrap">{item.response || ""}</p>
                     </div>
                   </div>
