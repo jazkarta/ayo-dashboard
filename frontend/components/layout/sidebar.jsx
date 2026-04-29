@@ -15,6 +15,7 @@ import {
   BarChart3,
   ClipboardList,
   HelpCircle,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/utils/utils";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,11 @@ const navItems = [
     title: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
+  },
+  {
+    title: "Conversations",
+    href: "/dashboard/conversations",
+    icon: MessageSquare,
   },
   {
     title: "Participants",
