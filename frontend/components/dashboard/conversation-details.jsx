@@ -204,14 +204,15 @@ export default function ConversationDetails({ id }) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
+                size="sm"
                 onClick={handleExport}
                 disabled={exporting}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                className="bg-gray-500 hover:bg-gray-600 text-white text-base font-semibold"
               >
                 {exporting ? (
-                  <Loader2 className="h-5! w-5! animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <FileDown className="h-5! w-5!" />
+                  <FileDown className="h-4 w-4" />
                 )}
                 Export
               </Button>
