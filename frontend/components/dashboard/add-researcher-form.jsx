@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, XIcon } from "lucide-react";
 import toast from "react-hot-toast";
 import researcherService from "@/services/researcherService";
+import { extractFieldErrors } from "@/utils/apiErrors";
 
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -60,9 +61,9 @@ export default function AddResearcherForm({ onSuccess = null }) {
         onSuccess?.();
       }
     } catch (err) {
-      const apiErrors = err.response?.data;
-      if (apiErrors?.email) {
-        setErrors({ email: apiErrors.email[0] });
+      const fieldErrors = extractFieldErrors(err);
+      if (Object.keys(fieldErrors).length > 0) {
+        setErrors(fieldErrors);
       } else {
         toast.error("Something went wrong. Please try again.");
       }

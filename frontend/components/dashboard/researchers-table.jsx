@@ -17,6 +17,7 @@ import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, CircleIcon, Pencil, Trash2, X
 import toast from "react-hot-toast";
 import researcherService from "@/services/researcherService";
 import { logout } from "@/services/keycloakService";
+import { extractFieldErrors } from "@/utils/apiErrors";
 
 const columnHelper = createColumnHelper();
 
@@ -54,8 +55,13 @@ function EditDialog({ researcher, onClose, onSaved }) {
       await researcherService.editResearcher(researcher.id, formData);
       toast.success("Researcher updated successfully.");
       onSaved();
-    } catch {
-      toast.error("Failed to update researcher. Please try again.");
+    } catch (err) {
+      const fieldErrors = extractFieldErrors(err);
+      if (Object.keys(fieldErrors).length > 0) {
+        setErrors(fieldErrors);
+      } else {
+        toast.error("Failed to update researcher. Please try again.");
+      }
     } finally {
       setSaving(false);
     }
