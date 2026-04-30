@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,13 +10,17 @@ import {
   TooltipContent,
   TooltipProvider,
 } from "@/components/ui/tooltip";
-import { Loader2, ArrowLeft, Download, X, RotateCcw, FileDown } from "lucide-react";
+import {
+  Loader2,
+  ArrowLeft,
+  FileDown,
+  SearchX,
+  AlertTriangle,
+  RotateCcw,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import conversationService from "@/services/conversationService";
-
-const MIN_ZOOM = 0.25;
-const MAX_ZOOM = 5;
-const ZOOM_STEP = 0.1;
+import ImagePreview from "./image-preview";
 
 function downloadBlob(blob, filename) {
   const blobUrl = URL.createObjectURL(blob);
@@ -56,27 +60,43 @@ async function readBlobMessage(blob) {
   }
 }
 
+const EMPTY_DETAILS = {
+  title: "",
+  results: [],
+  pagination: { count: 0, next: null, previous: null },
+};
+
 export default function ConversationDetails({ id }) {
-  const [details, setDetails] = useState({
-    title: "",
-    results: [],
-    pagination: { count: 0, next: null, previous: null },
-  });
-  const [currentUrl, setCurrentUrl] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [details, setDetails] = useState(EMPTY_DETAILS);
+  const [pageUrl, setPageUrl] = useState(null);
+  const [status, setStatus] = useState("loading");
+  const [errorKind, setErrorKind] = useState(null);
+  const [retryToken, setRetryToken] = useState(0);
   const [preview, setPreview] = useState(null);
-  const [zoom, setZoom] = useState(1);
   const [exporting, setExporting] = useState(false);
-  const overlayRef = useRef(null);
 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-  const isAtDefaultZoom = Math.abs(zoom - 1) < 0.001;
+
+  const [prevId, setPrevId] = useState(id);
+  const idChanged = prevId !== id;
+  if (idChanged) {
+    setPrevId(id);
+    setPageUrl(null);
+  }
+  const effectivePageUrl = idChanged ? null : pageUrl;
+
+  const fetchKey = `${id}|${effectivePageUrl ?? ""}|${retryToken}`;
+  const [trackedFetchKey, setTrackedFetchKey] = useState(fetchKey);
+  if (trackedFetchKey !== fetchKey) {
+    setTrackedFetchKey(fetchKey);
+    setStatus("loading");
+  }
 
   useEffect(() => {
     let cancelled = false;
     const fetchDetails = async () => {
       try {
-        const response = await conversationService.getConversationDetails(id, currentUrl);
+        const response = await conversationService.getConversationDetails(id, pageUrl);
         if (cancelled) return;
         setDetails({
           title: response.data?.title || "",
@@ -87,75 +107,32 @@ export default function ConversationDetails({ id }) {
             previous: response.data?.previous || null,
           },
         });
-      } catch {
+        setStatus("success");
+      } catch (err) {
         if (cancelled) return;
-        toast.error("Failed to load conversation details. Please try again.");
-        setDetails({
-          title: "",
-          results: [],
-          pagination: { count: 0, next: null, previous: null },
-        });
-      } finally {
-        if (!cancelled) setLoading(false);
+        const status = err?.response?.status;
+        const data = err?.response?.data;
+        const message =
+          (typeof data === "string" && data) ||
+          data?.detail ||
+          data?.message ||
+          data?.error ||
+          err?.message ||
+          "Failed to load conversation details. Please try again.";
+        if (status !== 404) {
+          console.error("Failed to load conversation details:", err);
+        }
+        toast.error(status === 404 ? `Conversation ${message}` : message);
+        setDetails(EMPTY_DETAILS);
+        setErrorKind(status === 404 ? "not-found" : "generic");
+        setStatus("error");
       }
     };
     fetchDetails();
     return () => {
       cancelled = true;
     };
-  }, [currentUrl, id]);
-
-  const openPreview = useCallback((attachment) => {
-    setZoom(1);
-    setPreview(attachment);
-  }, []);
-
-  const closePreview = useCallback(() => {
-    setPreview(null);
-    setZoom(1);
-  }, []);
-
-  useEffect(() => {
-    if (!preview) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [preview]);
-
-  useEffect(() => {
-    if (!preview) return;
-    const handleKey = (e) => {
-      if (e.key === "Escape") closePreview();
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [preview, closePreview]);
-
-  useEffect(() => {
-    if (!preview) return;
-    const el = overlayRef.current;
-    if (!el) return;
-    const handleWheel = (e) => {
-      e.preventDefault();
-      const delta = e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
-      setZoom((z) => Math.min(Math.max(z + delta, MIN_ZOOM), MAX_ZOOM));
-    };
-    el.addEventListener("wheel", handleWheel, { passive: false });
-    return () => el.removeEventListener("wheel", handleWheel);
-  }, [preview]);
-
-  const handleDownload = (attachment) => {
-    const link = document.createElement("a");
-    link.href = attachment.url;
-    link.download = attachment.filename || "download";
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-  };
+  }, [id, pageUrl, retryToken]);
 
   const handleExport = useCallback(async () => {
     setExporting(true);
@@ -187,9 +164,16 @@ export default function ConversationDetails({ id }) {
   const goToUrl = (rawUrl) => {
     if (!rawUrl) return;
     const path = baseUrl ? rawUrl.replace(baseUrl, "") : rawUrl;
-    setLoading(true);
-    setCurrentUrl(path);
+    setPageUrl(path);
   };
+
+  const retry = () => setRetryToken((t) => t + 1);
+
+  if (status === "error") {
+    return (
+      <ErrorState kind={errorKind} onRetry={retry} />
+    );
+  }
 
   return (
     <>
@@ -206,7 +190,7 @@ export default function ConversationDetails({ id }) {
               <Button
                 size="sm"
                 onClick={handleExport}
-                disabled={exporting}
+                disabled={exporting || status === "loading"}
                 className="bg-gray-500 hover:bg-gray-600 text-white text-base font-semibold"
               >
                 {exporting ? (
@@ -230,141 +214,152 @@ export default function ConversationDetails({ id }) {
         </CardHeader>
 
         <CardContent>
-          <div className="grid grid-cols-2 gap-4 px-3 pb-2 border-b text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <div>Prompt</div>
-            <div>Response</div>
-          </div>
-
-          {loading ? (
-            <div className="h-24 flex items-center justify-center">
+          {status === "loading" ? (
+            <div className="h-64 flex items-center justify-center">
               <Loader2 className="animate-spin h-8 w-8" />
             </div>
-          ) : details.results.length === 0 ? (
-            <div className="h-24 flex items-center justify-center text-muted-foreground">
-              No messages found.
-            </div>
           ) : (
-            <div className="flex flex-col gap-4 pt-3">
-              {details.results.map((item) => (
-                <div key={item.id} className="border rounded-md">
-                  <div className="grid grid-cols-2 gap-4 p-3">
-                    <div className="flex flex-col gap-3 rounded-md border p-3 bg-muted/20 max-h-96 overflow-y-auto">
-                      {item.prompt && (
-                        <p className="text-sm whitespace-pre-wrap">{item.prompt}</p>
-                      )}
-                      {item.attachments?.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {item.attachments.map((attachment) => {
-                            const isImage = attachment.type?.startsWith("image/");
-                            return isImage ? (
-                              <button
-                                key={attachment.id}
-                                type="button"
-                                onClick={() => openPreview(attachment)}
-                                className="block focus:outline-none focus:ring-2 focus:ring-ring rounded-md"
-                              >
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={attachment.url}
-                                  alt={attachment.filename}
-                                  className="h-48 w-48 rounded-md border object-cover cursor-pointer"
-                                />
-                              </button>
-                            ) : (
-                              <a
-                                key={attachment.id}
-                                href={attachment.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-blue-600 underline"
-                              >
-                                {attachment.filename}
-                              </a>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                    <div className="rounded-md border p-3 bg-muted/20 max-h-96 overflow-y-auto">
-                      <p className="text-sm whitespace-pre-wrap">{item.response || ""}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+            <>
+              <div className="grid grid-cols-2 gap-4 px-3 pb-2 border-b text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <div>Prompt</div>
+                <div>Response</div>
+              </div>
 
-          <div className="mt-4 ml-3 flex flex-wrap items-center justify-between gap-2">
-            <div className="text-sm text-muted-foreground">
-              Showing {details.results.length} of {details.pagination.count} messages
-            </div>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => goToUrl(details.pagination.previous)}
-                disabled={!details.pagination.previous}
-              >
-                Previous
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => goToUrl(details.pagination.next)}
-                disabled={!details.pagination.next}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
+              {details.results.length === 0 ? (
+                <div className="h-24 flex items-center justify-center text-muted-foreground">
+                  No messages found.
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4 pt-3">
+                  {details.results.map((item) => (
+                    <MessageRow
+                      key={item.id}
+                      item={item}
+                      onPreview={setPreview}
+                    />
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-4 ml-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="text-sm text-muted-foreground">
+                  Showing {details.results.length} of {details.pagination.count} messages
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => goToUrl(details.pagination.previous)}
+                    disabled={!details.pagination.previous}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => goToUrl(details.pagination.next)}
+                    disabled={!details.pagination.next}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
       {preview && (
-        <div
-          ref={overlayRef}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Image preview"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-          onClick={closePreview}
-        >
-          <div
-            className="fixed top-3 right-3 z-10 flex gap-2"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center px-2 text-xs text-white bg-black/40 rounded-md">
-              {Math.round(zoom * 100)}%
-            </div>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setZoom(1)}
-              disabled={isAtDefaultZoom}
-            >
-              <RotateCcw className="h-4 w-4 mr-1" />
-              Reset
-            </Button>
-            <Button size="sm" variant="secondary" onClick={() => handleDownload(preview)}>
-              <Download className="h-4 w-4 mr-1" />
-              Download
-            </Button>
-            <Button size="sm" variant="secondary" onClick={closePreview} aria-label="Close preview">
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          <div onClick={(e) => e.stopPropagation()} className="overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={preview.url}
-              alt={preview.filename}
-              draggable={false}
-              style={{ transform: `scale(${zoom})`, transformOrigin: "center" }}
-              className="max-h-[90vh] max-w-[90vw] rounded-md object-contain transition-transform duration-100 select-none"
-            />
-          </div>
-        </div>
+        <ImagePreview attachment={preview} onClose={() => setPreview(null)} />
       )}
     </>
+  );
+}
+
+function MessageRow({ item, onPreview }) {
+  return (
+    <div className="border rounded-md">
+      <div className="grid grid-cols-2 gap-4 p-3">
+        <div className="flex flex-col gap-3 rounded-md border p-3 bg-muted/20 max-h-96 overflow-y-auto">
+          {item.prompt && (
+            <p className="text-sm whitespace-pre-wrap">{item.prompt}</p>
+          )}
+          {item.attachments?.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {item.attachments.map((attachment) => {
+                const isImage = attachment.type?.startsWith("image/");
+                return isImage ? (
+                  <button
+                    key={attachment.id}
+                    type="button"
+                    onClick={() => onPreview(attachment)}
+                    className="block focus:outline-none focus:ring-2 focus:ring-ring rounded-md"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={attachment.url}
+                      alt={attachment.filename}
+                      className="h-48 w-48 rounded-md border object-cover cursor-pointer"
+                    />
+                  </button>
+                ) : (
+                  <a
+                    key={attachment.id}
+                    href={attachment.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 underline"
+                  >
+                    {attachment.filename}
+                  </a>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <div className="rounded-md border p-3 bg-muted/20 max-h-96 overflow-y-auto">
+          <p className="text-sm whitespace-pre-wrap">{item.response || ""}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ErrorState({ kind, onRetry }) {
+  const isNotFound = kind === "not-found";
+  const Icon = isNotFound ? SearchX : AlertTriangle;
+  const title = isNotFound ? "No Conversation found" : "Something went wrong";
+  const description = isNotFound
+    ? "We couldn't find the conversation you're looking for. It may have been removed, or the link is invalid."
+    : "We couldn't load this conversation. Check your connection and try again.";
+
+  return (
+    <Card className="m-5">
+      <CardContent className="py-20">
+        <div className="flex flex-col items-center justify-center text-center gap-4">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted">
+            <Icon className="h-10 w-10 text-muted-foreground" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <h3 className="text-lg font-semibold">{title}</h3>
+            <p className="text-sm text-muted-foreground max-w-sm">{description}</p>
+          </div>
+          <div className="flex gap-2">
+            {!isNotFound && (
+              <Button size="sm" onClick={onRetry}>
+                <RotateCcw className="h-4 w-4 mr-1" />
+                Try again
+              </Button>
+            )}
+            <Link href="/dashboard/conversations">
+              <Button size="sm" variant="outline">
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Back to conversations
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
