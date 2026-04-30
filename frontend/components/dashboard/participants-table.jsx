@@ -377,7 +377,7 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
       cell: ({ row }) => {
         const participant = row.original;
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3.75">
             <button
               onClick={() => handleEdit(participant)}
               className="flex h-8 w-8 items-center justify-center rounded-sm shadow-sm border border-slate-200 bg-white text-slate-500 hover:text-blue-600 hover:border-blue-200 hover:shadow-md transition-all duration-150 cursor-pointer"
