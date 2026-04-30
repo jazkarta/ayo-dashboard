@@ -328,7 +328,7 @@ export default function ResearchersTable({ refreshKey = 0, isAdminResearcher = f
       cell: ({ row }) => {
         const researcher = row.original;
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3.75">
             <button
               onClick={() => handleEdit(researcher)}
               className="flex h-8 w-8 items-center justify-center rounded-sm shadow-sm border border-slate-200 bg-white text-slate-500 hover:text-blue-600 hover:border-blue-200 hover:shadow-md transition-all duration-150 cursor-pointer"
@@ -353,10 +353,10 @@ export default function ResearchersTable({ refreshKey = 0, isAdminResearcher = f
             </button>
             <button
               onClick={() => handleToggleAdmin(researcher)}
-              className={`flex h-8 w-24 items-center justify-center rounded-sm shadow-sm border border-slate-200 bg-white text-xs font-medium text-slate-500 transition-all duration-150 cursor-pointer ${
+              className={`flex h-8 w-24 items-center justify-center rounded-sm shadow-sm border text-xs font-medium transition-all duration-150 cursor-pointer hover:shadow-md ${
                 researcher.is_admin_researcher
-                  ? "hover:text-amber-600 hover:border-amber-200 hover:shadow-md"
-                  : "hover:text-green-600 hover:border-green-200 hover:shadow-md"
+                  ? "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 hover:border-amber-300"
+                  : "bg-green-50 border-green-200 text-green-700 hover:bg-green-100 hover:border-green-300"
               }`}
             >
               {researcher.is_admin_researcher ? "Revoke Admin" : "Make Admin"}
