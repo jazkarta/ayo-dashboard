@@ -226,7 +226,8 @@ class InvitationAcceptSerializer(serializers.Serializer):
 
         # Activate the user
         user = invitation.user
-        user.username = validated_data['username'].lower()
+        user.username = validated_data['username']
+        # user.username = validated_data['username'].lower()
 
         keycloak_id = keycloak_manager.create_user(
             user.username, user.email,

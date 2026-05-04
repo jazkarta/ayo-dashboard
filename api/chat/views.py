@@ -1,8 +1,4 @@
-import csv
-from collections import defaultdict
-
 from django.db.models import OuterRef, Subquery
-from django.http import StreamingHttpResponse
 
 from django_filters.rest_framework import DjangoFilterBackend
 
@@ -16,7 +12,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
-from chat.models.chat_models import Chat, ChatMedia
+from chat.filters import ConversationFilter
+from chat.managers import ConversationBulkExportManager, ConversationExportManager
+from chat.models.chat_models import Chat
 from chat.models.conversation_models import ConversationModel
 from chat.serializers import (
     ChatCreateSerializer,
@@ -27,9 +25,13 @@ from chat.serializers import (
 )
 
 
-class Echo:
-    def write(self, value):
-        return value
+_CONVERSATION_FILTER_PARAMS = [
+    openapi.Parameter('search', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Search by title, participant name, or email'),
+    openapi.Parameter('model_name', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Filter by model name (case-insensitive)'),
+    openapi.Parameter('participant_email', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Filter by participant email (case-insensitive)'),
+    openapi.Parameter('date_from', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Include conversations on or after this date (YYYY-MM-DD)'),
+    openapi.Parameter('date_to', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Include conversations on or before this date (YYYY-MM-DD)'),
+]
 
 
 class ChatCreateAPIView(CreateAPIView):
@@ -39,6 +41,7 @@ class ChatCreateAPIView(CreateAPIView):
 class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_class = ConversationFilter
     search_fields = ['title', 'user__email', 'user__first_name', 'user__last_name']
     serializer_action_classes = {
         'list': ConversationListSerializer,
@@ -46,7 +49,7 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
     }
 
     def get_queryset(self):
-        if self.action == 'export':
+        if self.action in ('export', 'bulk_export'):
             return ConversationModel.objects.select_related('user')
 
         last_chat_subquery = Chat.objects.filter(
@@ -68,6 +71,10 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
             self.action,
             ConversationDetailSerializer
         )
+
+    @swagger_auto_schema(manual_parameters=_CONVERSATION_FILTER_PARAMS)
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
     @action(detail=False, methods=['patch'], url_path='update-title')
     def update_title(self, request):
@@ -108,46 +115,23 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
     @action(detail=True, methods=['get'], url_path='export')
     def export(self, request, pk=None):
         instance = self.get_object()
-        participant = instance.user
-        participant_name = (
-            f"{participant.first_name} {participant.last_name}".strip()
-            or participant.username
+        queryset = ConversationModel.objects.filter(pk=instance.pk).select_related('user')
+        return ConversationExportManager.streaming_response(
+            queryset,
+            f'conversation_{instance.conversation_id}.csv',
         )
 
-        media_map = defaultdict(list)
-        for item in ChatMedia.objects.filter(
-            chat__conversation=instance
-        ).values('chat_id', 'url'):
-            media_map[item['chat_id']].append(item['url'])
-
-        chats = instance.chats.only(
-            'prompt', 'response', 'created_at'
-        ).order_by('created_at').iterator()
-
-        def rows():
-            yield [
-                'conversation_title', 'conversation_id', 'model_name',
-                'participant_name', 'message_date',
-                'prompt', 'response', 'attachment_urls',
-            ]
-            for chat in chats:
-                yield [
-                    instance.title or '',
-                    instance.conversation_id,
-                    instance.model_name or '',
-                    participant_name,
-                    chat.created_at.isoformat(),
-                    chat.prompt,
-                    chat.response,
-                    '|'.join(media_map.get(chat.id, [])),
-                ]
-
-        writer = csv.writer(Echo())
-        response = StreamingHttpResponse(
-            (writer.writerow(row) for row in rows()),
-            content_type='text/csv',
-        )
-        response['Content-Disposition'] = (
-            f'attachment; filename="conversation_{instance.conversation_id}.csv"'
-        )
-        return response
+    @swagger_auto_schema(
+        method='get',
+        manual_parameters=_CONVERSATION_FILTER_PARAMS,
+        responses={
+            200: openapi.Response(
+                description='CSV file with all messages from matching conversations',
+                schema=openapi.Schema(type=openapi.TYPE_FILE),
+            )
+        },
+    )
+    @action(detail=False, methods=['get'], url_path='export')
+    def bulk_export(self, request):
+        queryset = self.filter_queryset(self.get_queryset())
+        return ConversationBulkExportManager.streaming_response(queryset, 'conversations_export.csv')
