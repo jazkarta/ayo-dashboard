@@ -136,7 +136,6 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
                     instance.conversation_id,
                     instance.model_name or '',
                     participant_name,
-                    participant.email,
                     chat.created_at.isoformat(),
                     chat.prompt,
                     chat.response,
