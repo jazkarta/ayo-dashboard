@@ -114,17 +114,12 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
             or participant.username
         )
 
-        # One query for all media in the conversation grouped by chat — avoids
-        # N+1 queries that would occur if we used prefetch_related with iterator().
         media_map = defaultdict(list)
         for item in ChatMedia.objects.filter(
             chat__conversation=instance
         ).values('chat_id', 'url'):
             media_map[item['chat_id']].append(item['url'])
 
-        # Use .iterator() so Django streams rows from the DB one at a time
-        # instead of loading all chats into memory — critical for conversations
-        # with a large number of messages.
         chats = instance.chats.only(
             'prompt', 'response', 'created_at'
         ).order_by('created_at').iterator()
@@ -132,7 +127,7 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
         def rows():
             yield [
                 'conversation_title', 'conversation_id', 'model_name',
-                'participant_name', 'participant_email', 'message_date',
+                'participant_name', 'message_date',
                 'prompt', 'response', 'attachment_urls',
             ]
             for chat in chats:
