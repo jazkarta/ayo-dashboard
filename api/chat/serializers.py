@@ -86,12 +86,11 @@ class ConversationUserSerializer(serializers.ModelSerializer):
 
 
 class ConversationListSerializer(serializers.ModelSerializer):
-    last_message = serializers.CharField(read_only=True)
     participant = ConversationUserSerializer(read_only=True, source='user')
 
     class Meta:
         model = ConversationModel
-        fields = ['id', 'title', 'conversation_id', 'model_name', 'last_message', 'participant']
+        fields = ['id', 'title', 'conversation_id', 'model_name', 'participant']
 
 class ConversationDetailSerializer(serializers.ModelSerializer):
     participant = ConversationUserSerializer(read_only=True, source='user')

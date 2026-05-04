@@ -1,5 +1,3 @@
-from django.db.models import OuterRef, Subquery
-
 from django_filters.rest_framework import DjangoFilterBackend
 
 from drf_yasg import openapi
@@ -14,7 +12,6 @@ from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from chat.filters import ConversationFilter
 from chat.managers import ConversationBulkExportManager, ConversationExportManager
-from chat.models.chat_models import Chat
 from chat.models.conversation_models import ConversationModel
 from chat.serializers import (
     ChatCreateSerializer,
@@ -52,19 +49,7 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
         if self.action in ('export', 'bulk_export'):
             return ConversationModel.objects.select_related('user')
 
-        last_chat_subquery = Chat.objects.filter(
-            conversation=OuterRef('pk')
-        ).order_by('-created_at')
-
-        return ConversationModel.objects.select_related(
-            'user'
-        ).prefetch_related(
-            'chats'
-        ).annotate(
-            last_message=Subquery(last_chat_subquery.values('prompt')[:1])
-        ).order_by(
-            '-created_at'
-        )
+        return ConversationModel.objects.select_related('user').order_by('-created_at')
 
     def get_serializer_class(self):
         return self.serializer_action_classes.get(
@@ -91,7 +76,7 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
     @action(detail=True, methods=['get'])
     def details(self, request, pk=None):
         instance = self.get_object()
-        chats = instance.chats.all().order_by('-created_at')
+        chats = instance.chats.prefetch_related('media').order_by('-created_at')
 
         page = self.paginate_queryset(chats)
         if page is not None:

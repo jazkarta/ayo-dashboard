@@ -1,6 +1,7 @@
 import csv
 from collections import defaultdict
 
+from django.db.models import Prefetch
 from django.http import StreamingHttpResponse
 
 from chat.models.chat_models import Chat, ChatMedia
@@ -79,24 +80,18 @@ class ConversationBulkExportManager:
     @classmethod
     def rows(cls, queryset):
         yield cls.CSV_HEADERS
-        for conversation in queryset.iterator():
+        queryset = queryset.prefetch_related(
+            Prefetch('chats', queryset=Chat.objects.only('id', 'prompt', 'response').order_by('created_at')),
+            'chats__media',
+        )
+        for conversation in queryset:
             participant = conversation.user
             participant_name = (
                 f"{participant.first_name} {participant.last_name}".strip()
                 or participant.username
             )
-
-            chats = list(
-                Chat.objects.filter(conversation=conversation)
-                .only('id', 'prompt', 'response')
-                .order_by('created_at')
-            )
-
-            chat_ids = [chat.id for chat in chats]
-            attachment_urls = list(
-                ChatMedia.objects.filter(chat_id__in=chat_ids).values_list('url', flat=True)
-            )
-
+            chats = list(conversation.chats.all())
+            attachment_urls = [media.url for chat in chats for media in chat.media.all()]
             yield [
                 conversation.title or '',
                 conversation.conversation_id,
