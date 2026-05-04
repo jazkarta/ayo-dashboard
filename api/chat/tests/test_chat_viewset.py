@@ -550,3 +550,60 @@ class TestConversationBulkExport:
 
         rows = parse_csv_response(response)
         assert sorted(rows[1][8].split('|')) == sorted(urls)
+
+
+@pytest.mark.django_db
+class TestConversationParticipants:
+
+    def test_unauthenticated_returns_403(self, api_client):
+        response = api_client.get(reverse('conversation-participants'))
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_returns_users_who_have_conversations(self, api_client, chat_user, conversation):
+        api_client.force_authenticate(user=chat_user)
+        response = api_client.get(reverse('conversation-participants'))
+
+        assert response.status_code == status.HTTP_200_OK
+        emails = [p['email'] for p in response.data]
+        assert chat_user.email in emails
+
+    def test_excludes_users_without_conversations(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        User.objects.create_user(email='noconv@example.com', password='pass')
+
+        response = api_client.get(reverse('conversation-participants'))
+
+        assert response.status_code == status.HTTP_200_OK
+        emails = [p['email'] for p in response.data]
+        assert 'noconv@example.com' not in emails
+
+    def test_no_duplicates_when_user_has_multiple_conversations(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        ConversationModel.objects.create(conversation_id='d1', user=chat_user, title='First')
+        ConversationModel.objects.create(conversation_id='d2', user=chat_user, title='Second')
+
+        response = api_client.get(reverse('conversation-participants'))
+
+        assert response.status_code == status.HTTP_200_OK
+        emails = [p['email'] for p in response.data]
+        assert emails.count(chat_user.email) == 1
+
+    def test_returns_expected_fields(self, api_client, chat_user, conversation):
+        api_client.force_authenticate(user=chat_user)
+        response = api_client.get(reverse('conversation-participants'))
+
+        assert response.status_code == status.HTTP_200_OK
+        participant = response.data[0]
+        assert set(participant.keys()) == {'id', 'email', 'first_name', 'last_name', 'username'}
+
+    def test_ordered_by_email(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        alice = User.objects.create_user(email='alice@example.com', password='pass')
+        ConversationModel.objects.create(conversation_id='d1', user=chat_user)
+        ConversationModel.objects.create(conversation_id='d2', user=alice)
+
+        response = api_client.get(reverse('conversation-participants'))
+
+        assert response.status_code == status.HTTP_200_OK
+        emails = [p['email'] for p in response.data]
+        assert emails == sorted(emails)

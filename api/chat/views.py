@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.db.models import OuterRef, Subquery
 
 from django_filters.rest_framework import DjangoFilterBackend
@@ -22,7 +23,10 @@ from chat.serializers import (
     ConversationCreateSerializer,
     ConversationDetailSerializer,
     ConversationListSerializer,
+    ConversationUserSerializer,
 )
+
+User = get_user_model()
 
 
 _CONVERSATION_FILTER_PARAMS = [
@@ -75,6 +79,17 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
     @swagger_auto_schema(manual_parameters=_CONVERSATION_FILTER_PARAMS)
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
+
+    @swagger_auto_schema(responses={200: ConversationUserSerializer(many=True)})
+    @action(detail=False, methods=['get'], url_path='participants')
+    def participants(self, request):
+        users = (
+            User.objects.filter(conversations__isnull=False)
+            .distinct()
+            .only('id', 'email', 'first_name', 'last_name', 'username')
+            .order_by('email')
+        )
+        return Response(ConversationUserSerializer(users, many=True).data)
 
     @action(detail=False, methods=['patch'], url_path='update-title')
     def update_title(self, request):
