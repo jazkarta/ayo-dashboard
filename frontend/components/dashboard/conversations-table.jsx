@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { format } from "date-fns";
 import {
   useReactTable,
   getCoreRowModel,
@@ -15,9 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Loader2, Search, SlidersHorizontal, CalendarIcon, X } from "lucide-react";
+import { Loader2, Search, SlidersHorizontal, X, Download } from "lucide-react";
 import toast from "react-hot-toast";
 import conversationService from "@/services/conversationService";
 
@@ -26,9 +24,45 @@ const columnHelper = createColumnHelper();
 const INITIAL_FILTERS = {
   model_name: "",
   participant_email: "",
-  date_from: "",
-  date_to: "",
 };
+
+function downloadBlob(blob, filename) {
+  const blobUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(blobUrl);
+}
+
+function parseFilename(disposition, fallback) {
+  if (!disposition) return fallback;
+  const utf8 = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8) return decodeURIComponent(utf8[1].trim());
+  const quoted = disposition.match(/filename="((?:[^"\\]|\\.)+)"/i);
+  if (quoted) return quoted[1].replace(/\\(.)/g, "$1");
+  const plain = disposition.match(/filename=([^;]+)/i);
+  if (plain) return plain[1].trim();
+  return fallback;
+}
+
+async function readBlobMessage(blob) {
+  if (!blob || typeof blob.text !== "function") return null;
+  try {
+    const text = await blob.text();
+    if (!text) return null;
+    try {
+      const parsed = JSON.parse(text);
+      return parsed?.detail || parsed?.message || parsed?.error || null;
+    } catch {
+      return text.length < 300 ? text : null;
+    }
+  } catch {
+    return null;
+  }
+}
 
 export default function ConversationsTable() {
   const [search, setSearch] = useState("");
@@ -38,8 +72,7 @@ export default function ConversationsTable() {
   const [appliedFilters, setAppliedFilters] = useState(INITIAL_FILTERS);
 
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [fromOpen, setFromOpen] = useState(false);
-  const [toOpen, setToOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const [data, setData] = useState([]);
   const [pagination, setPagination] = useState({ count: 0, next: null, previous: null });
@@ -83,8 +116,6 @@ export default function ConversationsTable() {
     const labels = {
       model_name: "Model",
       participant_email: "Email",
-      date_from: "From",
-      date_to: "To",
     };
     return Object.entries(appliedFilters)
       .filter(([, v]) => Boolean(v))
@@ -113,6 +144,37 @@ export default function ConversationsTable() {
     setAppliedFilters(next);
     setDraftFilters(next);
     setCurrentUrl("/chats/conversations/");
+  };
+
+  const handleBulkExport = async () => {
+    setExporting(true);
+    try {
+      const response = await conversationService.bulkExportConversations(
+        debouncedSearch,
+        appliedFilters,
+      );
+      const blob = response.data;
+      const contentType = (response.headers?.["content-type"] || "").toLowerCase();
+      const isCsv = contentType.includes("csv") || contentType.includes("octet-stream");
+
+      if (!blob || blob.size === 0 || !isCsv) {
+        const message = await readBlobMessage(blob);
+        toast.error(message || "No data to export.");
+        return;
+      }
+
+      const filename = parseFilename(
+        response.headers?.["content-disposition"],
+        `conversations-${new Date().toISOString().slice(0, 10)}.csv`,
+      );
+      downloadBlob(blob, filename);
+      toast.success("Export started.");
+    } catch (err) {
+      const message = await readBlobMessage(err?.response?.data);
+      toast.error(message || "Failed to export conversations. Please try again.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const columns = useMemo(() => [
@@ -224,84 +286,6 @@ export default function ConversationsTable() {
                     />
                   </div>
 
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-xs font-medium text-muted-foreground">
-                      Date range
-                    </Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Popover open={fromOpen} onOpenChange={setFromOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={`justify-start text-left font-normal ${!draftFilters.date_from ? "text-muted-foreground" : ""}`}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                            <span className="truncate">
-                              {draftFilters.date_from
-                                ? format(new Date(draftFilters.date_from), "PP")
-                                : "From"}
-                            </span>
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            captionLayout="dropdown"
-                            fromYear={2020}
-                            toYear={new Date().getFullYear()}
-                            selected={draftFilters.date_from ? new Date(draftFilters.date_from) : undefined}
-                            onSelect={(date) => {
-                              const value = date ? format(date, "yyyy-MM-dd") : "";
-                              setDraftFilters((prev) => ({ ...prev, date_from: value }));
-                              setFromOpen(false);
-                            }}
-                            disabled={(date) =>
-                              draftFilters.date_to
-                                ? date > new Date(draftFilters.date_to)
-                                : false
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-
-                      <Popover open={toOpen} onOpenChange={setToOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={`justify-start text-left font-normal ${!draftFilters.date_to ? "text-muted-foreground" : ""}`}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                            <span className="truncate">
-                              {draftFilters.date_to
-                                ? format(new Date(draftFilters.date_to), "PP")
-                                : "To"}
-                            </span>
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            captionLayout="dropdown"
-                            fromYear={2020}
-                            toYear={new Date().getFullYear()}
-                            selected={draftFilters.date_to ? new Date(draftFilters.date_to) : undefined}
-                            onSelect={(date) => {
-                              const value = date ? format(date, "yyyy-MM-dd") : "";
-                              setDraftFilters((prev) => ({ ...prev, date_to: value }));
-                              setToOpen(false);
-                            }}
-                            disabled={(date) =>
-                              draftFilters.date_from
-                                ? date < new Date(draftFilters.date_from)
-                                : false
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </div>
                 </div>
 
                 <div className="flex items-center justify-end gap-2 border-t bg-muted/30 px-4 py-3">
@@ -321,6 +305,20 @@ export default function ConversationsTable() {
                 </div>
               </PopoverContent>
             </Popover>
+
+            <Button
+              variant="default"
+              className="gap-2"
+              onClick={handleBulkExport}
+              disabled={exporting || loading}
+            >
+              {exporting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              Export
+            </Button>
 
             {(search || activeFilterCount > 0) && (
               <Button
