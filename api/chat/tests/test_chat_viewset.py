@@ -177,7 +177,7 @@ class TestConversationExport:
         rows = parse_csv_response(response)
         assert rows[0] == [
             'conversation_title', 'conversation_id', 'model_name',
-            'participant_name', 'participant_email', 'message_date',
+            'participant_name', 'message_date',
             'prompt', 'response', 'attachment_urls',
         ]
 
