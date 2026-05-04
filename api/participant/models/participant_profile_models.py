@@ -32,6 +32,8 @@ class ParticipantProfile(BaseModel):
         _('gender'),
         max_length=1,
         choices=GENDER_CHOICES,
+        blank=True,
+        null=True
     )
     family_id = models.CharField(
         _('family id'),
