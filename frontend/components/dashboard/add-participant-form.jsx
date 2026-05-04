@@ -6,13 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CheckCircle2Icon, CalendarIcon, Loader2, XIcon } from "lucide-react";
@@ -47,8 +40,6 @@ export default function AddParticipantForm({ onSuccess = null }) {
     lastName: "",
     email: "",
     dateOfBirth: "",
-    gender: "",
-    demographics: "",
     familyId: "",
   });
 
@@ -89,8 +80,6 @@ export default function AddParticipantForm({ onSuccess = null }) {
       }
     }
 
-    if (!formData.gender) newErrors.gender = "Gender is required.";
-    if (!formData.demographics.trim()) newErrors.demographics = "Demographics is required.";
     if (!formData.familyId.trim()) newErrors.familyId = "Family ID is required.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -130,8 +119,6 @@ export default function AddParticipantForm({ onSuccess = null }) {
       lastName: "",
       email: "",
       dateOfBirth: "",
-      gender: "",
-      demographics: "",
       familyId: "",
     });
   };
@@ -145,8 +132,6 @@ export default function AddParticipantForm({ onSuccess = null }) {
       last_name: formData.lastName,
       profile_data: {
         date_of_birth: formData.dateOfBirth,
-        gender: formData.gender,
-        demographics: formData.demographics,
         family_id: formData.familyId,
       },
     };
@@ -354,49 +339,6 @@ export default function AddParticipantForm({ onSuccess = null }) {
                     </Popover>
                     {errors.dateOfBirth && (
                       <p className="text-xs text-destructive">{errors.dateOfBirth}</p>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="gender" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
-                      Gender
-                    </Label>
-                    <Select
-                      value={formData.gender}
-                      onValueChange={(val) => {
-                        setFormData((prev) => ({ ...prev, gender: val }));
-                        setErrors((prev) => ({ ...prev, gender: "" }));
-                      }}
-                    >
-                      <SelectTrigger className={errors.gender ? "border-destructive" : ""}>
-                        <SelectValue placeholder="Select gender" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="M">Male</SelectItem>
-                        <SelectItem value="F">Female</SelectItem>
-                        <SelectItem value="O">Other</SelectItem>
-                        <SelectItem value="N">Prefer not to say</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {errors.gender && (
-                      <p className="text-xs text-destructive">{errors.gender}</p>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="demographics" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
-                      Demographics
-                    </Label>
-                    <Input
-                      id="demographics"
-                      name="demographics"
-                      placeholder="e.g. Bangladesh, India"
-                      value={formData.demographics}
-                      onChange={handleChange}
-                      className={errors.demographics ? "border-destructive" : ""}
-                    />
-                    {errors.demographics && (
-                      <p className="text-xs text-destructive">{errors.demographics}</p>
                     )}
                   </div>
 

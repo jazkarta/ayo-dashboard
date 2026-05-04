@@ -37,7 +37,6 @@ function EditDialog({ participant, onClose, onSaved }) {
     first_name: participant?.first_name || "",
     last_name: participant?.last_name || "",
     dateOfBirth: participant?.profile_data?.date_of_birth || "",
-    demographics: participant?.profile_data?.demographics || "",
     family_id: participant?.profile_data?.family_id || "",
   });
   const [errors, setErrors] = useState({});
@@ -60,7 +59,6 @@ function EditDialog({ participant, onClose, onSaved }) {
       today.setHours(0, 0, 0, 0);
       if (dob >= today) newErrors.dateOfBirth = "Date of birth must be in the past.";
     }
-    if (!formData.demographics.trim()) newErrors.demographics = "Demographics is required.";
     if (!formData.family_id.trim()) newErrors.family_id = "Family ID is required.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -75,7 +73,6 @@ function EditDialog({ participant, onClose, onSaved }) {
         last_name: formData.last_name,
         profile_data: {
           date_of_birth: formData.dateOfBirth,
-          demographics: formData.demographics,
           family_id: formData.family_id,
         },
       });
@@ -166,22 +163,6 @@ function EditDialog({ participant, onClose, onSaved }) {
                 </PopoverContent>
               </Popover>
               {errors.dateOfBirth && <p className="text-xs text-destructive">{errors.dateOfBirth}</p>}
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="edit_demographics" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
-                Demographics
-              </Label>
-              <Input
-                id="edit_demographics"
-                name="demographics"
-                placeholder="e.g. Bangladesh, India"
-                value={formData.demographics}
-                onChange={handleChange}
-                disabled={saving}
-                className={errors.demographics ? "border-destructive" : ""}
-              />
-              {errors.demographics && <p className="text-xs text-destructive">{errors.demographics}</p>}
             </div>
 
             <div className="flex flex-col gap-2">
@@ -357,18 +338,9 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
       header: "Date of Birth",
       cell: (info) => info.getValue() || "-",
     }),
-    columnHelper.accessor((row) => row.profile_data?.gender, {
-      id: "gender",
-      header: "Gender",
-      cell: (info) => {
-        const gender = info.getValue();
-        if (!gender) return "-";
-        return gender === "M" ? "Male" : gender === "F" ? "Female" : gender;
-      },
-    }),
-    columnHelper.accessor((row) => row.profile_data?.demographics, {
-      id: "demographics",
-      header: "Demographics",
+    columnHelper.accessor((row) => row.profile_data?.family_id, {
+      id: "family_id",
+      header: "Family ID",
       cell: (info) => info.getValue() || "-",
     }),
     columnHelper.display({
@@ -450,13 +422,13 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   <Loader2 className="animate-spin h-8 w-8 mx-auto" />
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   No participants found.
                 </TableCell>
               </TableRow>
