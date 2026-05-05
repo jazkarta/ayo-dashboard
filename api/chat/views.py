@@ -118,6 +118,8 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'], url_path='export')
     def bulk_export(self, request):
         queryset = self.filter_queryset(self.get_queryset())
+        if not queryset.exists():
+            return Response({'detail': 'No conversations found for the given filters.'}, status=status.HTTP_404_NOT_FOUND)
         active_filters = [
             slugify(request.query_params[key])
             for key in ('model_name', 'participant_email', 'date_from', 'date_to')

@@ -436,7 +436,7 @@ class TestConversationBulkExport:
         assert 'attachment' in response['Content-Disposition']
         assert response.streaming is True
 
-    def test_bulk_export_csv_has_correct_headers(self, api_client, chat_user):
+    def test_bulk_export_csv_has_correct_headers(self, api_client, chat_user, conversation):
         api_client.force_authenticate(user=chat_user)
         response = api_client.get(bulk_export_url())
 
@@ -447,14 +447,13 @@ class TestConversationBulkExport:
             'prompts', 'responses', 'attachment_urls',
         ]
 
-    def test_bulk_export_no_conversations_returns_headers_only(self, api_client, chat_user):
+    def test_bulk_export_no_conversations_returns_404(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
         response = api_client.get(bulk_export_url())
 
-        rows = parse_csv_response(response)
-        assert len(rows) == 1
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_bulk_export_filename_in_content_disposition(self, api_client, chat_user):
+    def test_bulk_export_filename_in_content_disposition(self, api_client, chat_user, conversation):
         api_client.force_authenticate(user=chat_user)
         response = api_client.get(bulk_export_url())
 
