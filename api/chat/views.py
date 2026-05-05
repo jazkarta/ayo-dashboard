@@ -1,4 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
+from django.utils.text import slugify
 
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -101,10 +102,8 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
     def export(self, request, pk=None):
         instance = self.get_object()
         queryset = ConversationModel.objects.filter(pk=instance.pk).select_related('user')
-        return ConversationExportManager.streaming_response(
-            queryset,
-            f'conversation_{instance.conversation_id}.csv',
-        )
+        filename = f'conversation-{slugify(instance.title) or "untitled"}.csv'
+        return ConversationExportManager.streaming_response(queryset, filename)
 
     @swagger_auto_schema(
         method='get',
@@ -119,4 +118,14 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'], url_path='export')
     def bulk_export(self, request):
         queryset = self.filter_queryset(self.get_queryset())
-        return ConversationBulkExportManager.streaming_response(queryset, 'conversations_export.csv')
+        active_filters = [
+            slugify(request.query_params[key])
+            for key in ('model_name', 'participant_email', 'date_from', 'date_to')
+            if request.query_params.get(key)
+        ]
+        filename = (
+            f"conversations-{'-'.join(active_filters)}.csv"
+            if active_filters else
+            'conversations-all.csv'
+        )
+        return ConversationBulkExportManager.streaming_response(queryset, filename)

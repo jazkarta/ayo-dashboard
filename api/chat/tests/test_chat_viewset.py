@@ -169,7 +169,7 @@ class TestConversationExport:
         assert response.status_code == status.HTTP_200_OK
         assert response['Content-Type'] == 'text/csv'
         assert 'attachment' in response['Content-Disposition']
-        assert conversation.conversation_id in response['Content-Disposition']
+        assert 'conversation-test-conversation.csv' in response['Content-Disposition']
         assert response.streaming is True
 
     def test_export_csv_has_correct_headers(self, api_client, chat_user, conversation):
@@ -342,7 +342,7 @@ class TestConversationFilter:
         assert len(results) == 1
         assert results[0]['title'] == 'Theirs'
 
-    def test_filter_by_participant_email_partial_match(self, api_client, chat_user):
+    def test_filter_by_participant_email_partial_match_returns_no_results(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
         other_user = User.objects.create_user(email='other@example.com', password='pass')
         ConversationModel.objects.create(conversation_id='c1', user=chat_user, title='Mine')
@@ -355,8 +355,7 @@ class TestConversationFilter:
 
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get('results', response.data)
-        assert len(results) == 1
-        assert results[0]['title'] == 'Mine'
+        assert len(results) == 0
 
     def test_filter_by_date_from_excludes_older_conversations(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
@@ -422,7 +421,7 @@ class TestConversationFilter:
 @pytest.mark.django_db
 class TestConversationBulkExport:
     # Row layout: title(0), conv_id(1), model(2), participant_name(3),
-    #             participant_email(4), created_at(5), prompts(6), responses(7), attachment_urls(8)
+    #             prompts(4), responses(5), attachment_urls(6)
 
     def test_bulk_export_unauthenticated_returns_403(self, api_client):
         response = api_client.get(bulk_export_url())
@@ -444,7 +443,7 @@ class TestConversationBulkExport:
         rows = parse_csv_response(response)
         assert rows[0] == [
             'conversation_title', 'conversation_id', 'model_name',
-            'participant_name', 'participant_email', 'created_at',
+            'participant_name',
             'prompts', 'responses', 'attachment_urls',
         ]
 
@@ -459,7 +458,7 @@ class TestConversationBulkExport:
         api_client.force_authenticate(user=chat_user)
         response = api_client.get(bulk_export_url())
 
-        assert 'conversations_export.csv' in response['Content-Disposition']
+        assert 'conversations-all.csv' in response['Content-Disposition']
 
     def test_bulk_export_one_row_per_conversation(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
@@ -484,10 +483,9 @@ class TestConversationBulkExport:
         data_row = rows[1]
         assert data_row[1] == conversation.conversation_id
         assert data_row[2] == conversation.model_name
-        assert data_row[4] == chat_user.email
-        assert data_row[6] == chat.prompt
-        assert data_row[7] == chat.response
-        assert data_row[8] == ''
+        assert data_row[4] == chat.prompt
+        assert data_row[5] == chat.response
+        assert data_row[6] == ''
 
     def test_bulk_export_prompts_and_responses_pipe_joined(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
@@ -500,8 +498,8 @@ class TestConversationBulkExport:
 
         rows = parse_csv_response(response)
         assert len(rows) == 2  # header + 1 conversation row
-        assert rows[1][6] == 'First prompt|Second prompt'
-        assert rows[1][7] == 'First response|Second response'
+        assert rows[1][4] == 'First prompt|Second prompt'
+        assert rows[1][5] == 'First response|Second response'
 
     def test_bulk_export_filtered_by_model_name(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
@@ -549,4 +547,4 @@ class TestConversationBulkExport:
         response = api_client.get(bulk_export_url())
 
         rows = parse_csv_response(response)
-        assert sorted(rows[1][8].split('|')) == sorted(urls)
+        assert sorted(rows[1][6].split('|')) == sorted(urls)
