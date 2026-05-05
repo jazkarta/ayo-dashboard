@@ -40,6 +40,7 @@ def conversation(db, chat_user):
     return ConversationModel.objects.create(
         conversation_id='conv-test-001',
         user=chat_user,
+        title='Test Conversation',
         model_name='gpt-4o',
     )
 
