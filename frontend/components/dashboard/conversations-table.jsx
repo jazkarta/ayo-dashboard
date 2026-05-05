@@ -325,8 +325,8 @@ export default function ConversationsTable() {
             {/* Export */}
             {pagination.count > 0 && (
               <Button
-                variant="outline"
-                className="gap-2 h-9"
+                variant="default"
+                className="gap-2 h-9 bg-black text-white hover:bg-black/85"
                 onClick={handleBulkExport}
                 disabled={exporting || loading}
               >

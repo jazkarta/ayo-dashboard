@@ -13,7 +13,7 @@ import {
 import {
   Loader2,
   ArrowLeft,
-  FileDown,
+  Download,
   SearchX,
   AlertTriangle,
   RotateCcw,
@@ -188,15 +188,14 @@ export default function ConversationDetails({ id }) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                size="sm"
                 onClick={handleExport}
                 disabled={exporting || status === "loading"}
-                className="bg-gray-500 hover:bg-gray-600 text-white text-base font-semibold"
+                className="gap-2 h-9 bg-black text-white hover:bg-black/85"
               >
                 {exporting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <FileDown className="h-4 w-4" />
+                  <Download className="h-4 w-4" />
                 )}
                 Export
               </Button>
