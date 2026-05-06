@@ -162,21 +162,21 @@ export default function ConversationsTable() {
   };
 
   const columns = useMemo(() => [
-    columnHelper.accessor("title", {
-      header: "Title",
+    columnHelper.accessor("conversation_id", {
+      header: "Conversation ID",
       cell: (info) => {
-        const title = info.getValue();
+        const conversationId = info.getValue();
         const id = info.row.original.id;
         return (
-          <Link href={`/dashboard/conversations/${id}`} className="text-primary hover:underline font-medium">
-            {title || "-"}
+          <Link href={`/dashboard/conversations/${id}`} className="text-primary hover:underline font-medium font-mono">
+            {conversationId || "-"}
           </Link>
         );
       },
     }),
-    columnHelper.accessor((row) => row.participant?.email, {
-      id: "participant_email",
-      header: "Participant Email",
+    columnHelper.accessor((row) => row.participant?.username, {
+      id: "participant_username",
+      header: "Participant Username",
       cell: (info) => info.getValue() || "-",
     }),
     columnHelper.accessor("model_name", {
