@@ -75,6 +75,8 @@ export default function ConversationsTable() {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [fromOpen, setFromOpen] = useState(false);
   const [toOpen, setToOpen] = useState(false);
+  const [dateMode, setDateMode] = useState("single"); // "single" | "range"
+  const [singleOpen, setSingleOpen] = useState(false);
 
   const [exporting, setExporting] = useState(false);
   const [data, setData] = useState([]);
@@ -320,13 +322,32 @@ export default function ConversationsTable() {
                         Today
                       </button>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {/* From */}
-                      <div className="relative flex-1">
-                        <Popover open={fromOpen} onOpenChange={setFromOpen}>
+
+                    {/* Mode toggle */}
+                    <div className="flex rounded-md border overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => { setDateMode("single"); setDraft((p) => ({ ...p, date_from: "", date_to: "" })); }}
+                        className={`flex-1 py-1.5 text-xs font-medium transition-colors ${dateMode === "single" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+                      >
+                        Single day
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setDateMode("range"); setDraft((p) => ({ ...p, date_from: "", date_to: "" })); }}
+                        className={`flex-1 py-1.5 text-xs font-medium transition-colors ${dateMode === "range" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+                      >
+                        Date range
+                      </button>
+                    </div>
+
+                    {/* Single day picker */}
+                    {dateMode === "single" && (
+                      <div className="relative">
+                        <Popover open={singleOpen} onOpenChange={setSingleOpen}>
                           <PopoverTrigger asChild>
                             <Button variant="outline" className={`h-9 w-full justify-start text-left font-normal text-sm ${!draft.date_from ? "text-muted-foreground" : "border-primary/40 bg-primary/5 text-foreground font-medium"}`}>
-                              <span className="truncate pr-4">{draft.date_from ? format(new Date(draft.date_from), "PP") : "From"}</span>
+                              <span className="truncate pr-4">{draft.date_from ? format(new Date(draft.date_from), "PPP") : "Pick a date"}</span>
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
@@ -336,67 +357,83 @@ export default function ConversationsTable() {
                               fromYear={2020}
                               toYear={new Date().getFullYear()}
                               selected={draft.date_from ? new Date(draft.date_from) : undefined}
-                              onSelect={(date) => { setDraft((p) => ({ ...p, date_from: date ? format(date, "yyyy-MM-dd") : "" })); setFromOpen(false); }}
-                              disabled={(date) => draft.date_to ? date > new Date(draft.date_to) : false}
+                              onSelect={(date) => {
+                                const formatted = date ? format(date, "yyyy-MM-dd") : "";
+                                setDraft((p) => ({ ...p, date_from: formatted, date_to: formatted }));
+                                setSingleOpen(false);
+                              }}
                               initialFocus
                             />
                           </PopoverContent>
                         </Popover>
                         {draft.date_from && (
-                          <button
-                            type="button"
-                            onClick={() => setDraft((p) => ({ ...p, date_from: "" }))}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10"
-                          >
+                          <button type="button" onClick={() => setDraft((p) => ({ ...p, date_from: "", date_to: "" }))} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10">
                             <X className="h-3 w-3" />
                           </button>
                         )}
                       </div>
+                    )}
 
-                      <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-
-                      {/* To */}
-                      <div className="relative flex-1">
-                        <Popover open={toOpen} onOpenChange={setToOpen}>
-                          <PopoverTrigger asChild>
-                            <Button variant="outline" className={`h-9 w-full justify-start text-left font-normal text-sm ${!draft.date_to ? "text-muted-foreground" : "border-primary/40 bg-primary/5 text-foreground font-medium"}`}>
-                              <span className="truncate pr-4">{draft.date_to ? format(new Date(draft.date_to), "PP") : "To"}</span>
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              captionLayout="dropdown"
-                              fromYear={2020}
-                              toYear={new Date().getFullYear()}
-                              selected={draft.date_to ? new Date(draft.date_to) : undefined}
-                              onSelect={(date) => { setDraft((p) => ({ ...p, date_to: date ? format(date, "yyyy-MM-dd") : "" })); setToOpen(false); }}
-                              disabled={(date) => draft.date_from ? date < new Date(draft.date_from) : false}
-                              initialFocus
-                            />
-                            <div className="border-t p-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="w-full text-xs"
-                                onClick={() => { setDraft((p) => ({ ...p, date_to: format(new Date(), "yyyy-MM-dd") })); setToOpen(false); }}
-                              >
-                                Today
+                    {/* Range pickers */}
+                    {dateMode === "range" && (
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <Popover open={fromOpen} onOpenChange={setFromOpen}>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className={`h-9 w-full justify-start text-left font-normal text-sm ${!draft.date_from ? "text-muted-foreground" : "border-primary/40 bg-primary/5 text-foreground font-medium"}`}>
+                                <span className="truncate pr-4">{draft.date_from ? format(new Date(draft.date_from), "PP") : "From"}</span>
                               </Button>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                        {draft.date_to && (
-                          <button
-                            type="button"
-                            onClick={() => setDraft((p) => ({ ...p, date_to: "" }))}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        )}
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                captionLayout="dropdown"
+                                fromYear={2020}
+                                toYear={new Date().getFullYear()}
+                                selected={draft.date_from ? new Date(draft.date_from) : undefined}
+                                onSelect={(date) => { setDraft((p) => ({ ...p, date_from: date ? format(date, "yyyy-MM-dd") : "" })); setFromOpen(false); }}
+                                disabled={(date) => draft.date_to ? date > new Date(draft.date_to) : false}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          {draft.date_from && (
+                            <button type="button" onClick={() => setDraft((p) => ({ ...p, date_from: "" }))} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10">
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+
+                        <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+
+                        <div className="relative flex-1">
+                          <Popover open={toOpen} onOpenChange={setToOpen}>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className={`h-9 w-full justify-start text-left font-normal text-sm ${!draft.date_to ? "text-muted-foreground" : "border-primary/40 bg-primary/5 text-foreground font-medium"}`}>
+                                <span className="truncate pr-4">{draft.date_to ? format(new Date(draft.date_to), "PP") : "To"}</span>
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                captionLayout="dropdown"
+                                fromYear={2020}
+                                toYear={new Date().getFullYear()}
+                                selected={draft.date_to ? new Date(draft.date_to) : undefined}
+                                onSelect={(date) => { setDraft((p) => ({ ...p, date_to: date ? format(date, "yyyy-MM-dd") : "" })); setToOpen(false); }}
+                                disabled={(date) => draft.date_from ? date < new Date(draft.date_from) : false}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          {draft.date_to && (
+                            <button type="button" onClick={() => setDraft((p) => ({ ...p, date_to: "" }))} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10">
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
 
