@@ -329,28 +329,30 @@ class TestConversationFilter:
         results = response.data.get('results', response.data)
         assert len(results) == 1
 
-    def test_filter_by_participant_email(self, api_client, chat_user):
+    def test_filter_by_participant_username(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
-        other_user = User.objects.create_user(email='other@example.com', password='pass')
+        other_user = User.objects.create_user(email='other@example.com', password='pass', username='OtherUser')
         ConversationModel.objects.create(conversation_id='c1', user=chat_user, title='Mine')
         ConversationModel.objects.create(conversation_id='c2', user=other_user, title='Theirs')
 
-        response = api_client.get(reverse('conversation-list'), {'participant_email': 'other@example.com'})
+        response = api_client.get(reverse('conversation-list'), {'participant_username': 'OtherUser'})
 
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get('results', response.data)
         assert len(results) == 1
         assert results[0]['title'] == 'Theirs'
 
-    def test_filter_by_participant_email_partial_match_returns_no_results(self, api_client, chat_user):
+    def test_filter_by_participant_username_partial_match_returns_no_results(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
-        other_user = User.objects.create_user(email='other@example.com', password='pass')
+        chat_user.username = 'ChatUser'
+        chat_user.save()
+        other_user = User.objects.create_user(email='other@example.com', password='pass', username='OtherUser')
         ConversationModel.objects.create(conversation_id='c1', user=chat_user, title='Mine')
         ConversationModel.objects.create(conversation_id='c2', user=other_user, title='Theirs')
 
         response = api_client.get(
             reverse('conversation-list'),
-            {'participant_email': 'chatuser'},
+            {'participant_username': 'Chat'},
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -385,16 +387,18 @@ class TestConversationFilter:
         assert len(results) == 1
         assert results[0]['title'] == 'Old'
 
-    def test_filter_combined_model_name_and_email(self, api_client, chat_user):
+    def test_filter_combined_model_name_and_username(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
-        other_user = User.objects.create_user(email='other@example.com', password='pass')
+        chat_user.username = 'ChatUser'
+        chat_user.save()
+        other_user = User.objects.create_user(email='other@example.com', password='pass', username='OtherUser')
         ConversationModel.objects.create(conversation_id='c1', user=chat_user, model_name='gpt-4o', title='Mine GPT')
         ConversationModel.objects.create(conversation_id='c2', user=other_user, model_name='gpt-4o', title='Theirs GPT')
         ConversationModel.objects.create(conversation_id='c3', user=chat_user, model_name='claude', title='Mine Claude')
 
         response = api_client.get(
             reverse('conversation-list'),
-            {'model_name': 'gpt-4o', 'participant_email': chat_user.email},
+            {'model_name': 'gpt-4o', 'participant_username': 'ChatUser'},
         )
 
         assert response.status_code == status.HTTP_200_OK
@@ -511,13 +515,15 @@ class TestConversationBulkExport:
         assert len(rows) == 2  # header + 1 matching row
         assert rows[1][1] == 'b1'
 
-    def test_bulk_export_filtered_by_participant_email(self, api_client, chat_user):
+    def test_bulk_export_filtered_by_participant_username(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
-        other_user = User.objects.create_user(email='other@example.com', password='pass')
+        chat_user.username = 'ChatUser'
+        chat_user.save()
+        other_user = User.objects.create_user(email='other@example.com', password='pass', username='OtherUser')
         ConversationModel.objects.create(conversation_id='b1', user=chat_user, title='Mine')
         ConversationModel.objects.create(conversation_id='b2', user=other_user, title='Theirs')
 
-        response = api_client.get(bulk_export_url(), {'participant_email': chat_user.email})
+        response = api_client.get(bulk_export_url(), {'participant_username': 'ChatUser'})
 
         rows = parse_csv_response(response)
         assert len(rows) == 2  # header + 1 matching row
