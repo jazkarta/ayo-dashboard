@@ -88,13 +88,19 @@ class ConversationUserSerializer(serializers.ModelSerializer):
 class ConversationListSerializer(serializers.ModelSerializer):
     participant = ConversationUserSerializer(read_only=True, source='user')
     created_at = serializers.SerializerMethodField()
+    number_of_turns = serializers.SerializerMethodField()
 
     class Meta:
         model = ConversationModel
-        fields = ['id', 'title', 'conversation_id', 'model_name', 'participant', 'created_at']
+        fields = ['id', 'title', 'conversation_id', 'model_name', 'participant', 'created_at', 'number_of_turns']
 
     def get_created_at(self, obj):
         return obj.created_at.strftime('%B %d, %Y, %I:%M %p') if obj.created_at else None
+
+    def get_number_of_turns(self, obj):
+        if hasattr(obj, 'number_of_turns'):
+            return obj.number_of_turns
+        return obj.chats.count()
 
 class ConversationDetailSerializer(serializers.ModelSerializer):
     participant = ConversationUserSerializer(read_only=True, source='user')

@@ -301,6 +301,46 @@ class TestConversationListSearch:
         assert len(results) == 2
 
 
+@pytest.mark.django_db
+class TestConversationListNumberOfTurns:
+
+    def test_conversation_with_no_chats_returns_zero(self, api_client, chat_user, conversation):
+        api_client.force_authenticate(user=chat_user)
+        response = api_client.get(reverse('conversation-list'))
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert results[0]['number_of_turns'] == 0
+
+    def test_conversation_with_chats_returns_correct_count(self, api_client, chat_user, conversation):
+        api_client.force_authenticate(user=chat_user)
+        Chat.objects.create(conversation=conversation, prompt='Q1', response='A1')
+        Chat.objects.create(conversation=conversation, prompt='Q2', response='A2')
+        Chat.objects.create(conversation=conversation, prompt='Q3', response='A3')
+
+        response = api_client.get(reverse('conversation-list'))
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert results[0]['number_of_turns'] == 3
+
+    def test_each_conversation_has_independent_turn_count(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        c1 = ConversationModel.objects.create(conversation_id='t1', user=chat_user, model_name='gpt-4o', title='One Turn')
+        c2 = ConversationModel.objects.create(conversation_id='t2', user=chat_user, model_name='gpt-4o', title='Two Turns')
+        Chat.objects.create(conversation=c1, prompt='Q1', response='A1')
+        Chat.objects.create(conversation=c2, prompt='Q1', response='A1')
+        Chat.objects.create(conversation=c2, prompt='Q2', response='A2')
+
+        response = api_client.get(reverse('conversation-list'))
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        counts = {r['title']: r['number_of_turns'] for r in results}
+        assert counts['One Turn'] == 1
+        assert counts['Two Turns'] == 2
+
+
 def bulk_export_url():
     return reverse('conversation-bulk-export')
 
@@ -421,6 +461,50 @@ class TestConversationFilter:
     def test_filter_unauthenticated_returns_403(self, api_client):
         response = api_client.get(reverse('conversation-list'), {'model_name': 'gpt-4o'})
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_filter_by_turns_min(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        short = ConversationModel.objects.create(conversation_id='f1', user=chat_user, title='Short')
+        long = ConversationModel.objects.create(conversation_id='f2', user=chat_user, title='Long')
+        Chat.objects.create(conversation=short, prompt='Q1', response='A1')
+        for i in range(5):
+            Chat.objects.create(conversation=long, prompt=f'Q{i}', response=f'A{i}')
+
+        response = api_client.get(reverse('conversation-list'), {'turns_min': 3})
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 1
+        assert results[0]['title'] == 'Long'
+
+    def test_filter_by_turns_max(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        short = ConversationModel.objects.create(conversation_id='f1', user=chat_user, title='Short')
+        long = ConversationModel.objects.create(conversation_id='f2', user=chat_user, title='Long')
+        Chat.objects.create(conversation=short, prompt='Q1', response='A1')
+        for i in range(5):
+            Chat.objects.create(conversation=long, prompt=f'Q{i}', response=f'A{i}')
+
+        response = api_client.get(reverse('conversation-list'), {'turns_max': 2})
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 1
+        assert results[0]['title'] == 'Short'
+
+    def test_filter_by_turns_min_and_max(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        for conv_id, title, turns in [('f1', 'Zero', 0), ('f2', 'Three', 3), ('f3', 'Seven', 7)]:
+            conv = ConversationModel.objects.create(conversation_id=conv_id, user=chat_user, title=title)
+            for i in range(turns):
+                Chat.objects.create(conversation=conv, prompt=f'Q{i}', response=f'A{i}')
+
+        response = api_client.get(reverse('conversation-list'), {'turns_min': 2, 'turns_max': 5})
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 1
+        assert results[0]['title'] == 'Three'
 
 
 @pytest.mark.django_db
