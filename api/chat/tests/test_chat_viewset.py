@@ -324,6 +324,21 @@ class TestConversationListNumberOfTurns:
         results = response.data.get('results', response.data)
         assert results[0]['number_of_turns'] == 3
 
+    def test_error_responses_are_excluded_from_turns(self, api_client, chat_user, conversation):
+        api_client.force_authenticate(user=chat_user)
+        Chat.objects.create(conversation=conversation, prompt='Q1', response='Valid response')
+        Chat.objects.create(
+            conversation=conversation,
+            prompt='Q2',
+            response=f'{Chat.ERROR_RESPONSE_PREFIX}: vertex_ai RateLimitError',
+        )
+
+        response = api_client.get(reverse('conversation-list'))
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert results[0]['number_of_turns'] == 1
+
     def test_each_conversation_has_independent_turn_count(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
         c1 = ConversationModel.objects.create(conversation_id='t1', user=chat_user, model_name='gpt-4o', title='One Turn')
@@ -347,28 +362,6 @@ def bulk_export_url():
 
 @pytest.mark.django_db
 class TestConversationFilter:
-
-    def test_filter_by_model_name(self, api_client, chat_user):
-        api_client.force_authenticate(user=chat_user)
-        ConversationModel.objects.create(conversation_id='c1', user=chat_user, title='GPT Chat', model_name='gpt-4o')
-        ConversationModel.objects.create(conversation_id='c2', user=chat_user, title='Claude Chat', model_name='claude-3-5-sonnet')
-
-        response = api_client.get(reverse('conversation-list'), {'model_name': 'gpt-4o'})
-
-        assert response.status_code == status.HTTP_200_OK
-        results = response.data.get('results', response.data)
-        assert len(results) == 1
-        assert results[0]['model_name'] == 'gpt-4o'
-
-    def test_filter_by_model_name_case_insensitive(self, api_client, chat_user):
-        api_client.force_authenticate(user=chat_user)
-        ConversationModel.objects.create(conversation_id='c1', user=chat_user, title='GPT Chat', model_name='gpt-4o')
-
-        response = api_client.get(reverse('conversation-list'), {'model_name': 'GPT-4O'})
-
-        assert response.status_code == status.HTTP_200_OK
-        results = response.data.get('results', response.data)
-        assert len(results) == 1
 
     def test_filter_by_participant_username(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
@@ -428,24 +421,27 @@ class TestConversationFilter:
         assert len(results) == 1
         assert results[0]['title'] == 'Old'
 
-    def test_filter_combined_model_name_and_username(self, api_client, chat_user):
+    def test_filter_combined_username_and_date(self, api_client, chat_user):
+        from datetime import timedelta
         api_client.force_authenticate(user=chat_user)
         chat_user.username = 'ChatUser'
         chat_user.save()
         other_user = User.objects.create_user(email='other@example.com', password='pass', username='OtherUser')
-        ConversationModel.objects.create(conversation_id='c1', user=chat_user, model_name='gpt-4o', title='Mine GPT')
-        ConversationModel.objects.create(conversation_id='c2', user=other_user, model_name='gpt-4o', title='Theirs GPT')
-        ConversationModel.objects.create(conversation_id='c3', user=chat_user, model_name='claude', title='Mine Claude')
+        recent = ConversationModel.objects.create(conversation_id='c1', user=chat_user, title='Mine Recent')
+        old = ConversationModel.objects.create(conversation_id='c2', user=chat_user, title='Mine Old')
+        ConversationModel.objects.filter(pk=old.pk).update(created_at=timezone.now() - timedelta(days=10))
+        ConversationModel.objects.create(conversation_id='c3', user=other_user, title='Theirs Recent')
 
+        yesterday = (timezone.now().date() - timedelta(days=1)).isoformat()
         response = api_client.get(
             reverse('conversation-list'),
-            {'model_name': 'gpt-4o', 'participant_username': 'ChatUser'},
+            {'participant_username': 'ChatUser', 'date_from': yesterday},
         )
 
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get('results', response.data)
         assert len(results) == 1
-        assert results[0]['title'] == 'Mine GPT'
+        assert results[0]['title'] == 'Mine Recent'
 
     def test_no_filters_returns_all(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
@@ -589,17 +585,6 @@ class TestConversationBulkExport:
         assert len(rows) == 2  # header + 1 conversation row
         assert rows[1][5] == 'First prompt|Second prompt'
         assert rows[1][6] == 'First response|Second response'
-
-    def test_bulk_export_filtered_by_model_name(self, api_client, chat_user):
-        api_client.force_authenticate(user=chat_user)
-        ConversationModel.objects.create(conversation_id='b1', user=chat_user, title='GPT', model_name='gpt-4o')
-        ConversationModel.objects.create(conversation_id='b2', user=chat_user, title='Claude', model_name='claude')
-
-        response = api_client.get(bulk_export_url(), {'model_name': 'gpt-4o'})
-
-        rows = parse_csv_response(response)
-        assert len(rows) == 2  # header + 1 matching row
-        assert rows[1][1] == 'b1'
 
     def test_bulk_export_filtered_by_participant_username(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)

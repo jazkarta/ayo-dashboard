@@ -12,4 +12,4 @@ class ConversationFilter(django_filters.FilterSet):
 
     class Meta:
         model = ConversationModel
-        fields = ['model_name', 'participant_username', 'date_from', 'date_to', 'turns_min', 'turns_max']
+        fields = ['participant_username', 'date_from', 'date_to', 'turns_min', 'turns_max']

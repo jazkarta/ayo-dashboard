@@ -6,6 +6,8 @@ from .conversation_models import ConversationModel
 
 
 class Chat(BaseModel):
+    ERROR_RESPONSE_PREFIX = '[Error] An error occurred while processing the request'
+
     conversation = models.ForeignKey(
         ConversationModel,
         on_delete=models.CASCADE, related_name='chats'
