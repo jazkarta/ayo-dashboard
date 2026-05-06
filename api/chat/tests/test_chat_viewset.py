@@ -740,18 +740,29 @@ class TestConversationFilterByAge:
         results = response.data.get('results', response.data)
         assert len(results) == 0
 
-    def test_filter_by_age_combined_with_model_name(self, api_client, chat_user_with_profile, db):
+    def test_filter_by_age_combined_with_username(self, api_client, chat_user_with_profile, db):
+        from participant.models import ParticipantProfile
+        chat_user_with_profile.username = 'ProfileUser'
+        chat_user_with_profile.save()
+
+        other_user = User.objects.create_user(email='other2@example.com', password='pass', username='OtherUser')
+        ParticipantProfile.objects.create(
+            user=other_user,
+            date_of_birth=date(2000, 1, 1),
+            family_id='FAM-OTHER',
+        )
+
+        ConversationModel.objects.create(conversation_id='age-f4', user=chat_user_with_profile, title='Profile Chat')
+        ConversationModel.objects.create(conversation_id='age-f5', user=other_user, title='Other Chat')
         api_client.force_authenticate(user=chat_user_with_profile)
+
         dob = date(2000, 1, 1)
         today = date.today()
         expected_age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
-        ConversationModel.objects.create(conversation_id='age-f4', user=chat_user_with_profile, title='GPT Chat', model_name='gpt-4o')
-        ConversationModel.objects.create(conversation_id='age-f5', user=chat_user_with_profile, title='Claude Chat', model_name='claude')
-
-        response = api_client.get(reverse('conversation-list'), {'participant_age': expected_age, 'model_name': 'gpt-4o'})
+        response = api_client.get(reverse('conversation-list'), {'participant_age': expected_age, 'participant_username': 'ProfileUser'})
 
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get('results', response.data)
         assert len(results) == 1
-        assert results[0]['title'] == 'GPT Chat'
+        assert results[0]['title'] == 'Profile Chat'
