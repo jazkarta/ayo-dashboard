@@ -18,7 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import {
-  Loader2, Search, SlidersHorizontal, X, Download, MessageSquareOff, User, Filter, CalendarIcon, ArrowRight,
+  Loader2, SlidersHorizontal, X, Download, MessageSquareOff, User, Filter, CalendarIcon, ArrowRight,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import conversationService from "@/services/conversationService";
@@ -66,8 +66,9 @@ async function readBlobMessage(blob) {
 }
 
 export default function ConversationsTable() {
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  // const [search, setSearch] = useState("");
+  // const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [debouncedSearch] = useState("");
 
   const [draft, setDraft] = useState(INITIAL_FILTERS);
   const [applied, setApplied] = useState(INITIAL_FILTERS);
@@ -83,13 +84,13 @@ export default function ConversationsTable() {
 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL;
 
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setDebouncedSearch(search);
-      setCurrentUrl("/chats/conversations/");
-    }, 500);
-    return () => clearTimeout(t);
-  }, [search]);
+  // useEffect(() => {
+  //   const t = setTimeout(() => {
+  //     setDebouncedSearch(search);
+  //     setCurrentUrl("/chats/conversations/");
+  //   }, 500);
+  //   return () => clearTimeout(t);
+  // }, [search]);
 
   const fetchConversations = async (url, searchTerm, filters) => {
     setLoading(true);
@@ -226,7 +227,7 @@ export default function ConversationsTable() {
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Search */}
-            <div className="relative">
+            {/* <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <Input
                 placeholder="Search conversations..."
@@ -243,7 +244,7 @@ export default function ConversationsTable() {
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
-            </div>
+            </div> */}
 
             {/* Filter popover */}
             <Popover open={popoverOpen} onOpenChange={(open) => { setPopoverOpen(open); if (!open) setDraft(applied); }}>
@@ -306,52 +307,95 @@ export default function ConversationsTable() {
 
                   {/* Date range */}
                   <div className="flex flex-col gap-2">
-                    <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                      <CalendarIcon className="h-3.5 w-3.5" />
-                      Date range
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                        <CalendarIcon className="h-3.5 w-3.5" />
+                        Date range
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => { const today = format(new Date(), "yyyy-MM-dd"); setDraft((p) => ({ ...p, date_from: today, date_to: today })); }}
+                        className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors"
+                      >
+                        Today
+                      </button>
+                    </div>
                     <div className="flex items-center gap-2">
-                      <Popover open={fromOpen} onOpenChange={setFromOpen}>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className={`h-9 flex-1 justify-start text-left font-normal text-sm ${!draft.date_from ? "text-muted-foreground" : ""}`}>
-                            <span className="truncate">{draft.date_from ? format(new Date(draft.date_from), "PP") : "From"}</span>
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            captionLayout="dropdown"
-                            fromYear={2020}
-                            toYear={new Date().getFullYear()}
-                            selected={draft.date_from ? new Date(draft.date_from) : undefined}
-                            onSelect={(date) => { setDraft((p) => ({ ...p, date_from: date ? format(date, "yyyy-MM-dd") : "" })); setFromOpen(false); }}
-                            disabled={(date) => draft.date_to ? date > new Date(draft.date_to) : false}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      {/* From */}
+                      <div className="relative flex-1">
+                        <Popover open={fromOpen} onOpenChange={setFromOpen}>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" className={`h-9 w-full justify-start text-left font-normal text-sm ${!draft.date_from ? "text-muted-foreground" : "border-primary/40 bg-primary/5 text-foreground font-medium"}`}>
+                              <span className="truncate pr-4">{draft.date_from ? format(new Date(draft.date_from), "PP") : "From"}</span>
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              captionLayout="dropdown"
+                              fromYear={2020}
+                              toYear={new Date().getFullYear()}
+                              selected={draft.date_from ? new Date(draft.date_from) : undefined}
+                              onSelect={(date) => { setDraft((p) => ({ ...p, date_from: date ? format(date, "yyyy-MM-dd") : "" })); setFromOpen(false); }}
+                              disabled={(date) => draft.date_to ? date > new Date(draft.date_to) : false}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        {draft.date_from && (
+                          <button
+                            type="button"
+                            onClick={() => setDraft((p) => ({ ...p, date_from: "" }))}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
 
                       <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
 
-                      <Popover open={toOpen} onOpenChange={setToOpen}>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className={`h-9 flex-1 justify-start text-left font-normal text-sm ${!draft.date_to ? "text-muted-foreground" : ""}`}>
-                            <span className="truncate">{draft.date_to ? format(new Date(draft.date_to), "PP") : "To"}</span>
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            captionLayout="dropdown"
-                            fromYear={2020}
-                            toYear={new Date().getFullYear()}
-                            selected={draft.date_to ? new Date(draft.date_to) : undefined}
-                            onSelect={(date) => { setDraft((p) => ({ ...p, date_to: date ? format(date, "yyyy-MM-dd") : "" })); setToOpen(false); }}
-                            disabled={(date) => draft.date_from ? date < new Date(draft.date_from) : false}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      {/* To */}
+                      <div className="relative flex-1">
+                        <Popover open={toOpen} onOpenChange={setToOpen}>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" className={`h-9 w-full justify-start text-left font-normal text-sm ${!draft.date_to ? "text-muted-foreground" : "border-primary/40 bg-primary/5 text-foreground font-medium"}`}>
+                              <span className="truncate pr-4">{draft.date_to ? format(new Date(draft.date_to), "PP") : "To"}</span>
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              captionLayout="dropdown"
+                              fromYear={2020}
+                              toYear={new Date().getFullYear()}
+                              selected={draft.date_to ? new Date(draft.date_to) : undefined}
+                              onSelect={(date) => { setDraft((p) => ({ ...p, date_to: date ? format(date, "yyyy-MM-dd") : "" })); setToOpen(false); }}
+                              disabled={(date) => draft.date_from ? date < new Date(draft.date_from) : false}
+                              initialFocus
+                            />
+                            <div className="border-t p-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="w-full text-xs"
+                                onClick={() => { setDraft((p) => ({ ...p, date_to: format(new Date(), "yyyy-MM-dd") })); setToOpen(false); }}
+                              >
+                                Today
+                              </Button>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                        {draft.date_to && (
+                          <button
+                            type="button"
+                            onClick={() => setDraft((p) => ({ ...p, date_to: "" }))}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
