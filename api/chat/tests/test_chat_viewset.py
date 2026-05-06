@@ -684,3 +684,85 @@ class TestConversationListParticipantAge:
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get('results', response.data)
         assert results[0]['participant']['age'] == 10
+
+
+@pytest.mark.django_db
+class TestConversationFilterByAge:
+
+    def test_filter_by_age_returns_matching_conversations(self, api_client, chat_user_with_profile):
+        api_client.force_authenticate(user=chat_user_with_profile)
+        ConversationModel.objects.create(conversation_id='age-f1', user=chat_user_with_profile, title='Matching')
+
+        dob = date(2000, 1, 1)
+        today = date.today()
+        expected_age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+
+        response = api_client.get(reverse('conversation-list'), {'participant_age': expected_age})
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 1
+        assert results[0]['title'] == 'Matching'
+
+    def test_filter_by_age_excludes_different_age(self, api_client, chat_user_with_profile):
+        api_client.force_authenticate(user=chat_user_with_profile)
+        ConversationModel.objects.create(conversation_id='age-f2', user=chat_user_with_profile, title='Should not appear')
+
+        response = api_client.get(reverse('conversation-list'), {'participant_age': 5})
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 0
+
+    def test_filter_by_age_zero_returns_infant_conversations(self, api_client, chat_user, db):
+        from participant.models import ParticipantProfile
+        ParticipantProfile.objects.create(
+            user=chat_user,
+            date_of_birth=date.today() - timedelta(days=30),
+            family_id='FAM-INFANT',
+        )
+        ConversationModel.objects.create(conversation_id='age-f3', user=chat_user, title='Infant')
+        api_client.force_authenticate(user=chat_user)
+
+        response = api_client.get(reverse('conversation-list'), {'participant_age': 0})
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 1
+        assert results[0]['title'] == 'Infant'
+
+    def test_filter_by_age_excludes_participant_with_no_profile(self, api_client, chat_user, conversation):
+        api_client.force_authenticate(user=chat_user)
+
+        response = api_client.get(reverse('conversation-list'), {'participant_age': 14})
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 0
+
+    def test_filter_by_age_combined_with_username(self, api_client, chat_user_with_profile, db):
+        from participant.models import ParticipantProfile
+        chat_user_with_profile.username = 'ProfileUser'
+        chat_user_with_profile.save()
+
+        other_user = User.objects.create_user(email='other2@example.com', password='pass', username='OtherUser')
+        ParticipantProfile.objects.create(
+            user=other_user,
+            date_of_birth=date(2000, 1, 1),
+            family_id='FAM-OTHER',
+        )
+
+        ConversationModel.objects.create(conversation_id='age-f4', user=chat_user_with_profile, title='Profile Chat')
+        ConversationModel.objects.create(conversation_id='age-f5', user=other_user, title='Other Chat')
+        api_client.force_authenticate(user=chat_user_with_profile)
+
+        dob = date(2000, 1, 1)
+        today = date.today()
+        expected_age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+
+        response = api_client.get(reverse('conversation-list'), {'participant_age': expected_age, 'participant_username': 'ProfileUser'})
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 1
+        assert results[0]['title'] == 'Profile Chat'
