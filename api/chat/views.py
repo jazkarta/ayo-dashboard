@@ -26,7 +26,7 @@ from chat.serializers import (
 _CONVERSATION_FILTER_PARAMS = [
     openapi.Parameter('search', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Search by title, participant name, or email'),
     openapi.Parameter('model_name', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Filter by model name (case-insensitive)'),
-    openapi.Parameter('participant_email', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Filter by participant email (case-insensitive)'),
+    openapi.Parameter('participant_username', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Filter by participant username (case-insensitive)'),
     openapi.Parameter('date_from', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Include conversations on or after this date (YYYY-MM-DD)'),
     openapi.Parameter('date_to', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Include conversations on or before this date (YYYY-MM-DD)'),
 ]
@@ -122,7 +122,7 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
             return Response({'detail': 'No conversations found for the given filters.'}, status=status.HTTP_404_NOT_FOUND)
         active_filters = [
             slugify(request.query_params[key])
-            for key in ('model_name', 'participant_email', 'date_from', 'date_to')
+            for key in ('model_name', 'participant_username', 'date_from', 'date_to')
             if request.query_params.get(key)
         ]
         filename = (
