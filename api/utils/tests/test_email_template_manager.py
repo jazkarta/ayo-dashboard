@@ -15,7 +15,7 @@ class TestEmailTemplateManager:
         assert template is not None
         assert 'subject' in template
         assert 'email_body' in template
-        assert template['subject'] == 'Invitation for Your Child to Join AYO Platform'
+        assert template['subject'] == 'Invitation for Your Child to Join AYO LLM platform'
 
     def test_get_email_template_by_name_not_found(self, manager):
         """Test retrieving a non-existent template returns None."""
@@ -25,21 +25,17 @@ class TestEmailTemplateManager:
     @pytest.mark.parametrize("context,expected_snippet", [
         (
             {
-                '%participantName%': 'John Doe',
-                '%invitedBy%': 'Dr. Smith',
                 '%invitationLink%': 'http://example.com/join',
                 '%expiryDate%': '2026-12-31'
             },
-            "Your child John Doe has been invited by a researcher, Dr. Smith"
+            "Please note that this invitation will expire on 2026-12-31."
         ),
         (
             {
-                '%participantName%': 'Jane Doe',
-                '%invitedBy%': 'Prof. Brown',
                 '%invitationLink%': 'http://example.com/jane',
                 '%expiryDate%': '2026-06-30'
             },
-            "Your child Jane Doe has been invited by a researcher, Prof. Brown"
+            "Please note that this invitation will expire on 2026-06-30."
         )
     ])
     def test_generate_email_body_with_context(self, manager, context, expected_snippet):
@@ -50,5 +46,5 @@ class TestEmailTemplateManager:
         assert expected_snippet in body
         assert context['%invitationLink%'] in body
         assert context['%expiryDate%'] in body
-        # Ensure no placeholders are left (optional but good)
-        assert '%participantName%' not in body
+        assert '%invitationLink%' not in body
+        assert '%expiryDate%' not in body
