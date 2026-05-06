@@ -130,7 +130,7 @@ export default function GuardianInfoForm({ invitationId = null, onSuccess = null
                   </div>
                   {loadingSuggestions ? (
                     <div className="flex flex-wrap gap-2">
-                      {[80, 96, 72, 88].map((w) => (
+                      {[80, 96, 72, 88, 76, 92].map((w) => (
                         <div key={w} className="h-6 rounded-full bg-blue-200 animate-pulse" style={{ width: w }} />
                       ))}
                     </div>
