@@ -15,15 +15,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 import {
-  Loader2, Search, SlidersHorizontal, X, Download, MessageSquareOff, Bot, Mail, Filter,
+  Loader2, Search, SlidersHorizontal, X, Download, MessageSquareOff, User, Filter, CalendarIcon, ArrowRight,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import conversationService from "@/services/conversationService";
 
 const columnHelper = createColumnHelper();
 
-const INITIAL_FILTERS = { model_name: "", participant_email: "" };
+const INITIAL_FILTERS = { participant_username: "", date_from: "", date_to: "" };
 
 function downloadBlob(blob, filename) {
   const blobUrl = URL.createObjectURL(blob);
@@ -70,6 +72,8 @@ export default function ConversationsTable() {
   const [draft, setDraft] = useState(INITIAL_FILTERS);
   const [applied, setApplied] = useState(INITIAL_FILTERS);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [fromOpen, setFromOpen] = useState(false);
+  const [toOpen, setToOpen] = useState(false);
 
   const [exporting, setExporting] = useState(false);
   const [data, setData] = useState([]);
@@ -183,12 +187,30 @@ export default function ConversationsTable() {
       header: "Model Name",
       cell: (info) => info.getValue() || "-",
     }),
+    columnHelper.accessor("created_at", {
+      header: "Conversation Created",
+      cell: (info) => {
+        const value = info.getValue();
+        if (!value) return "-";
+        const parts = value.match(/^(.+,\s\d{4}),\s(.+)$/);
+        const date = parts?.[1] ?? value;
+        const time = parts?.[2] ?? "";
+        return (
+          <div className="flex items-center gap-1.5 text-sm">
+            <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="font-medium text-foreground">{date}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-muted-foreground">{time}</span>
+          </div>
+        );
+      },
+    }),
   ], []);
 
   const table = useReactTable({ data, columns, getCoreRowModel: getCoreRowModel() });
 
   const activeEntries = useMemo(() => {
-    const labels = { model_name: "Model", participant_email: "Email" };
+    const labels = { participant_username: "Username", date_from: "From", date_to: "To" };
     return Object.entries(applied)
       .filter(([, v]) => Boolean(v))
       .map(([key, value]) => ({ key, label: labels[key], value }));
@@ -242,7 +264,7 @@ export default function ConversationsTable() {
                     <Filter className="h-4 w-4 text-muted-foreground" />
                     Filter conversations
                   </div>
-                  {(draft.model_name || draft.participant_email) && (
+                  {(draft.participant_username || draft.date_from || draft.date_to) && (
                     <button
                       type="button"
                       onClick={() => setDraft(INITIAL_FILTERS)}
@@ -257,23 +279,23 @@ export default function ConversationsTable() {
 
                 {/* Fields */}
                 <div className="flex flex-col gap-4 p-4">
-                  {/* Model name */}
+                  {/* Participant username */}
                   <div className="flex flex-col gap-2">
                     <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                      <Bot className="h-3.5 w-3.5" />
-                      Model name
+                      <User className="h-3.5 w-3.5" />
+                      Participant username
                     </label>
                     <div className="relative">
                       <Input
-                        placeholder="e.g. gpt-4o"
-                        value={draft.model_name}
-                        onChange={(e) => setDraft((p) => ({ ...p, model_name: e.target.value }))}
+                        placeholder="e.g. CurlyAvocet"
+                        value={draft.participant_username}
+                        onChange={(e) => setDraft((p) => ({ ...p, participant_username: e.target.value }))}
                         className="h-9 pr-8 text-sm"
                       />
-                      {draft.model_name && (
+                      {draft.participant_username && (
                         <button
                           type="button"
-                          onClick={() => setDraft((p) => ({ ...p, model_name: "" }))}
+                          onClick={() => setDraft((p) => ({ ...p, participant_username: "" }))}
                           className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                         >
                           <X className="h-3.5 w-3.5" />
@@ -282,28 +304,54 @@ export default function ConversationsTable() {
                     </div>
                   </div>
 
-                  {/* Participant email */}
+                  {/* Date range */}
                   <div className="flex flex-col gap-2">
                     <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                      <Mail className="h-3.5 w-3.5" />
-                      Participant email
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                      Date range
                     </label>
-                    <div className="relative">
-                      <Input
-                        placeholder="name@example.com"
-                        value={draft.participant_email}
-                        onChange={(e) => setDraft((p) => ({ ...p, participant_email: e.target.value }))}
-                        className="h-9 pr-8 text-sm"
-                      />
-                      {draft.participant_email && (
-                        <button
-                          type="button"
-                          onClick={() => setDraft((p) => ({ ...p, participant_email: "" }))}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      )}
+                    <div className="flex items-center gap-2">
+                      <Popover open={fromOpen} onOpenChange={setFromOpen}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className={`h-9 flex-1 justify-start text-left font-normal text-sm ${!draft.date_from ? "text-muted-foreground" : ""}`}>
+                            <span className="truncate">{draft.date_from ? format(new Date(draft.date_from), "PP") : "From"}</span>
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            captionLayout="dropdown"
+                            fromYear={2020}
+                            toYear={new Date().getFullYear()}
+                            selected={draft.date_from ? new Date(draft.date_from) : undefined}
+                            onSelect={(date) => { setDraft((p) => ({ ...p, date_from: date ? format(date, "yyyy-MM-dd") : "" })); setFromOpen(false); }}
+                            disabled={(date) => draft.date_to ? date > new Date(draft.date_to) : false}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+
+                      <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+
+                      <Popover open={toOpen} onOpenChange={setToOpen}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className={`h-9 flex-1 justify-start text-left font-normal text-sm ${!draft.date_to ? "text-muted-foreground" : ""}`}>
+                            <span className="truncate">{draft.date_to ? format(new Date(draft.date_to), "PP") : "To"}</span>
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            captionLayout="dropdown"
+                            fromYear={2020}
+                            toYear={new Date().getFullYear()}
+                            selected={draft.date_to ? new Date(draft.date_to) : undefined}
+                            onSelect={(date) => { setDraft((p) => ({ ...p, date_to: date ? format(date, "yyyy-MM-dd") : "" })); setToOpen(false); }}
+                            disabled={(date) => draft.date_from ? date < new Date(draft.date_from) : false}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
                 </div>
@@ -387,13 +435,13 @@ export default function ConversationsTable() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={3} className="h-24 text-center">
+                <TableCell colSpan={4} className="h-24 text-center">
                   <Loader2 className="animate-spin h-8 w-8 mx-auto" />
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={3}>
+                <TableCell colSpan={4}>
                   <div className="flex flex-col items-center justify-center gap-3 py-14">
                     <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
                       <MessageSquareOff className="h-7 w-7" />

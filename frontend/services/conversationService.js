@@ -9,8 +9,9 @@ const conversationService = {
     }
     const params = new URLSearchParams();
     if (search) params.set("search", search);
-    if (filters.model_name) params.set("model_name", filters.model_name);
-    if (filters.participant_email) params.set("participant_email", filters.participant_email);
+    if (filters.participant_username) params.set("participant_username", filters.participant_username);
+    if (filters.date_from) params.set("date_from", filters.date_from);
+    if (filters.date_to) params.set("date_to", filters.date_to);
     const queryString = params.toString();
     return apiClient.get(queryString ? `${url}?${queryString}` : url);
   },
@@ -29,8 +30,9 @@ const conversationService = {
   bulkExportConversations(search = "", filters = {}) {
     const params = new URLSearchParams();
     if (search) params.set("search", search);
-    if (filters.model_name) params.set("model_name", filters.model_name);
-    if (filters.participant_email) params.set("participant_email", filters.participant_email);
+    if (filters.participant_username) params.set("participant_username", filters.participant_username);
+    if (filters.date_from) params.set("date_from", filters.date_from);
+    if (filters.date_to) params.set("date_to", filters.date_to);
     const queryString = params.toString();
     const url = queryString ? `${urlBase}export/?${queryString}` : `${urlBase}export/`;
     return apiClient.get(url, { responseType: "blob" });
