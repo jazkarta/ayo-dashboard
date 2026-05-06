@@ -1,4 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Count, Q
 from django.utils.text import slugify
 
 from drf_yasg import openapi
@@ -12,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from chat.filters import ConversationFilter
+from chat.models.chat_models import Chat
 from chat.managers import ConversationBulkExportManager, ConversationExportManager
 from chat.models.conversation_models import ConversationModel
 from chat.serializers import (
@@ -25,10 +27,11 @@ from chat.serializers import (
 
 _CONVERSATION_FILTER_PARAMS = [
     openapi.Parameter('search', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Search by title, participant name, or email'),
-    openapi.Parameter('model_name', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Filter by model name (case-insensitive)'),
-    openapi.Parameter('participant_username', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Filter by participant username (case-insensitive)'),
+    openapi.Parameter('participant_username', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Filter by participant username'),
     openapi.Parameter('date_from', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Include conversations on or after this date (YYYY-MM-DD)'),
     openapi.Parameter('date_to', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Include conversations on or before this date (YYYY-MM-DD)'),
+    openapi.Parameter('turns_min', openapi.IN_QUERY, type=openapi.TYPE_INTEGER, description='Include conversations with at least this many turns'),
+    openapi.Parameter('turns_max', openapi.IN_QUERY, type=openapi.TYPE_INTEGER, description='Include conversations with at most this many turns'),
 ]
 
 
@@ -48,9 +51,13 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
 
     def get_queryset(self):
         if self.action in ('export', 'bulk_export'):
-            return ConversationModel.objects.select_related('user', 'user__participant_profile')
+            return ConversationModel.objects.select_related(
+                'user', 'user__participant_profile'
+            ).annotate(number_of_turns=Count('chats', filter=~Q(chats__response__startswith=Chat.ERROR_RESPONSE_PREFIX)))
 
-        return ConversationModel.objects.select_related('user').order_by('-created_at')
+        return ConversationModel.objects.select_related('user').order_by('-created_at').annotate(
+            number_of_turns=Count('chats', filter=~Q(chats__response__startswith=Chat.ERROR_RESPONSE_PREFIX))
+        )
 
     def get_serializer_class(self):
         return self.serializer_action_classes.get(
@@ -122,7 +129,7 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
             return Response({'detail': 'No conversations found for the given filters.'}, status=status.HTTP_404_NOT_FOUND)
         active_filters = [
             slugify(request.query_params[key])
-            for key in ('model_name', 'participant_username', 'date_from', 'date_to')
+            for key in ('participant_username', 'date_from', 'date_to')
             if request.query_params.get(key)
         ]
         filename = (
