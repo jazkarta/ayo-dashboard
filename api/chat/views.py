@@ -55,7 +55,7 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
                 'user', 'user__participant_profile'
             ).annotate(number_of_turns=Count('chats', filter=~Q(chats__response__startswith=Chat.ERROR_RESPONSE_PREFIX)))
 
-        return ConversationModel.objects.select_related('user').order_by('-created_at').annotate(
+        return ConversationModel.objects.select_related('user', 'user__participant_profile').order_by('-created_at').annotate(
             number_of_turns=Count('chats', filter=~Q(chats__response__startswith=Chat.ERROR_RESPONSE_PREFIX))
         )
 

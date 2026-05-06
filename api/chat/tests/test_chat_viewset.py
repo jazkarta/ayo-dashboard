@@ -1,6 +1,6 @@
 import csv
 import io
-from datetime import timedelta
+from datetime import date, timedelta
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -624,3 +624,63 @@ class TestConversationBulkExport:
 
         rows = parse_csv_response(response)
         assert sorted(rows[1][7].split('|')) == sorted(urls)
+
+
+@pytest.mark.django_db
+class TestConversationListParticipantAge:
+
+    def test_age_returned_correctly_for_participant_with_profile(self, api_client, chat_user_with_profile):
+        api_client.force_authenticate(user=chat_user_with_profile)
+        ConversationModel.objects.create(conversation_id='age-c1', user=chat_user_with_profile, title='Age Test')
+
+        response = api_client.get(reverse('conversation-list'))
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        dob = date(2000, 1, 1)
+        today = date.today()
+        expected_age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+        assert results[0]['participant']['age'] == expected_age
+
+    def test_age_is_none_when_participant_has_no_profile(self, api_client, chat_user, conversation):
+        api_client.force_authenticate(user=chat_user)
+
+        response = api_client.get(reverse('conversation-list'))
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert results[0]['participant']['age'] is None
+
+    def test_age_returns_less_than_one_year_for_infant(self, api_client, chat_user, db):
+        from participant.models import ParticipantProfile
+        ParticipantProfile.objects.create(
+            user=chat_user,
+            date_of_birth=date.today() - timedelta(days=30),
+            family_id='FAM-TEST',
+        )
+        ConversationModel.objects.create(conversation_id='age-c2', user=chat_user, title='Infant Test')
+        api_client.force_authenticate(user=chat_user)
+
+        response = api_client.get(reverse('conversation-list'))
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert results[0]['participant']['age'] == 'Less than one year'
+
+    def test_age_is_correct_on_birthday(self, api_client, chat_user, db):
+        from participant.models import ParticipantProfile
+        today = date.today()
+        dob = date(today.year - 10, today.month, today.day)
+        ParticipantProfile.objects.create(
+            user=chat_user,
+            date_of_birth=dob,
+            family_id='FAM-BDAY',
+        )
+        ConversationModel.objects.create(conversation_id='age-c3', user=chat_user, title='Birthday Test')
+        api_client.force_authenticate(user=chat_user)
+
+        response = api_client.get(reverse('conversation-list'))
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert results[0]['participant']['age'] == 10
