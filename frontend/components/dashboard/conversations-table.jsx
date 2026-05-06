@@ -25,7 +25,7 @@ import conversationService from "@/services/conversationService";
 
 const columnHelper = createColumnHelper();
 
-const INITIAL_FILTERS = { participant_username: "", turns_min: "", turns_max: "", date_from: "", date_to: "" };
+const INITIAL_FILTERS = { participant_username: "", turns_min: "", turns_max: "", participant_age: "", date_from: "", date_to: "" };
 
 function downloadBlob(blob, filename) {
   const blobUrl = URL.createObjectURL(blob);
@@ -228,7 +228,7 @@ export default function ConversationsTable() {
   const table = useReactTable({ data, columns, getCoreRowModel: getCoreRowModel() });
 
   const activeEntries = useMemo(() => {
-    const labels = { participant_username: "Username", turns_min: "Min turns", turns_max: "Max turns", date_from: "From", date_to: "To" };
+    const labels = { participant_username: "Username", turns_min: "Min turns", turns_max: "Max turns", participant_age: "Age", date_from: "From", date_to: "To" };
     return Object.entries(applied)
       .filter(([, v]) => Boolean(v))
       .map(([key, value]) => ({ key, label: labels[key], value }));
@@ -282,7 +282,7 @@ export default function ConversationsTable() {
                     <Filter className="h-4 w-4 text-muted-foreground" />
                     Filter conversations
                   </div>
-                  {(draft.participant_username || draft.turns_min || draft.turns_max || draft.date_from || draft.date_to) && (
+                  {(draft.participant_username || draft.turns_min || draft.turns_max || draft.participant_age || draft.date_from || draft.date_to) && (
                     <button
                       type="button"
                       onClick={() => setDraft(INITIAL_FILTERS)}
@@ -307,7 +307,8 @@ export default function ConversationsTable() {
                       <Input
                         placeholder="e.g. CurlyAvocet"
                         value={draft.participant_username}
-                        onChange={(e) => setDraft((p) => ({ ...p, participant_username: e.target.value }))}
+                        onKeyDown={(e) => e.key === " " && e.preventDefault()}
+                        onChange={(e) => setDraft((p) => ({ ...p, participant_username: e.target.value.replace(/\s/g, "") }))}
                         className="h-9 pr-8 text-sm"
                       />
                       {draft.participant_username && (
@@ -332,10 +333,16 @@ export default function ConversationsTable() {
                       <div className="relative flex-1">
                         <Input
                           type="number"
+                          onKeyDown={(e) => ["e", "E", "+", "-", "."].includes(e.key) && e.preventDefault()}
                           min="1"
+                          max={draft.turns_max || undefined}
+                          step="1"
                           placeholder="Min"
                           value={draft.turns_min}
-                          onChange={(e) => setDraft((p) => ({ ...p, turns_min: e.target.value, turns_max: !p.turns_max ? e.target.value : p.turns_max }))}
+                          onChange={(e) => {
+                            const val = e.target.value === "" ? "" : String(Math.floor(Number(e.target.value)));
+                            setDraft((p) => ({ ...p, turns_min: val }));
+                          }}
                           className="h-9 pr-7 text-sm"
                         />
                         {draft.turns_min && (
@@ -348,10 +355,15 @@ export default function ConversationsTable() {
                       <div className="relative flex-1">
                         <Input
                           type="number"
-                          min="1"
+                          onKeyDown={(e) => ["e", "E", "+", "-", "."].includes(e.key) && e.preventDefault()}
+                          min={draft.turns_min || "1"}
+                          step="1"
                           placeholder="Max"
                           value={draft.turns_max}
-                          onChange={(e) => setDraft((p) => ({ ...p, turns_max: e.target.value }))}
+                          onChange={(e) => {
+                            const val = e.target.value === "" ? "" : String(Math.floor(Number(e.target.value)));
+                            setDraft((p) => ({ ...p, turns_max: val }));
+                          }}
                           className="h-9 pr-7 text-sm"
                         />
                         {draft.turns_max && (
@@ -360,6 +372,38 @@ export default function ConversationsTable() {
                           </button>
                         )}
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Participant age */}
+                  <div className="flex flex-col gap-2">
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <User className="h-3.5 w-3.5" />
+                      Participant age (year)
+                    </label>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        onKeyDown={(e) => ["e", "E", "+", "-", "."].includes(e.key) && e.preventDefault()}
+                        placeholder="e.g. 25"
+                        value={draft.participant_age}
+                        onChange={(e) => {
+                          const val = e.target.value === "" ? "" : String(Math.floor(Number(e.target.value)));
+                          setDraft((p) => ({ ...p, participant_age: val }));
+                        }}
+                        className="h-9 pr-8 text-sm"
+                      />
+                      {draft.participant_age && (
+                        <button
+                          type="button"
+                          onClick={() => setDraft((p) => ({ ...p, participant_age: "" }))}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -385,8 +429,7 @@ export default function ConversationsTable() {
                               toYear={new Date().getFullYear()}
                               selected={draft.date_from ? new Date(draft.date_from) : undefined}
                               onSelect={(date) => {
-                                const formatted = date ? format(date, "yyyy-MM-dd") : "";
-                                setDraft((p) => ({ ...p, date_from: formatted, date_to: !p.date_to ? formatted : p.date_to }));
+                                setDraft((p) => ({ ...p, date_from: date ? format(date, "yyyy-MM-dd") : "" }));
                                 setFromOpen(false);
                               }}
                               disabled={(date) => draft.date_to ? date > new Date(draft.date_to) : false}
@@ -417,8 +460,16 @@ export default function ConversationsTable() {
                               fromYear={2020}
                               toYear={new Date().getFullYear()}
                               selected={draft.date_to ? new Date(draft.date_to) : undefined}
+                              defaultMonth={draft.date_from ? new Date(draft.date_from) : undefined}
                               onSelect={(date) => { setDraft((p) => ({ ...p, date_to: date ? format(date, "yyyy-MM-dd") : "" })); setToOpen(false); }}
-                              disabled={(date) => draft.date_from ? date < new Date(draft.date_from) : false}
+                              disabled={(date) => {
+                                if (!draft.date_from) return false;
+                                const from = new Date(draft.date_from);
+                                from.setHours(0, 0, 0, 0);
+                                const d = new Date(date);
+                                d.setHours(0, 0, 0, 0);
+                                return d < from;
+                              }}
                               initialFocus
                             />
                           </PopoverContent>

@@ -12,6 +12,7 @@ const conversationService = {
     if (filters.participant_username) params.set("participant_username", filters.participant_username);
     if (filters.turns_min) params.set("turns_min", filters.turns_min);
     if (filters.turns_max) params.set("turns_max", filters.turns_max);
+    if (filters.participant_age) params.set("participant_age", filters.participant_age);
     if (filters.date_from) params.set("date_from", filters.date_from);
     if (filters.date_to) params.set("date_to", filters.date_to);
     const queryString = params.toString();
@@ -35,6 +36,7 @@ const conversationService = {
     if (filters.participant_username) params.set("participant_username", filters.participant_username);
     if (filters.turns_min) params.set("turns_min", filters.turns_min);
     if (filters.turns_max) params.set("turns_max", filters.turns_max);
+    if (filters.participant_age) params.set("participant_age", filters.participant_age);
     if (filters.date_from) params.set("date_from", filters.date_from);
     if (filters.date_to) params.set("date_to", filters.date_to);
     const queryString = params.toString();
