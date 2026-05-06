@@ -32,6 +32,7 @@ _CONVERSATION_FILTER_PARAMS = [
     openapi.Parameter('date_to', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Include conversations on or before this date (YYYY-MM-DD)'),
     openapi.Parameter('turns_min', openapi.IN_QUERY, type=openapi.TYPE_INTEGER, description='Include conversations with at least this many turns'),
     openapi.Parameter('turns_max', openapi.IN_QUERY, type=openapi.TYPE_INTEGER, description='Include conversations with at most this many turns'),
+    openapi.Parameter('participant_age', openapi.IN_QUERY, type=openapi.TYPE_INTEGER, description='Filter by participant age in years (exact match)'),
 ]
 
 
