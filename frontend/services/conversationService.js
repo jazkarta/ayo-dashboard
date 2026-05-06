@@ -10,6 +10,8 @@ const conversationService = {
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (filters.participant_username) params.set("participant_username", filters.participant_username);
+    if (filters.turns_min) params.set("turns_min", filters.turns_min);
+    if (filters.turns_max) params.set("turns_max", filters.turns_max);
     if (filters.date_from) params.set("date_from", filters.date_from);
     if (filters.date_to) params.set("date_to", filters.date_to);
     const queryString = params.toString();
@@ -31,6 +33,8 @@ const conversationService = {
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (filters.participant_username) params.set("participant_username", filters.participant_username);
+    if (filters.turns_min) params.set("turns_min", filters.turns_min);
+    if (filters.turns_max) params.set("turns_max", filters.turns_max);
     if (filters.date_from) params.set("date_from", filters.date_from);
     if (filters.date_to) params.set("date_to", filters.date_to);
     const queryString = params.toString();
