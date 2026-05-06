@@ -361,8 +361,10 @@ export default function ConversationsTable() {
                           placeholder="Max"
                           value={draft.turns_max}
                           onChange={(e) => {
-                            const val = e.target.value === "" ? "" : String(Math.floor(Number(e.target.value)));
-                            setDraft((p) => ({ ...p, turns_max: val }));
+                            if (e.target.value === "") { setDraft((p) => ({ ...p, turns_max: "" })); return; }
+                            const val = Math.floor(Number(e.target.value));
+                            const min = draft.turns_min ? Number(draft.turns_min) : 1;
+                            setDraft((p) => ({ ...p, turns_max: String(Math.max(val, min)) }));
                           }}
                           className="h-9 pr-7 text-sm"
                         />
