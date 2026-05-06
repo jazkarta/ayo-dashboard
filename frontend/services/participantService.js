@@ -34,8 +34,8 @@ const participantService = {
     return apiClient.post(`${urlBase}invitations/${id}/accept/`, data, { public: true });
   },
 
-  suggestUsername() {
-    return apiClient.get(`${urlBase}suggest-username/`, { public: true });
+  suggestUsername(count = 6) {
+    return apiClient.get(`${urlBase}suggest-username/?count=${count}`, { public: true });
   },
 
   deleteParticipant(id) {

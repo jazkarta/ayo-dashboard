@@ -1,9 +1,11 @@
 import csv
 import io
+from datetime import timedelta
 
 import pytest
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 
 from chat.models import Chat, ChatMedia, ConversationModel
@@ -167,7 +169,7 @@ class TestConversationExport:
         assert response.status_code == status.HTTP_200_OK
         assert response['Content-Type'] == 'text/csv'
         assert 'attachment' in response['Content-Disposition']
-        assert conversation.conversation_id in response['Content-Disposition']
+        assert 'conversation-test-conversation.csv' in response['Content-Disposition']
         assert response.streaming is True
 
     def test_export_csv_has_correct_headers(self, api_client, chat_user, conversation):
@@ -177,7 +179,7 @@ class TestConversationExport:
         rows = parse_csv_response(response)
         assert rows[0] == [
             'conversation_title', 'conversation_id', 'model_name',
-            'participant_name', 'participant_email', 'message_date',
+            'participant_name', 'message_date',
             'prompt', 'response', 'attachment_urls',
         ]
 
@@ -190,10 +192,9 @@ class TestConversationExport:
         data_row = rows[1]
         assert data_row[1] == conversation.conversation_id
         assert data_row[2] == conversation.model_name
-        assert data_row[4] == chat_user.email
-        assert data_row[6] == chat.prompt
-        assert data_row[7] == chat.response
-        assert data_row[8] == ''
+        assert data_row[5] == chat.prompt
+        assert data_row[6] == chat.response
+        assert data_row[7] == ''
 
     def test_export_empty_conversation_returns_only_headers(self, api_client, chat_user, conversation):
         api_client.force_authenticate(user=chat_user)
@@ -212,14 +213,14 @@ class TestConversationExport:
 
         rows = parse_csv_response(response)
         assert len(rows) == 4  # header + 3 chats
-        assert [row[6] for row in rows[1:]] == prompts
+        assert [row[5] for row in rows[1:]] == prompts
 
     def test_export_single_attachment_url_in_column(self, api_client, chat_user, conversation, chat, chat_media):
         api_client.force_authenticate(user=chat_user)
         response = api_client.get(conversation_export_url(conversation.pk))
 
         rows = parse_csv_response(response)
-        assert rows[1][8] == chat_media.url
+        assert rows[1][7] == chat_media.url
 
     def test_export_multiple_attachments_are_pipe_separated(self, api_client, chat_user, conversation, chat):
         api_client.force_authenticate(user=chat_user)
@@ -233,7 +234,7 @@ class TestConversationExport:
         response = api_client.get(conversation_export_url(conversation.pk))
 
         rows = parse_csv_response(response)
-        attachment_urls = rows[1][8].split('|')
+        attachment_urls = rows[1][7].split('|')
         assert sorted(attachment_urls) == sorted(urls)
 
 
@@ -297,3 +298,252 @@ class TestConversationListSearch:
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get('results', response.data)
         assert len(results) == 2
+
+
+def bulk_export_url():
+    return reverse('conversation-bulk-export')
+
+
+@pytest.mark.django_db
+class TestConversationFilter:
+
+    def test_filter_by_model_name(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        ConversationModel.objects.create(conversation_id='c1', user=chat_user, title='GPT Chat', model_name='gpt-4o')
+        ConversationModel.objects.create(conversation_id='c2', user=chat_user, title='Claude Chat', model_name='claude-3-5-sonnet')
+
+        response = api_client.get(reverse('conversation-list'), {'model_name': 'gpt-4o'})
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 1
+        assert results[0]['model_name'] == 'gpt-4o'
+
+    def test_filter_by_model_name_case_insensitive(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        ConversationModel.objects.create(conversation_id='c1', user=chat_user, title='GPT Chat', model_name='gpt-4o')
+
+        response = api_client.get(reverse('conversation-list'), {'model_name': 'GPT-4O'})
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 1
+
+    def test_filter_by_participant_email(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        other_user = User.objects.create_user(email='other@example.com', password='pass')
+        ConversationModel.objects.create(conversation_id='c1', user=chat_user, title='Mine')
+        ConversationModel.objects.create(conversation_id='c2', user=other_user, title='Theirs')
+
+        response = api_client.get(reverse('conversation-list'), {'participant_email': 'other@example.com'})
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 1
+        assert results[0]['title'] == 'Theirs'
+
+    def test_filter_by_participant_email_partial_match_returns_no_results(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        other_user = User.objects.create_user(email='other@example.com', password='pass')
+        ConversationModel.objects.create(conversation_id='c1', user=chat_user, title='Mine')
+        ConversationModel.objects.create(conversation_id='c2', user=other_user, title='Theirs')
+
+        response = api_client.get(
+            reverse('conversation-list'),
+            {'participant_email': 'chatuser'},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 0
+
+    def test_filter_by_date_from_excludes_older_conversations(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        old = ConversationModel.objects.create(conversation_id='c1', user=chat_user, title='Old')
+        ConversationModel.objects.filter(pk=old.pk).update(created_at=timezone.now() - timedelta(days=10))
+        recent = ConversationModel.objects.create(conversation_id='c2', user=chat_user, title='Recent')
+
+        yesterday = (timezone.now().date() - timedelta(days=1)).isoformat()
+        response = api_client.get(reverse('conversation-list'), {'date_from': yesterday})
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 1
+        assert results[0]['id'] == str(recent.id)
+
+    def test_filter_by_date_to_excludes_newer_conversations(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        old = ConversationModel.objects.create(conversation_id='c1', user=chat_user, title='Old')
+        ConversationModel.objects.filter(pk=old.pk).update(created_at=timezone.now() - timedelta(days=10))
+        ConversationModel.objects.create(conversation_id='c2', user=chat_user, title='Recent')
+
+        a_week_ago = (timezone.now().date() - timedelta(days=7)).isoformat()
+        response = api_client.get(reverse('conversation-list'), {'date_to': a_week_ago})
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 1
+        assert results[0]['title'] == 'Old'
+
+    def test_filter_combined_model_name_and_email(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        other_user = User.objects.create_user(email='other@example.com', password='pass')
+        ConversationModel.objects.create(conversation_id='c1', user=chat_user, model_name='gpt-4o', title='Mine GPT')
+        ConversationModel.objects.create(conversation_id='c2', user=other_user, model_name='gpt-4o', title='Theirs GPT')
+        ConversationModel.objects.create(conversation_id='c3', user=chat_user, model_name='claude', title='Mine Claude')
+
+        response = api_client.get(
+            reverse('conversation-list'),
+            {'model_name': 'gpt-4o', 'participant_email': chat_user.email},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 1
+        assert results[0]['title'] == 'Mine GPT'
+
+    def test_no_filters_returns_all(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        ConversationModel.objects.create(conversation_id='c1', user=chat_user, model_name='gpt-4o')
+        ConversationModel.objects.create(conversation_id='c2', user=chat_user, model_name='claude')
+
+        response = api_client.get(reverse('conversation-list'))
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 2
+
+    def test_filter_unauthenticated_returns_403(self, api_client):
+        response = api_client.get(reverse('conversation-list'), {'model_name': 'gpt-4o'})
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.django_db
+class TestConversationBulkExport:
+    # Row layout: title(0), conv_id(1), model(2), participant_name(3),
+    #             prompts(4), responses(5), attachment_urls(6)
+
+    def test_bulk_export_unauthenticated_returns_403(self, api_client):
+        response = api_client.get(bulk_export_url())
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_bulk_export_returns_streaming_csv(self, api_client, chat_user, conversation, chat):
+        api_client.force_authenticate(user=chat_user)
+        response = api_client.get(bulk_export_url())
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response['Content-Type'] == 'text/csv'
+        assert 'attachment' in response['Content-Disposition']
+        assert response.streaming is True
+
+    def test_bulk_export_csv_has_correct_headers(self, api_client, chat_user, conversation):
+        api_client.force_authenticate(user=chat_user)
+        response = api_client.get(bulk_export_url())
+
+        rows = parse_csv_response(response)
+        assert rows[0] == [
+            'conversation_title', 'conversation_id', 'model_name',
+            'participant_name',
+            'prompts', 'responses', 'attachment_urls',
+        ]
+
+    def test_bulk_export_no_conversations_returns_404(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        response = api_client.get(bulk_export_url())
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_bulk_export_filename_in_content_disposition(self, api_client, chat_user, conversation):
+        api_client.force_authenticate(user=chat_user)
+        response = api_client.get(bulk_export_url())
+
+        assert 'conversations-all.csv' in response['Content-Disposition']
+
+    def test_bulk_export_one_row_per_conversation(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        c1 = ConversationModel.objects.create(conversation_id='b1', user=chat_user, title='First', model_name='gpt-4o')
+        c2 = ConversationModel.objects.create(conversation_id='b2', user=chat_user, title='Second', model_name='claude')
+        Chat.objects.create(conversation=c1, prompt='p1', response='r1')
+        Chat.objects.create(conversation=c2, prompt='p2', response='r2')
+
+        response = api_client.get(bulk_export_url())
+
+        rows = parse_csv_response(response)
+        assert len(rows) == 3  # header + 1 row per conversation
+        exported_conv_ids = {row[1] for row in rows[1:]}
+        assert exported_conv_ids == {'b1', 'b2'}
+
+    def test_bulk_export_csv_row_contains_correct_data(self, api_client, chat_user, conversation, chat):
+        api_client.force_authenticate(user=chat_user)
+        response = api_client.get(bulk_export_url())
+
+        rows = parse_csv_response(response)
+        assert len(rows) == 2  # header + 1 conversation row
+        data_row = rows[1]
+        assert data_row[1] == conversation.conversation_id
+        assert data_row[2] == conversation.model_name
+        assert data_row[4] == chat.prompt
+        assert data_row[5] == chat.response
+        assert data_row[6] == ''
+
+    def test_bulk_export_prompts_and_responses_pipe_joined(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        conv = ConversationModel.objects.create(conversation_id='b1', user=chat_user, title='Test')
+        messages = [('First prompt', 'First response'), ('Second prompt', 'Second response')]
+        for prompt, response in messages:
+            Chat.objects.create(conversation=conv, prompt=prompt, response=response)
+
+        response = api_client.get(bulk_export_url())
+
+        rows = parse_csv_response(response)
+        assert len(rows) == 2  # header + 1 conversation row
+        assert rows[1][4] == 'First prompt|Second prompt'
+        assert rows[1][5] == 'First response|Second response'
+
+    def test_bulk_export_filtered_by_model_name(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        ConversationModel.objects.create(conversation_id='b1', user=chat_user, title='GPT', model_name='gpt-4o')
+        ConversationModel.objects.create(conversation_id='b2', user=chat_user, title='Claude', model_name='claude')
+
+        response = api_client.get(bulk_export_url(), {'model_name': 'gpt-4o'})
+
+        rows = parse_csv_response(response)
+        assert len(rows) == 2  # header + 1 matching row
+        assert rows[1][1] == 'b1'
+
+    def test_bulk_export_filtered_by_participant_email(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        other_user = User.objects.create_user(email='other@example.com', password='pass')
+        ConversationModel.objects.create(conversation_id='b1', user=chat_user, title='Mine')
+        ConversationModel.objects.create(conversation_id='b2', user=other_user, title='Theirs')
+
+        response = api_client.get(bulk_export_url(), {'participant_email': chat_user.email})
+
+        rows = parse_csv_response(response)
+        assert len(rows) == 2  # header + 1 matching row
+        assert rows[1][1] == 'b1'
+
+    def test_bulk_export_filtered_by_search(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        ConversationModel.objects.create(conversation_id='b1', user=chat_user, title='Climate Research')
+        ConversationModel.objects.create(conversation_id='b2', user=chat_user, title='Sports Talk')
+
+        response = api_client.get(bulk_export_url(), {'search': 'Climate'})
+
+        rows = parse_csv_response(response)
+        assert len(rows) == 2  # header + 1 matching row
+        assert rows[1][0] == 'Climate Research'
+
+    def test_bulk_export_attachment_urls_pipe_joined(self, api_client, chat_user, conversation, chat):
+        api_client.force_authenticate(user=chat_user)
+        urls = [
+            'https://storage.googleapis.com/bucket/file1.pdf',
+            'https://storage.googleapis.com/bucket/file2.pdf',
+        ]
+        for i, url in enumerate(urls):
+            ChatMedia.objects.create(chat=chat, filename=f'file{i}.pdf', type='application/pdf', url=url)
+
+        response = api_client.get(bulk_export_url())
+
+        rows = parse_csv_response(response)
+        assert sorted(rows[1][6].split('|')) == sorted(urls)
