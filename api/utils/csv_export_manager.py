@@ -32,3 +32,8 @@ class BaseCSVExportManager:
             f"{user.first_name} {user.last_name}".strip()
             or user.username
         )
+
+    @staticmethod
+    def _family_id(user):
+        profile = getattr(user, 'participant_profile', None)
+        return profile.family_id if profile else ''
