@@ -8,19 +8,21 @@ class EmailTemplateManager:
         # Email templates with their subjects, body, and placeholders
         self.email_template = {
             'participate_invitation_email': {
-                'subject': 'Invitation for Your Child to Join AYO Platform',
+                'subject': 'Invitation for Your Child to Join AYO LLM platform',
                 'email_body': (
-                    "Dear Guardian,\n\n"
-                    "I hope you are doing well.\n\n"
-                    "Your child %participantName% has been invited by a researcher, %invitedBy%, to join the AYO platform. "
-                    "AYO is an AI-powered chat platform where participants can interact with AI as part of platform activities.\n\n"
-                    "To proceed, please review the invitation and provide your consent using the link below:\n"
+                    "Hello,\n\n"
+                    "Thank you for completing the permission forms. Your family is now ready to participate in the study.\n\n"
+                    "To proceed, please click this link to create an account on the AYO LLM platform.\n\n"
                     "%invitationLink%\n\n"
-                    "Please note that this invitation will expire on %expiryDate%.\n\n"
-                    "If you have any questions, feel free to reach out.\n\n"
-                    "Thank you for your time and consideration.\n\n"
-                    "Sincerely,\n"
-                    "AYO Platform Team"
+                    "A few things to keep in mind:\n"
+                    "• Your family will not receive monetary compensation for this study. The child participating will have free access to the study platform for the full 6 weeks of their participation.\n"
+                    "• Stopping study participation at any time is okay. If you decide that your family no longer wants to participate, please contact the research team or reply to this email.\n"
+                    "• If you have any questions or experience any technical difficulties while interacting with this platform, please don't hesitate to reach out.\n\n"
+                    "Please note that this invitation will expire on %expiryDate%. If you need a new link, please request a new one.\n\n"
+                    "Thank you for contributing to our research.\n\n"
+                    "Best regards,\n\n"
+                    "AYO Research Team\n\n"
+                    "KIDD LAB | Department of Psychology University of California, Berkeley | kiddlab.com"
                 ),
                 'templates': ['%invitationLink%', '%participantName%', '%invitedBy%', '%expiryDate%']
             }
