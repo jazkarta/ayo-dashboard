@@ -10,7 +10,7 @@ class ConversationExportManager(BaseCSVExportManager):
 
     CSV_HEADERS = [
         'conversation_title', 'conversation_id', 'model_name',
-        'participant_name', 'message_date',
+        'participant_name', 'family_id', 'message_date',
         'prompt', 'response', 'attachment_urls',
     ]
 
@@ -30,6 +30,8 @@ class ConversationExportManager(BaseCSVExportManager):
         ).values('chat_id', 'url'):
             media_map[item['chat_id']].append(item['url'])
 
+        family_id = cls._family_id(conversation.user)
+
         for chat in Chat.objects.filter(
             conversation=conversation
         ).only('prompt', 'response', 'created_at').order_by('created_at').iterator():
@@ -38,6 +40,7 @@ class ConversationExportManager(BaseCSVExportManager):
                 conversation.conversation_id,
                 conversation.model_name or '',
                 participant_name,
+                family_id,
                 chat.created_at.isoformat(),
                 chat.prompt,
                 chat.response,
@@ -49,7 +52,7 @@ class ConversationBulkExportManager(BaseCSVExportManager):
 
     CSV_HEADERS = [
         'conversation_title', 'conversation_id', 'model_name',
-        'participant_name',
+        'participant_name', 'family_id',
         'prompts', 'responses', 'attachment_urls',
     ]
 
@@ -68,6 +71,7 @@ class ConversationBulkExportManager(BaseCSVExportManager):
                 conversation.conversation_id,
                 conversation.model_name or '',
                 cls._participant_name(conversation.user),
+                cls._family_id(conversation.user),
                 '|'.join(chat.prompt or '' for chat in chats),
                 '|'.join(chat.response or '' for chat in chats),
                 '|'.join(attachment_urls),

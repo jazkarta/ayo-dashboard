@@ -1,9 +1,11 @@
 import pytest
+from datetime import date
 from unittest.mock import MagicMock
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
 from chat.models import Chat, ChatMedia, ConversationModel
+from participant.models import ParticipantProfile
 
 User = get_user_model()
 
@@ -62,3 +64,13 @@ def chat_media(db, chat):
         type='application/pdf',
         url='https://storage.googleapis.com/bucket/report.pdf',
     )
+
+
+@pytest.fixture
+def chat_user_with_profile(db, chat_user):
+    ParticipantProfile.objects.create(
+        user=chat_user,
+        date_of_birth=date(2000, 1, 1),
+        family_id='FAM-001',
+    )
+    return chat_user

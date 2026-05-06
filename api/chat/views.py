@@ -48,7 +48,7 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
 
     def get_queryset(self):
         if self.action in ('export', 'bulk_export'):
-            return ConversationModel.objects.select_related('user')
+            return ConversationModel.objects.select_related('user', 'user__participant_profile')
 
         return ConversationModel.objects.select_related('user').order_by('-created_at')
 
@@ -101,7 +101,7 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
     @action(detail=True, methods=['get'], url_path='export')
     def export(self, request, pk=None):
         instance = self.get_object()
-        queryset = ConversationModel.objects.filter(pk=instance.pk).select_related('user')
+        queryset = ConversationModel.objects.filter(pk=instance.pk).select_related('user', 'user__participant_profile')
         filename = f'conversation-{slugify(instance.title) or "untitled"}.csv'
         return ConversationExportManager.streaming_response(queryset, filename)
 
