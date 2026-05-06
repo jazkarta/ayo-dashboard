@@ -87,10 +87,14 @@ class ConversationUserSerializer(serializers.ModelSerializer):
 
 class ConversationListSerializer(serializers.ModelSerializer):
     participant = ConversationUserSerializer(read_only=True, source='user')
+    created_at = serializers.SerializerMethodField()
 
     class Meta:
         model = ConversationModel
-        fields = ['id', 'title', 'conversation_id', 'model_name', 'participant']
+        fields = ['id', 'title', 'conversation_id', 'model_name', 'participant', 'created_at']
+
+    def get_created_at(self, obj):
+        return obj.created_at.strftime('%B %d, %Y, %I:%M %p') if obj.created_at else None
 
 class ConversationDetailSerializer(serializers.ModelSerializer):
     participant = ConversationUserSerializer(read_only=True, source='user')
