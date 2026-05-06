@@ -1,3 +1,5 @@
+from datetime import date
+
 from rest_framework import serializers
 
 from django.contrib.auth import get_user_model
@@ -81,9 +83,20 @@ class ChatSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ConversationUserSerializer(serializers.ModelSerializer):
+    age = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name', 'email', 'username']
+        fields = ['id', 'first_name', 'last_name', 'email', 'username', 'age']
+
+    def get_age(self, obj):
+        try:
+            dob = obj.participant_profile.date_of_birth
+        except Exception:
+            return None
+        today = date.today()
+        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+        return "Less than one year" if age == 0 else age
 
 
 class ConversationListSerializer(serializers.ModelSerializer):
