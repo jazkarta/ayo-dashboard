@@ -62,6 +62,8 @@ async function readBlobMessage(blob) {
 
 const EMPTY_DETAILS = {
   title: "",
+  conversation_id: "",
+  is_deleted: false,
   results: [],
   pagination: { count: 0, next: null, previous: null },
 };
@@ -100,6 +102,8 @@ export default function ConversationDetails({ id }) {
         if (cancelled) return;
         setDetails({
           title: response.data?.title || "",
+          conversation_id: response.data?.conversation_id || "",
+          is_deleted: response.data?.is_deleted || false,
           results: response.data?.results || [],
           pagination: {
             count: response.data?.count || 0,
@@ -209,7 +213,17 @@ export default function ConversationDetails({ id }) {
 
       <Card className="m-5">
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <CardTitle>{details.title}</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className={!details.title ? "font-mono text-base" : ""}>
+              {details.title || details.conversation_id || "-"}
+            </CardTitle>
+            {details.is_deleted && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-600">
+                <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                Deleted
+              </span>
+            )}
+          </div>
         </CardHeader>
 
         <CardContent>
