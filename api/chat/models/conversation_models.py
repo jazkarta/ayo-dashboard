@@ -14,6 +14,7 @@ class ConversationModel(BaseModel):
     )
 
     model_name = models.CharField(max_length=512, blank=True, null=True)
+    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = "Conversation"

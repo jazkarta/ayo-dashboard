@@ -69,6 +69,18 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
+    @action(detail=False, methods=['patch'], url_path='mark-deleted')
+    def mark_deleted(self, request):
+        conversation_id = request.data.get('conversation_id')
+        if not conversation_id:
+            return Response({'error': 'conversation_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        updated = ConversationModel.objects.filter(
+            conversation_id=conversation_id, user=request.user
+        ).update(is_deleted=True)
+        if not updated:
+            return Response({'error': 'Conversation not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=False, methods=['patch'], url_path='update-title')
     def update_title(self, request):
         conversation_id = request.data.get('conversation_id')

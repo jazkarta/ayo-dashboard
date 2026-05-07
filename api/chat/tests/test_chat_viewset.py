@@ -504,6 +504,42 @@ class TestConversationFilter:
 
 
 @pytest.mark.django_db
+class TestConversationMarkDeleted:
+
+    def _url(self):
+        return reverse('conversation-mark-deleted')
+
+    def test_unauthenticated_returns_403(self, api_client, conversation):
+        response = api_client.patch(self._url(), {'conversation_id': conversation.conversation_id}, format='json')
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_missing_conversation_id_returns_400(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        response = api_client.patch(self._url(), {}, format='json')
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_unknown_conversation_returns_404(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        response = api_client.patch(self._url(), {'conversation_id': 'nonexistent-id'}, format='json')
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_sets_is_deleted_flag(self, api_client, chat_user, conversation):
+        api_client.force_authenticate(user=chat_user)
+        response = api_client.patch(self._url(), {'conversation_id': conversation.conversation_id}, format='json')
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        conversation.refresh_from_db()
+        assert conversation.is_deleted is True
+
+    def test_cannot_flag_another_users_conversation(self, api_client, conversation):
+        other_user = User.objects.create_user(email='other@example.com', password='pass')
+        api_client.force_authenticate(user=other_user)
+        response = api_client.patch(self._url(), {'conversation_id': conversation.conversation_id}, format='json')
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        conversation.refresh_from_db()
+        assert conversation.is_deleted is False
+
+
+@pytest.mark.django_db
 class TestConversationBulkExport:
     # Row layout: title(0), conv_id(1), model(2), participant_name(3),
     #             family_id(4), prompts(5), responses(6), attachment_urls(7)

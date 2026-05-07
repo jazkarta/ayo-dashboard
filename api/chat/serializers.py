@@ -93,7 +93,7 @@ class ConversationListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ConversationModel
-        fields = ['id', 'title', 'conversation_id', 'model_name', 'participant', 'created_at', 'number_of_turns']
+        fields = ['id', 'title', 'conversation_id', 'model_name', 'participant', 'created_at', 'number_of_turns', 'is_deleted']
 
     def get_created_at(self, obj):
         return obj.created_at.strftime('%B %d, %Y, %I:%M %p') if obj.created_at else None
@@ -108,7 +108,7 @@ class ConversationDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ConversationModel
-        fields = ['id', 'title', 'conversation_id', 'model_name', 'participant']
+        fields = ['id', 'title', 'conversation_id', 'model_name', 'participant', 'is_deleted']
 
 
 class ConversationCreateSerializer(serializers.ModelSerializer):
