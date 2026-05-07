@@ -223,6 +223,23 @@ export default function ConversationsTable() {
         );
       },
     }),
+    columnHelper.accessor("is_deleted", {
+      header: "Status",
+      cell: (info) => {
+        const deleted = info.getValue();
+        return deleted ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-600">
+            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+            Deleted
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-600">
+            <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+            Active
+          </span>
+        );
+      },
+    }),
   ], []);
 
   const table = useReactTable({ data, columns, getCoreRowModel: getCoreRowModel() });
@@ -565,13 +582,13 @@ export default function ConversationsTable() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   <Loader2 className="animate-spin h-8 w-8 mx-auto" />
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6}>
+                <TableCell colSpan={7}>
                   <div className="flex flex-col items-center justify-center gap-3 py-14">
                     <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
                       <MessageSquareOff className="h-7 w-7" />

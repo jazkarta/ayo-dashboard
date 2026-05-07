@@ -77,7 +77,7 @@ function TableHead({
     <th
       data-slot="table-head"
       className={cn(
-        "h-10 px-3 text-left align-middle font-semibold whitespace-nowrap text-foreground",
+        "h-10 px-4 text-left align-middle font-semibold whitespace-nowrap text-foreground",
         className
       )}
       {...props} />
