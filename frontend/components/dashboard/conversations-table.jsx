@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   useReactTable,
   getCoreRowModel,
@@ -26,6 +27,7 @@ import conversationService from "@/services/conversationService";
 const columnHelper = createColumnHelper();
 
 const INITIAL_FILTERS = { participant_username: "", turns_min: "", turns_max: "", participant_age: "", date_from: "", date_to: "" };
+const FILTER_KEYS = ["participant_username", "turns_min", "turns_max", "participant_age", "date_from", "date_to"];
 
 function downloadBlob(blob, filename) {
   const blobUrl = URL.createObjectURL(blob);
@@ -66,12 +68,31 @@ async function readBlobMessage(blob) {
 }
 
 export default function ConversationsTable() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   // const [search, setSearch] = useState("");
-  // const [debouncedSearch, setDebouncedSearch] = useState("");
   const [debouncedSearch] = useState("");
 
-  const [draft, setDraft] = useState(INITIAL_FILTERS);
-  const [applied, setApplied] = useState(INITIAL_FILTERS);
+  // Filters and page are derived from the URL — single source of truth
+  const applied = useMemo(() => ({
+    participant_username: searchParams.get("participant_username") || "",
+    turns_min: searchParams.get("turns_min") || "",
+    turns_max: searchParams.get("turns_max") || "",
+    participant_age: searchParams.get("participant_age") || "",
+    date_from: searchParams.get("date_from") || "",
+    date_to: searchParams.get("date_to") || "",
+  }), [searchParams]);
+
+  const currentUrl = useMemo(() => {
+    const page = searchParams.get("page");
+    return page ? `/chats/conversations/?page=${page}` : "/chats/conversations/";
+  }, [searchParams]);
+
+  // Draft is the in-progress editing state inside the filter popover
+  const [draft, setDraft] = useState(applied);
+
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [fromOpen, setFromOpen] = useState(false);
   const [toOpen, setToOpen] = useState(false);
@@ -79,18 +100,21 @@ export default function ConversationsTable() {
   const [exporting, setExporting] = useState(false);
   const [data, setData] = useState([]);
   const [pagination, setPagination] = useState({ count: 0, next: null, previous: null });
-  const [currentUrl, setCurrentUrl] = useState("/chats/conversations/");
   const [loading, setLoading] = useState(false);
 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL;
 
-  // useEffect(() => {
-  //   const t = setTimeout(() => {
-  //     setDebouncedSearch(search);
-  //     setCurrentUrl("/chats/conversations/");
-  //   }, 500);
-  //   return () => clearTimeout(t);
-  // }, [search]);
+  // Push page + filters into the URL. Both are encoded together so the URL
+  // is always shareable and browser back/forward works correctly.
+  const navigatePage = useCallback((apiUrl, filtersOverride) => {
+    const filters = filtersOverride ?? applied;
+    const pageMatch = apiUrl.match(/[?&]page=(\d+)/);
+    const params = new URLSearchParams();
+    if (pageMatch) params.set("page", pageMatch[1]);
+    FILTER_KEYS.forEach((key) => { if (filters[key]) params.set(key, filters[key]); });
+    const query = params.toString();
+    router.push(`${pathname}${query ? `?${query}` : ""}`, { scroll: false });
+  }, [applied, router, pathname]);
 
   const fetchConversations = async (url, searchTerm, filters) => {
     setLoading(true);
@@ -126,8 +150,7 @@ export default function ConversationsTable() {
   );
 
   const handleApply = () => {
-    setApplied(draft);
-    setCurrentUrl("/chats/conversations/");
+    navigatePage("/chats/conversations/", draft);
     setPopoverOpen(false);
   };
 
@@ -138,9 +161,8 @@ export default function ConversationsTable() {
 
   const handleRemoveFilter = (key) => {
     const next = { ...applied, [key]: "" };
-    setApplied(next);
     setDraft(next);
-    setCurrentUrl("/chats/conversations/");
+    navigatePage("/chats/conversations/", next);
   };
 
   const handleBulkExport = async () => {
@@ -251,26 +273,6 @@ export default function ConversationsTable() {
           <CardTitle>Conversations List</CardTitle>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Search */}
-            {/* <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              <Input
-                placeholder="Search conversations..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-9 w-56 pl-9 pr-8"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div> */}
-
             {/* Filter popover */}
             <Popover open={popoverOpen} onOpenChange={(open) => { setPopoverOpen(open); if (!open) setDraft(applied); }}>
               <PopoverTrigger asChild>
@@ -526,7 +528,7 @@ export default function ConversationsTable() {
               <Button
                 className="h-9 gap-1.5 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:text-red-700 hover:border-red-300"
                 variant="ghost"
-                onClick={() => { setApplied(INITIAL_FILTERS); setDraft(INITIAL_FILTERS); setCurrentUrl("/chats/conversations/"); }}
+                onClick={() => { setDraft(INITIAL_FILTERS); navigatePage("/chats/conversations/", INITIAL_FILTERS); }}
               >
                 <X className="h-3.5 w-3.5" />
                 Clear
@@ -591,7 +593,7 @@ export default function ConversationsTable() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => { setSearch(""); setApplied(INITIAL_FILTERS); setDraft(INITIAL_FILTERS); setCurrentUrl("/chats/conversations/"); }}
+                      onClick={() => { setDraft(INITIAL_FILTERS); navigatePage("/chats/conversations/", INITIAL_FILTERS); }}
                     >
                       Go back
                     </Button>
@@ -620,7 +622,7 @@ export default function ConversationsTable() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => { if (pagination.previous) setCurrentUrl(pagination.previous.replace(baseUrl, "")); }}
+              onClick={() => { if (pagination.previous) navigatePage(pagination.previous.replace(baseUrl, "")); }}
               disabled={!pagination.previous}
             >
               Previous
@@ -628,7 +630,7 @@ export default function ConversationsTable() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => { if (pagination.next) setCurrentUrl(pagination.next.replace(baseUrl, "")); }}
+              onClick={() => { if (pagination.next) navigatePage(pagination.next.replace(baseUrl, "")); }}
               disabled={!pagination.next}
             >
               Next

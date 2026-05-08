@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -69,6 +69,7 @@ const EMPTY_DETAILS = {
 };
 
 export default function ConversationDetails({ id }) {
+  const router = useRouter();
   const [details, setDetails] = useState(EMPTY_DETAILS);
   const [pageUrl, setPageUrl] = useState(null);
   const [status, setStatus] = useState("loading");
@@ -182,12 +183,10 @@ export default function ConversationDetails({ id }) {
   return (
     <>
       <div className="mx-5 mt-5 flex items-center justify-between">
-        <Link href="/dashboard/conversations">
-          <Button variant="outline" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back
-          </Button>
-        </Link>
+        <Button variant="outline" size="sm" onClick={() => router.back()}>
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Back
+        </Button>
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -364,12 +363,10 @@ function ErrorState({ kind, onRetry }) {
                 Try again
               </Button>
             )}
-            <Link href="/dashboard/conversations">
-              <Button size="sm" variant="outline">
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Back to conversations
-              </Button>
-            </Link>
+            <Button size="sm" variant="outline" onClick={() => router.back()}>
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back to conversations
+            </Button>
           </div>
         </div>
       </CardContent>
