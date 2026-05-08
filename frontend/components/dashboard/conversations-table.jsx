@@ -86,8 +86,15 @@ export default function ConversationsTable() {
   }), [searchParams]);
 
   const currentUrl = useMemo(() => {
+    const params = new URLSearchParams();
     const page = searchParams.get("page");
-    return page ? `/chats/conversations/?page=${page}` : "/chats/conversations/";
+    if (page) params.set("page", page);
+    FILTER_KEYS.forEach((key) => {
+      const val = searchParams.get(key);
+      if (val) params.set(key, val);
+    });
+    const query = params.toString();
+    return query ? `/chats/conversations/?${query}` : "/chats/conversations/";
   }, [searchParams]);
 
   // Draft is the in-progress editing state inside the filter popover
@@ -274,7 +281,7 @@ export default function ConversationsTable() {
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Filter popover */}
-            <Popover open={popoverOpen} onOpenChange={(open) => { setPopoverOpen(open); if (!open) setDraft(applied); }}>
+            <Popover open={popoverOpen} onOpenChange={(open) => { setDraft(applied); setPopoverOpen(open); }}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
