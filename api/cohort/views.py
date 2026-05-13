@@ -1,9 +1,10 @@
 import logging
 
 from rest_framework import viewsets, filters
+from rest_framework.exceptions import PermissionDenied
 from django_filters.rest_framework import DjangoFilterBackend
 
-from utils.permissions import IsResearcher
+from utils.permissions import IsResearcher, IsAdmin
 from .models import Cohort
 from .serializers import CohortReadSerializer, CohortDetailSerializer, CohortCreateSerializer, CohortUpdateSerializer
 
@@ -17,7 +18,7 @@ class CohortViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name', 'created_at']
 
     def get_queryset(self):
-        qs = Cohort.objects.filter(created_by=self.request.user).order_by('-created_at')
+        qs = Cohort.objects.all().order_by('-created_at')
         if self.action == 'retrieve':
             return qs.prefetch_related('participants__user')
         return qs.prefetch_related('participants')
@@ -30,6 +31,15 @@ class CohortViewSet(viewsets.ModelViewSet):
         if self.action == 'retrieve':
             return CohortDetailSerializer
         return CohortReadSerializer
+
+    def get_object(self):
+        obj = super().get_object()
+        if self.action in ('update', 'partial_update', 'destroy'):
+            is_owner = obj.created_by == self.request.user
+            is_admin = IsAdmin().has_permission(self.request, self)
+            if not (is_owner or is_admin):
+                raise PermissionDenied()
+        return obj
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)

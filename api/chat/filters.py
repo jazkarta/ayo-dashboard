@@ -12,10 +12,11 @@ class ConversationFilter(django_filters.FilterSet):
     turns_min = django_filters.NumberFilter(field_name='number_of_turns', lookup_expr='gte')
     turns_max = django_filters.NumberFilter(field_name='number_of_turns', lookup_expr='lte')
     participant_age = django_filters.NumberFilter(method='filter_by_participant_age')
+    cohort_id = django_filters.UUIDFilter(field_name='cohort_id')
 
     class Meta:
         model = ConversationModel
-        fields = ['participant_username', 'date_from', 'date_to', 'turns_min', 'turns_max', 'participant_age']
+        fields = ['participant_username', 'date_from', 'date_to', 'turns_min', 'turns_max', 'participant_age', 'cohort_id']
 
     def filter_by_participant_age(self, queryset, name, value):
         age = int(value)

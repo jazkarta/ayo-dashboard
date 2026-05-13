@@ -35,15 +35,14 @@ class TestCohortCreate:
 @pytest.mark.django_db
 class TestCohortList:
 
-    def test_researcher_sees_only_own_cohorts(self, api_client, researcher_user, other_researcher):
+    def test_list_returns_all_cohorts(self, api_client, researcher_user, other_researcher):
         Cohort.objects.create(name="Mine", created_by=researcher_user)
         Cohort.objects.create(name="Theirs", created_by=other_researcher)
         api_client.force_authenticate(user=researcher_user)
         response = api_client.get(BASE_URL)
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get("results", response.data)
-        assert len(results) == 1
-        assert results[0]["name"] == "Mine"
+        assert len(results) == 2
 
 
 @pytest.mark.django_db
@@ -55,10 +54,10 @@ class TestCohortUpdate:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["name"] == "Updated"
 
-    def test_non_owner_gets_404(self, api_client, other_researcher, cohort):
+    def test_non_owner_gets_403(self, api_client, other_researcher, cohort):
         api_client.force_authenticate(user=other_researcher)
         response = api_client.patch(detail_url(cohort.id), {"name": "Hijack"}, format="json")
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 @pytest.mark.django_db
@@ -70,7 +69,7 @@ class TestCohortDelete:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not Cohort.objects.filter(id=cohort.id).exists()
 
-    def test_non_owner_gets_404(self, api_client, other_researcher, cohort):
+    def test_non_owner_gets_403(self, api_client, other_researcher, cohort):
         api_client.force_authenticate(user=other_researcher)
         response = api_client.delete(detail_url(cohort.id))
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == status.HTTP_403_FORBIDDEN
