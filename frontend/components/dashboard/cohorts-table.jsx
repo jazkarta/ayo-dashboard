@@ -22,7 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, Pencil, Trash2, XIcon } from "lucide-react";
+import { Loader2, Pencil, Trash2, XIcon, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import Link from "next/link";
 import { Textarea } from "@/components/ui/textarea";
 import toast from "react-hot-toast";
@@ -30,6 +30,12 @@ import cohortService from "@/services/cohortService";
 import { extractFieldErrors } from "@/utils/apiErrors";
 
 const columnHelper = createColumnHelper();
+
+function SortIcon({ field, ordering }) {
+  if (ordering === field) return <ArrowUp className="h-3.5 w-3.5" />;
+  if (ordering === `-${field}`) return <ArrowDown className="h-3.5 w-3.5" />;
+  return <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />;
+}
 
 function EditDialog({ cohort, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
@@ -157,6 +163,7 @@ function ConfirmDialog({ open, onClose, onConfirm, title, description, confirmTe
 export default function CohortsTable({ refreshKey = 0 }) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [ordering, setOrdering] = useState("");
   const [data, setData] = useState([]);
   const [pagination, setPagination] = useState({ count: 0, next: null, previous: null });
   const [currentUrl, setCurrentUrl] = useState("/cohorts/");
@@ -165,6 +172,15 @@ export default function CohortsTable({ refreshKey = 0 }) {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [internalRefresh, setInternalRefresh] = useState(0);
+
+  const toggleOrdering = () => {
+    setCurrentUrl("/cohorts/");
+    setOrdering((prev) => {
+      if (prev === "name") return "-name";
+      if (prev === "-name") return "";
+      return "name";
+    });
+  };
 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL;
 
@@ -193,10 +209,10 @@ export default function CohortsTable({ refreshKey = 0 }) {
     }
   };
 
-  const fetchCohorts = async (url = "/cohorts/", searchTerm = "") => {
+  const fetchCohorts = async (url = "/cohorts/", searchTerm = "", orderingTerm = "") => {
     setLoading(true);
     try {
-      const response = await cohortService.getAllCohorts(url, searchTerm);
+      const response = await cohortService.getAllCohorts(url, searchTerm, orderingTerm);
       setData(response.data?.results || []);
       setPagination({
         count: response.data?.count || 0,
@@ -213,8 +229,8 @@ export default function CohortsTable({ refreshKey = 0 }) {
   };
 
   useEffect(() => {
-    fetchCohorts(currentUrl, debouncedSearch);
-  }, [currentUrl, debouncedSearch, refreshKey, internalRefresh]);
+    fetchCohorts(currentUrl, debouncedSearch, ordering);
+  }, [currentUrl, debouncedSearch, ordering, refreshKey, internalRefresh]);
 
   const columns = useMemo(() => [
     columnHelper.accessor("id", {
@@ -229,7 +245,14 @@ export default function CohortsTable({ refreshKey = 0 }) {
       ),
     }),
     columnHelper.accessor("name", {
-      header: "Name",
+      header: () => (
+        <button
+          onClick={toggleOrdering}
+          className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
+        >
+          Name <SortIcon field="name" ordering={ordering} />
+        </button>
+      ),
       cell: (info) => info.getValue() || "-",
     }),
     columnHelper.accessor("description", {
@@ -269,7 +292,7 @@ export default function CohortsTable({ refreshKey = 0 }) {
         );
       },
     }),
-  ], [handleEdit, handleDelete]);
+  ], [ordering, handleEdit, handleDelete]);
 
   const table = useReactTable({
     data,
@@ -285,6 +308,15 @@ export default function CohortsTable({ refreshKey = 0 }) {
             <CardTitle>Cohorts List</CardTitle>
           </div>
           <div className="flex items-center gap-2">
+            {ordering && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setOrdering(""); setCurrentUrl("/cohorts/"); }}
+              >
+                Reset sort
+              </Button>
+            )}
             <Input
               placeholder="Search cohorts..."
               value={search}
