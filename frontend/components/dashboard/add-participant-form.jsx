@@ -49,7 +49,7 @@ export default function AddParticipantForm({ onSuccess = null }) {
 
   useEffect(() => {
     if (!isModalOpen) return;
-    cohortService.getAllCohorts(undefined, "", "", 1000).then((res) => {
+    cohortService.getAllCohorts().then((res) => {
       setCohorts(res.data?.results || []);
     }).catch(() => {});
   }, [isModalOpen]);

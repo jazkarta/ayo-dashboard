@@ -48,7 +48,7 @@ function EditDialog({ participant, onClose, onSaved }) {
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    cohortService.getAllCohorts(undefined, "", "", 1000).then((res) => {
+    cohortService.getAllCohorts().then((res) => {
       setCohorts(res.data?.results || []);
     }).catch(() => {});
   }, []);
