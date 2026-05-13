@@ -58,6 +58,34 @@ class TestParticipantViewSet:
             assert new_user.role == UserRole.PARTICIPANT
             assert not new_user.is_active
 
+    def test_create_participant_with_cohort(self, api_client, researcher_user, cohort):
+        api_client.force_authenticate(user=researcher_user)
+        payload = {
+            "email": "cohort_participant@example.com",
+            "first_name": "Cohort",
+            "last_name": "Member",
+            "profile_data": {
+                "date_of_birth": "2010-01-01",
+                "gender": "M",
+                "family_id": "FAM010",
+                "cohort_id": str(cohort.id),
+            },
+        }
+        response = api_client.post(reverse("participant-list"), payload, format="json")
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["profile_data"]["cohort"]["id"] == str(cohort.id)
+
+    def test_update_participant_cohort(self, api_client, researcher_user, participant_user, cohort):
+        api_client.force_authenticate(user=researcher_user)
+        url = reverse("participant-detail", kwargs={"pk": participant_user.pk})
+        response = api_client.patch(
+            url,
+            {"profile_data": {"cohort_id": str(cohort.id)}},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["profile_data"]["cohort"]["id"] == str(cohort.id)
+
     @pytest.mark.parametrize(
         "initial_email, duplicate_email",
         [

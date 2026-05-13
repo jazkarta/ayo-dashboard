@@ -5,7 +5,9 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
 from chat.models import Chat, ChatMedia, ConversationModel
+from cohort.models import Cohort
 from participant.models import ParticipantProfile
+from users.models.user import UserRole
 
 User = get_user_model()
 
@@ -74,3 +76,33 @@ def chat_user_with_profile(db, chat_user):
         family_id='FAM-001',
     )
     return chat_user
+
+
+@pytest.fixture
+def researcher_user(db):
+    return User.objects.create_user(
+        email='researcher@example.com',
+        password='password123',
+        role=UserRole.RESEARCHER,
+    )
+
+
+@pytest.fixture
+def cohort(db, researcher_user):
+    return Cohort.objects.create(name='Test Cohort', created_by=researcher_user)
+
+
+@pytest.fixture
+def chat_user_with_cohort(db, cohort):
+    user = User.objects.create_user(
+        email='cohortuser@example.com',
+        password='password123',
+        role=UserRole.PARTICIPANT,
+    )
+    ParticipantProfile.objects.create(
+        user=user,
+        date_of_birth=date(2010, 1, 1),
+        family_id='FAM-COHORT',
+        cohort=cohort,
+    )
+    return user

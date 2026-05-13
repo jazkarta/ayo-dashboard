@@ -38,6 +38,7 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('api/participants/', include('participant.urls')),
+    path('api/cohorts/', include('cohort.urls')),
     path('api/chats/', include('chat.urls')),
     path('api/users/', include('users.urls')),
     path('api/researchers/', include('researcher.urls')),

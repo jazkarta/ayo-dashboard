@@ -504,6 +504,37 @@ class TestConversationFilter:
 
 
 @pytest.mark.django_db
+class TestConversationCohort:
+
+    def test_create_conversation_auto_assigns_cohort(self, api_client, chat_user_with_cohort, cohort):
+        api_client.force_authenticate(user=chat_user_with_cohort)
+        payload = {'conversation_id': 'cohort-conv-001', 'title': 'Cohort Chat', 'model_name': 'gpt-4o'}
+        response = api_client.post(reverse('conversation-list'), payload, format='json')
+        assert response.status_code == status.HTTP_201_CREATED
+        conv = ConversationModel.objects.get(conversation_id='cohort-conv-001')
+        assert conv.cohort == cohort
+
+    def test_create_conversation_no_cohort_when_profile_missing(self, api_client, chat_user):
+        api_client.force_authenticate(user=chat_user)
+        payload = {'conversation_id': 'no-cohort-conv-001', 'title': 'No Cohort', 'model_name': 'gpt-4o'}
+        response = api_client.post(reverse('conversation-list'), payload, format='json')
+        assert response.status_code == status.HTTP_201_CREATED
+        conv = ConversationModel.objects.get(conversation_id='no-cohort-conv-001')
+        assert conv.cohort is None
+
+    def test_conversation_list_includes_cohort(self, api_client, chat_user_with_cohort, cohort):
+        api_client.force_authenticate(user=chat_user_with_cohort)
+        ConversationModel.objects.create(
+            conversation_id='list-cohort-001', user=chat_user_with_cohort,
+            title='Listed', model_name='gpt-4o', cohort=cohort,
+        )
+        response = api_client.get(reverse('conversation-list'))
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert results[0]['cohort']['id'] == str(cohort.id)
+
+
+@pytest.mark.django_db
 class TestConversationMarkDeleted:
 
     def _url(self):
