@@ -19,6 +19,8 @@ import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, Pencil, Trash2, CalendarIcon,
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 import participantService from "../../services/participantService.js";
+import cohortService from "@/services/cohortService";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const columnHelper = createColumnHelper();
 
@@ -33,13 +35,23 @@ function SortIcon({ field, ordering }) {
 function EditDialog({ participant, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [cohorts, setCohorts] = useState(
+    participant?.profile_data?.cohort ? [participant.profile_data.cohort] : []
+  );
   const [formData, setFormData] = useState({
     first_name: participant?.first_name || "",
     last_name: participant?.last_name || "",
     dateOfBirth: participant?.profile_data?.date_of_birth || "",
     family_id: participant?.profile_data?.family_id || "",
+    cohort_id: participant?.profile_data?.cohort?.id || "",
   });
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    cohortService.getAllCohorts().then((res) => {
+      setCohorts(res.data?.results || []);
+    }).catch(() => {});
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -74,6 +86,7 @@ function EditDialog({ participant, onClose, onSaved }) {
         profile_data: {
           date_of_birth: formData.dateOfBirth,
           family_id: formData.family_id,
+          ...(formData.cohort_id && { cohort_id: formData.cohort_id }),
         },
       });
       toast.success("Participant updated successfully.");
@@ -179,6 +192,24 @@ function EditDialog({ participant, onClose, onSaved }) {
                 className={errors.family_id ? "border-destructive" : ""}
               />
               {errors.family_id && <p className="text-xs text-destructive">{errors.family_id}</p>}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit_cohort_id">Cohort</Label>
+              <Select
+                value={formData.cohort_id}
+                onValueChange={(val) => setFormData((prev) => ({ ...prev, cohort_id: val }))}
+                disabled={saving}
+              >
+                <SelectTrigger id="edit_cohort_id" className="w-full">
+                  <SelectValue placeholder="Select a cohort" />
+                </SelectTrigger>
+                <SelectContent position="popper" className="max-h-48 overflow-y-auto">
+                  {cohorts.map((c) => (
+                    <SelectItem key={c.id} value={c.id} className="py-2.5 pl-3 pr-8 cursor-pointer">{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -343,6 +374,11 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
       header: "Family ID",
       cell: (info) => info.getValue() || "-",
     }),
+    columnHelper.accessor((row) => row.profile_data?.cohort?.name, {
+      id: "cohort",
+      header: "Cohort",
+      cell: (info) => info.getValue() || "-",
+    }),
     columnHelper.accessor("is_active", {
       header: "Status",
       cell: (info) => {
@@ -439,13 +475,13 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={8} className="h-24 text-center">
                   <Loader2 className="animate-spin h-8 w-8 mx-auto" />
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={8} className="h-24 text-center">
                   No participants found.
                 </TableCell>
               </TableRow>

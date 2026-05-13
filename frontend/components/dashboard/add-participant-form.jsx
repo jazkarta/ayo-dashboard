@@ -1,17 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CheckCircle2Icon, CalendarIcon, Loader2, XIcon } from "lucide-react";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 import participantService from "@/services/participantService";
+import cohortService from "@/services/cohortService";
 
 const createUser = async (data) => {
   const response = await participantService.createParticipant(data);
@@ -34,6 +36,7 @@ export default function AddParticipantForm({ onSuccess = null }) {
   const [invitationId, setInvitationId] = useState(null);
   const [errors, setErrors] = useState({});
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [cohorts, setCohorts] = useState([]);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -41,7 +44,15 @@ export default function AddParticipantForm({ onSuccess = null }) {
     email: "",
     dateOfBirth: "",
     familyId: "",
+    cohort_id: "",
   });
+
+  useEffect(() => {
+    if (!isModalOpen) return;
+    cohortService.getAllCohorts().then((res) => {
+      setCohorts(res.data?.results || []);
+    }).catch(() => {});
+  }, [isModalOpen]);
 
   const steps = ["Participant Info", "Participant Details", "Send Invite"];
 
@@ -120,6 +131,7 @@ export default function AddParticipantForm({ onSuccess = null }) {
       email: "",
       dateOfBirth: "",
       familyId: "",
+      cohort_id: "",
     });
   };
 
@@ -133,6 +145,7 @@ export default function AddParticipantForm({ onSuccess = null }) {
       profile_data: {
         date_of_birth: formData.dateOfBirth,
         family_id: formData.familyId,
+        ...(formData.cohort_id && { cohort_id: formData.cohort_id }),
       },
     };
 
@@ -357,6 +370,24 @@ export default function AddParticipantForm({ onSuccess = null }) {
                     {errors.familyId && (
                       <p className="text-xs text-destructive">{errors.familyId}</p>
                     )}
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="cohort_id">Cohort</Label>
+                    <Select
+                      value={formData.cohort_id}
+                      onValueChange={(val) => setFormData((prev) => ({ ...prev, cohort_id: val }))}
+                      disabled={loading}
+                    >
+                      <SelectTrigger id="cohort_id" className="w-full">
+                        <SelectValue placeholder="Select a cohort" />
+                      </SelectTrigger>
+                      <SelectContent position="popper" className="max-h-48 overflow-y-auto">
+                        {cohorts.map((c) => (
+                          <SelectItem key={c.id} value={c.id} className="py-2.5 pl-3 pr-8 cursor-pointer">{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               )}
