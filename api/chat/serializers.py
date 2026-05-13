@@ -8,6 +8,7 @@ from django.db import transaction
 from chat.models import ChatMedia, ConversationModel
 from chat.models.chat_models import Chat
 from cohort.serializers import CohortReadSerializer
+from users.serializers.user_serializers import UserSerializer
 
 
 User = get_user_model()
@@ -83,11 +84,10 @@ class ChatSerializer(serializers.ModelSerializer):
         model = Chat
         fields = '__all__'
 
-class ConversationUserSerializer(serializers.ModelSerializer):
+class ConversationUserSerializer(UserSerializer):
     age = serializers.SerializerMethodField()
 
-    class Meta:
-        model = User
+    class Meta(UserSerializer.Meta):
         fields = ['id', 'first_name', 'last_name', 'email', 'username', 'age']
 
     def get_age(self, obj):
