@@ -15,6 +15,13 @@ class ConversationModel(BaseModel):
 
     model_name = models.CharField(max_length=512, blank=True, null=True)
     is_deleted = models.BooleanField(default=False)
+    cohort = models.ForeignKey(
+        'cohort.Cohort',
+        on_delete=models.SET_NULL,
+        related_name='conversations',
+        blank=True,
+        null=True
+    )
 
     class Meta:
         verbose_name = "Conversation"

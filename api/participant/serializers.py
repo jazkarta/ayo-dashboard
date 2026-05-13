@@ -7,6 +7,8 @@ from django.contrib.auth import get_user_model
 from users.models.user import UserRole
 from utils.keycloak_manager import KeycloakSync
 from .models import ParticipantProfile, Invitation, Guardian
+from cohort.models import Cohort
+from cohort.serializers import CohortReadSerializer
 from utils.email_manager import EmailManager
 from utils.username_generator_helper import generate_username
 from rest_framework.validators import UniqueValidator
@@ -25,11 +27,19 @@ class GuardianSerializer(serializers.ModelSerializer):
 
 class ParticipantProfileSerializer(serializers.ModelSerializer):
     guardian = GuardianSerializer(read_only=True)
+    cohort = CohortReadSerializer(read_only=True)
+    cohort_id = serializers.PrimaryKeyRelatedField(
+        source='cohort',
+        queryset=Cohort.objects.all(),
+        allow_null=True,
+        required=False,
+        write_only=True,
+    )
 
     class Meta:
         model = ParticipantProfile
-        fields = ['date_of_birth', 'gender', 'family_id', 'demographics', 'guardian']
-        read_only_fields = ['guardian']
+        fields = ['date_of_birth', 'gender', 'family_id', 'demographics', 'guardian', 'cohort', 'cohort_id']
+        read_only_fields = ['guardian', 'cohort']
 
     def validate_date_of_birth(self, value):
         if value >= timezone.now().date():

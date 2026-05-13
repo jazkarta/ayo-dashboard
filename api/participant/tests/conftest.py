@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from users.models.user import UserRole
 from model_bakery import baker
+from cohort.models import Cohort
 
 User = get_user_model()
 
@@ -138,6 +139,14 @@ def accepted_invitation(db, researcher_user):
         is_active=True,
         has_accepted=True
     )
+
+@pytest.fixture
+def cohort(db, researcher_user):
+    return Cohort.objects.create(
+        name="Test Cohort",
+        created_by=researcher_user,
+    )
+
 
 @pytest.fixture
 def mock_email_manager(mocker):

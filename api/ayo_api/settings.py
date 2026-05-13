@@ -45,6 +45,7 @@ LOCAL_APPS = [
     'common.apps.CommonConfig',
     'users.apps.UsersConfig',
     'participant.apps.ParticipantConfig',
+    'cohort.apps.CohortConfig',
     'chat.apps.ChatConfig',
     'researcher.apps.ResearcherConfig',
 ]

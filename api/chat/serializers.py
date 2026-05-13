@@ -7,6 +7,7 @@ from django.db import transaction
 
 from chat.models import ChatMedia, ConversationModel
 from chat.models.chat_models import Chat
+from cohort.serializers import CohortReadSerializer
 
 
 User = get_user_model()
@@ -101,12 +102,13 @@ class ConversationUserSerializer(serializers.ModelSerializer):
 
 class ConversationListSerializer(serializers.ModelSerializer):
     participant = ConversationUserSerializer(read_only=True, source='user')
+    cohort = CohortReadSerializer(read_only=True)
     created_at = serializers.SerializerMethodField()
     number_of_turns = serializers.SerializerMethodField()
 
     class Meta:
         model = ConversationModel
-        fields = ['id', 'title', 'conversation_id', 'model_name', 'participant', 'created_at', 'number_of_turns', 'is_deleted']
+        fields = ['id', 'title', 'conversation_id', 'model_name', 'participant', 'cohort', 'created_at', 'number_of_turns', 'is_deleted']
 
     def get_created_at(self, obj):
         return obj.created_at.strftime('%B %d, %Y, %I:%M %p') if obj.created_at else None
@@ -132,7 +134,8 @@ class ConversationCreateSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def create(self, validated_data):
         user = self.context['request'].user
-        return ConversationModel.objects.create(user=user, **validated_data)
+        cohort = getattr(getattr(user, 'participant_profile', None), 'cohort', None)
+        return ConversationModel.objects.create(user=user, cohort=cohort, **validated_data)
 
     def to_representation(self, instance):
         return ConversationDetailSerializer(instance, context=self.context).data
