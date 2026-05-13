@@ -14,7 +14,7 @@ import {
   BarChart3,
   HelpCircle,
   MessageSquare,
-  UsersRound,
+  Group,
 } from "lucide-react";
 import { cn } from "@/utils/utils";
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,7 @@ const navItems = [
   {
     title: "Cohorts",
     href: "/dashboard/cohorts",
-    icon: UsersRound,
+    icon: Group,
   },
   {
     title: "Reports",
