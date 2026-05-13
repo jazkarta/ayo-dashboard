@@ -11,11 +11,10 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Bell,
   BarChart3,
-  ClipboardList,
   HelpCircle,
   MessageSquare,
+  UsersRound,
 } from "lucide-react";
 import { cn } from "@/utils/utils";
 import { Button } from "@/components/ui/button";
@@ -47,6 +46,11 @@ const navItems = [
     title: "Researchers",
     href: "/dashboard/researchers",
     icon: FlaskConical,
+  },
+  {
+    title: "Cohorts",
+    href: "/dashboard/cohorts",
+    icon: UsersRound,
   },
   {
     title: "Reports",
