@@ -306,22 +306,6 @@ export default function ResearchersTable({ refreshKey = 0, isAdminResearcher = f
       header: "Username",
       cell: (info) => info.getValue() || "-",
     }),
-    columnHelper.accessor("is_active", {
-      header: "Status",
-      cell: (info) => {
-        const active = info.getValue();
-        return (
-          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-            active
-              ? "bg-green-100 text-green-700"
-              : "bg-slate-100 text-slate-500"
-          }`}>
-            <CircleIcon className={`h-1.5 w-1.5 fill-current`} />
-            {active ? "Active" : "Inactive"}
-          </span>
-        );
-      },
-    }),
     ...(isAdminResearcher ? [columnHelper.display({
       id: "actions",
       header: "Actions",
