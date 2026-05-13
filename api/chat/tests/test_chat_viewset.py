@@ -459,6 +459,28 @@ class TestConversationFilter:
         response = api_client.get(reverse('conversation-list'), {'model_name': 'gpt-4o'})
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
+    def test_filter_by_cohort_id(self, api_client, chat_user_with_cohort, cohort, chat_user):
+        api_client.force_authenticate(user=chat_user_with_cohort)
+        ConversationModel.objects.create(conversation_id='c-cohort', user=chat_user_with_cohort, title='In Cohort', cohort=cohort)
+        ConversationModel.objects.create(conversation_id='c-no-cohort', user=chat_user, title='No Cohort')
+
+        response = api_client.get(reverse('conversation-list'), {'cohort_id': str(cohort.id)})
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 1
+        assert results[0]['title'] == 'In Cohort'
+
+    def test_filter_by_cohort_id_returns_empty_when_no_match(self, api_client, chat_user, cohort):
+        api_client.force_authenticate(user=chat_user)
+        ConversationModel.objects.create(conversation_id='c1', user=chat_user, title='No Cohort')
+
+        response = api_client.get(reverse('conversation-list'), {'cohort_id': str(cohort.id)})
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data.get('results', response.data)
+        assert len(results) == 0
+
     def test_filter_by_turns_min(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
         short = ConversationModel.objects.create(conversation_id='f1', user=chat_user, title='Short')
@@ -668,6 +690,18 @@ class TestConversationBulkExport:
         rows = parse_csv_response(response)
         assert len(rows) == 2  # header + 1 matching row
         assert rows[1][1] == 'b1'
+
+    def test_bulk_export_filtered_by_cohort_id(self, api_client, chat_user_with_cohort, cohort, chat_user):
+        api_client.force_authenticate(user=chat_user_with_cohort)
+        c1 = ConversationModel.objects.create(conversation_id='be-cohort', user=chat_user_with_cohort, title='In Cohort', cohort=cohort)
+        ConversationModel.objects.create(conversation_id='be-no-cohort', user=chat_user, title='No Cohort')
+        Chat.objects.create(conversation=c1, prompt='p1', response='r1')
+
+        response = api_client.get(bulk_export_url(), {'cohort_id': str(cohort.id)})
+
+        rows = parse_csv_response(response)
+        assert len(rows) == 2  # header + 1 matching row
+        assert rows[1][1] == 'be-cohort'
 
     def test_bulk_export_filtered_by_search(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
