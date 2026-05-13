@@ -1,10 +1,26 @@
 from django.db import transaction
 from rest_framework import serializers
 
+from participant.models import ParticipantProfile
+from researcher.serializers import ResearcherReadSerializer
 from .models import Cohort
 
 
+class CohortParticipantSerializer(serializers.ModelSerializer):
+    id = serializers.UUIDField(source='user.id', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+
+    class Meta:
+        model = ParticipantProfile
+        fields = ['id', 'email', 'first_name', 'last_name', 'username', 'family_id', 'date_of_birth', 'gender']
+        read_only_fields = fields
+
+
 class CohortReadSerializer(serializers.ModelSerializer):
+    created_by = ResearcherReadSerializer(read_only=True)
     participant_count = serializers.SerializerMethodField()
 
     class Meta:
@@ -14,6 +30,14 @@ class CohortReadSerializer(serializers.ModelSerializer):
 
     def get_participant_count(self, obj):
         return obj.participants.count()
+
+
+class CohortDetailSerializer(CohortReadSerializer):
+    participants = CohortParticipantSerializer(many=True, read_only=True)
+
+    class Meta(CohortReadSerializer.Meta):
+        fields = CohortReadSerializer.Meta.fields + ['participants']
+        read_only_fields = fields
 
 
 class CohortCreateSerializer(serializers.ModelSerializer):
