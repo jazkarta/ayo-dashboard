@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Loader2, XIcon } from "lucide-react";
 import toast from "react-hot-toast";
@@ -97,12 +98,13 @@ export default function AddCohortForm({ onSuccess = null }) {
 
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="description">Description</Label>
-                  <Input
+                  <Textarea
                     id="description"
                     name="description"
                     value={formData.description}
                     onChange={handleChange}
                     disabled={loading}
+                    rows={3}
                     className={errors.description ? "border-destructive" : ""}
                   />
                   {errors.description && (
