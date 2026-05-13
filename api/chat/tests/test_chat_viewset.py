@@ -179,7 +179,7 @@ class TestConversationExport:
         rows = parse_csv_response(response)
         assert rows[0] == [
             'conversation_title', 'conversation_id', 'model_name',
-            'participant_name', 'family_id', 'message_date',
+            'participant_name', 'family_id', 'cohort_id', 'message_date',
             'prompt', 'response', 'attachment_urls',
         ]
 
@@ -193,9 +193,10 @@ class TestConversationExport:
         assert data_row[1] == conversation.conversation_id
         assert data_row[2] == conversation.model_name
         assert data_row[4] == ''  # no participant profile → empty family_id
-        assert data_row[6] == chat.prompt
-        assert data_row[7] == chat.response
-        assert data_row[8] == ''
+        assert data_row[5] == ''  # no cohort
+        assert data_row[7] == chat.prompt
+        assert data_row[8] == chat.response
+        assert data_row[9] == ''
 
     def test_export_empty_conversation_returns_only_headers(self, api_client, chat_user, conversation):
         api_client.force_authenticate(user=chat_user)
@@ -214,14 +215,14 @@ class TestConversationExport:
 
         rows = parse_csv_response(response)
         assert len(rows) == 4  # header + 3 chats
-        assert [row[6] for row in rows[1:]] == prompts
+        assert [row[7] for row in rows[1:]] == prompts
 
     def test_export_single_attachment_url_in_column(self, api_client, chat_user, conversation, chat, chat_media):
         api_client.force_authenticate(user=chat_user)
         response = api_client.get(conversation_export_url(conversation.pk))
 
         rows = parse_csv_response(response)
-        assert rows[1][8] == chat_media.url
+        assert rows[1][9] == chat_media.url
 
     def test_export_multiple_attachments_are_pipe_separated(self, api_client, chat_user, conversation, chat):
         api_client.force_authenticate(user=chat_user)
@@ -235,7 +236,7 @@ class TestConversationExport:
         response = api_client.get(conversation_export_url(conversation.pk))
 
         rows = parse_csv_response(response)
-        attachment_urls = rows[1][8].split('|')
+        attachment_urls = rows[1][9].split('|')
         assert sorted(attachment_urls) == sorted(urls)
 
 
@@ -595,7 +596,7 @@ class TestConversationBulkExport:
         rows = parse_csv_response(response)
         assert rows[0] == [
             'conversation_title', 'conversation_id', 'model_name',
-            'participant_name', 'family_id',
+            'participant_name', 'family_id', 'cohort_id',
             'prompts', 'responses', 'attachment_urls',
         ]
 
@@ -635,9 +636,10 @@ class TestConversationBulkExport:
         assert data_row[1] == conversation.conversation_id
         assert data_row[2] == conversation.model_name
         assert data_row[4] == ''  # no participant profile → empty family_id
-        assert data_row[5] == chat.prompt
-        assert data_row[6] == chat.response
-        assert data_row[7] == ''
+        assert data_row[5] == ''  # no cohort
+        assert data_row[6] == chat.prompt
+        assert data_row[7] == chat.response
+        assert data_row[8] == ''
 
     def test_bulk_export_prompts_and_responses_pipe_joined(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
@@ -650,8 +652,8 @@ class TestConversationBulkExport:
 
         rows = parse_csv_response(response)
         assert len(rows) == 2  # header + 1 conversation row
-        assert rows[1][5] == 'First prompt|Second prompt'
-        assert rows[1][6] == 'First response|Second response'
+        assert rows[1][6] == 'First prompt|Second prompt'
+        assert rows[1][7] == 'First response|Second response'
 
     def test_bulk_export_filtered_by_participant_username(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
@@ -690,7 +692,7 @@ class TestConversationBulkExport:
         response = api_client.get(bulk_export_url())
 
         rows = parse_csv_response(response)
-        assert sorted(rows[1][7].split('|')) == sorted(urls)
+        assert sorted(rows[1][8].split('|')) == sorted(urls)
 
 
 @pytest.mark.django_db
