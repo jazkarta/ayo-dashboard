@@ -6,6 +6,7 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
 from users.models.user import UserRole
+from users.serializers.user_serializers import UserSerializer
 from utils.keycloak_manager import KeycloakSync
 
 logger = logging.getLogger(__name__)
@@ -13,22 +14,12 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
-class ResearcherReadSerializer(serializers.ModelSerializer):
+class ResearcherReadSerializer(UserSerializer):
     """Read-only serializer for representing researcher data in responses."""
 
-    full_name = serializers.SerializerMethodField()
-    is_admin_researcher = serializers.BooleanField(read_only=True)
-
-    class Meta:
-        model = User
-        fields = [
-            'id', 'email', 'first_name', 'last_name', 'full_name',
-            'username', 'is_active', 'is_admin_researcher', 'keycloak_id', 'role',
-        ]
+    class Meta(UserSerializer.Meta):
+        fields = UserSerializer.Meta.fields + ['is_active', 'keycloak_id', 'role']
         read_only_fields = fields
-
-    def get_full_name(self, obj):
-        return obj.get_full_name()
 
 
 class ResearcherCreateSerializer(serializers.ModelSerializer):
