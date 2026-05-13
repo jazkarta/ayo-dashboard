@@ -374,20 +374,32 @@ export default function AddParticipantForm({ onSuccess = null }) {
 
                   <div className="flex flex-col gap-2">
                     <Label htmlFor="cohort_id">Cohort</Label>
-                    <Select
-                      value={formData.cohort_id}
-                      onValueChange={(val) => setFormData((prev) => ({ ...prev, cohort_id: val }))}
-                      disabled={loading}
-                    >
-                      <SelectTrigger id="cohort_id" className="w-full">
-                        <SelectValue placeholder="Select a cohort" />
-                      </SelectTrigger>
-                      <SelectContent position="popper" className="max-h-48 overflow-y-auto">
-                        {cohorts.map((c) => (
-                          <SelectItem key={c.id} value={c.id} className="py-2.5 pl-3 pr-8 cursor-pointer">{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="relative">
+                      <Select
+                        value={formData.cohort_id}
+                        onValueChange={(val) => setFormData((prev) => ({ ...prev, cohort_id: val }))}
+                        disabled={loading}
+                      >
+                        <SelectTrigger id="cohort_id" className="w-full">
+                          <SelectValue placeholder="Select a cohort" />
+                        </SelectTrigger>
+                        <SelectContent position="popper" className="max-h-48 overflow-y-auto">
+                          {cohorts.map((c) => (
+                            <SelectItem key={c.id} value={c.id} className="py-2.5 pl-3 pr-8 cursor-pointer">{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {formData.cohort_id && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setFormData((prev) => ({ ...prev, cohort_id: "" })); }}
+                          className="absolute right-10 top-1/2 -translate-y-1/2 flex h-4 w-4 items-center justify-center rounded-full bg-muted-foreground/20 text-muted-foreground hover:bg-muted-foreground/40 transition-all duration-150"
+                          title="Clear selection"
+                        >
+                          <XIcon className="h-2.5 w-2.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
