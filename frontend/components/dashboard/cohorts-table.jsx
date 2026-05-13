@@ -23,6 +23,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Pencil, Trash2, XIcon } from "lucide-react";
+import Link from "next/link";
+import { Textarea } from "@/components/ui/textarea";
 import toast from "react-hot-toast";
 import cohortService from "@/services/cohortService";
 import { extractFieldErrors } from "@/utils/apiErrors";
@@ -102,12 +104,13 @@ function EditDialog({ cohort, onClose, onSaved }) {
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="edit_description">Description</Label>
-              <Input
+              <Textarea
                 id="edit_description"
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
                 disabled={saving}
+                rows={3}
                 className={errors.description ? "border-destructive" : ""}
               />
               {errors.description && (
@@ -216,7 +219,14 @@ export default function CohortsTable({ refreshKey = 0 }) {
   const columns = useMemo(() => [
     columnHelper.accessor("id", {
       header: "ID",
-      cell: (info) => info.getValue() || "-",
+      cell: (info) => (
+        <Link
+          href={`/dashboard/cohorts/${info.getValue()}`}
+          className="hover:underline font-medium"
+        >
+          {info.getValue() || "-"}
+        </Link>
+      ),
     }),
     columnHelper.accessor("name", {
       header: "Name",
@@ -224,7 +234,15 @@ export default function CohortsTable({ refreshKey = 0 }) {
     }),
     columnHelper.accessor("description", {
       header: "Description",
-      cell: (info) => info.getValue() || "-",
+      cell: (info) => {
+        const value = info.getValue();
+        if (!value) return "-";
+        return (
+          <span className="block max-w-xs truncate" title={value}>
+            {value}
+          </span>
+        );
+      },
     }),
     columnHelper.display({
       id: "actions",
