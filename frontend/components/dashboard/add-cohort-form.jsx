@@ -104,8 +104,8 @@ export default function AddCohortForm({ onSuccess = null }) {
                     value={formData.description}
                     onChange={handleChange}
                     disabled={loading}
-                    rows={3}
-                    className={errors.description ? "border-destructive" : ""}
+                    rows={5}
+                    className={`field-sizing-fixed ${errors.description ? "border-destructive" : ""}`}
                   />
                   {errors.description && (
                     <p className="text-xs text-destructive">{errors.description}</p>

@@ -116,8 +116,8 @@ function EditDialog({ cohort, onClose, onSaved }) {
                 value={formData.description}
                 onChange={handleChange}
                 disabled={saving}
-                rows={3}
-                className={errors.description ? "border-destructive" : ""}
+                rows={5}
+                className={`field-sizing-fixed ${errors.description ? "border-destructive" : ""}`}
               />
               {errors.description && (
                 <p className="text-xs text-destructive">{errors.description}</p>
