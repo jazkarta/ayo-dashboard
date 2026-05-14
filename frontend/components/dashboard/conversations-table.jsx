@@ -296,7 +296,7 @@ export default function ConversationsTable() {
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Filter popover */}
-            <Popover open={popoverOpen} onOpenChange={(open) => { setDraft(applied); setPopoverOpen(open); }}>
+            {(pagination.count > 0 || activeCount > 0 || loading) && <Popover open={popoverOpen} onOpenChange={(open) => { setDraft(applied); setPopoverOpen(open); }}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -556,7 +556,7 @@ export default function ConversationsTable() {
                   </Button>
                 </div>
               </PopoverContent>
-            </Popover>
+            </Popover>}
 
             {/* Export */}
             {pagination.count > 0 && (
@@ -623,13 +623,13 @@ export default function ConversationsTable() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   <Loader2 className="animate-spin h-8 w-8 mx-auto" />
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6}>
+                <TableCell colSpan={7}>
                   <div className="flex flex-col items-center justify-center gap-3 py-14">
                     <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
                       <MessageSquareOff className="h-7 w-7" />
