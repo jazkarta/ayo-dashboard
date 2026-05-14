@@ -6,7 +6,7 @@ from common.models import BaseModel
 
 
 class Cohort(BaseModel):
-    name = models.CharField(_('name'), max_length=255)
+    name = models.CharField(_('name'), max_length=50)
     description = models.TextField(_('description'), blank=True, null=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
