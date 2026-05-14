@@ -15,6 +15,7 @@ const conversationService = {
     if (filters.participant_age) params.set("participant_age", filters.participant_age);
     if (filters.date_from) params.set("date_from", filters.date_from);
     if (filters.date_to) params.set("date_to", filters.date_to);
+    if (filters.cohort_id) params.set("cohort_id", filters.cohort_id);
     const queryString = params.toString();
     return apiClient.get(queryString ? `${url}?${queryString}` : url);
   },
@@ -39,6 +40,7 @@ const conversationService = {
     if (filters.participant_age) params.set("participant_age", filters.participant_age);
     if (filters.date_from) params.set("date_from", filters.date_from);
     if (filters.date_to) params.set("date_to", filters.date_to);
+    if (filters.cohort_id) params.set("cohort_id", filters.cohort_id);
     const queryString = params.toString();
     const url = queryString ? `${urlBase}export/?${queryString}` : `${urlBase}export/`;
     return apiClient.get(url, { responseType: "blob" });
