@@ -19,15 +19,15 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import {
-  Loader2, SlidersHorizontal, X, Download, MessageSquareOff, User, Filter, CalendarIcon, ArrowRight,
+  Loader2, SlidersHorizontal, X, Download, MessageSquareOff, User, Filter, CalendarIcon, ArrowRight, Group, Hash, Milestone,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import conversationService from "@/services/conversationService";
 
 const columnHelper = createColumnHelper();
 
-const INITIAL_FILTERS = { participant_username: "", turns_min: "", turns_max: "", participant_age: "", date_from: "", date_to: "" };
-const FILTER_KEYS = ["participant_username", "turns_min", "turns_max", "participant_age", "date_from", "date_to"];
+const INITIAL_FILTERS = { participant_username: "", turns_min: "", turns_max: "", participant_age: "", date_from: "", date_to: "", cohort_id: "" };
+const FILTER_KEYS = ["participant_username", "turns_min", "turns_max", "participant_age", "date_from", "date_to", "cohort_id"];
 
 function downloadBlob(blob, filename) {
   const blobUrl = URL.createObjectURL(blob);
@@ -83,6 +83,7 @@ export default function ConversationsTable() {
     participant_age: searchParams.get("participant_age") || "",
     date_from: searchParams.get("date_from") || "",
     date_to: searchParams.get("date_to") || "",
+    cohort_id: searchParams.get("cohort_id") || "",
   }), [searchParams]);
 
   const currentUrl = useMemo(() => {
@@ -216,22 +217,27 @@ export default function ConversationsTable() {
         );
       },
     }),
+    columnHelper.accessor((row) => row.cohort, {
+      id: "cohort",
+      header: "Cohort",
+      cell: (info) => {
+        const cohort = info.getValue();
+        if (!cohort) return "-";
+        return (
+          <div className="flex flex-col gap-0.5">
+            <span className="font-medium text-sm">{cohort.name}</span>
+            <span className="text-xs text-muted-foreground font-mono">{cohort.id}</span>
+          </div>
+        );
+      },
+    }),
     columnHelper.accessor((row) => row.participant?.age, {
       id: "participant_age",
       header: "Age (year)",
       cell: (info) => info.getValue() || "-",
     }),
-    columnHelper.accessor((row) => row.participant?.username, {
-      id: "participant_username",
-      header: "Participant Username",
-      cell: (info) => info.getValue() || "-",
-    }),
-    columnHelper.accessor("model_name", {
-      header: "Model Name",
-      cell: (info) => info.getValue() || "-",
-    }),
     columnHelper.accessor("number_of_turns", {
-      header: "Conversation Turns",
+      header: "Turns",
       cell: (info) => {
         const val = info.getValue();
         if (val == null) return "-";
@@ -241,6 +247,15 @@ export default function ConversationsTable() {
           </span>
         );
       },
+    }),
+    columnHelper.accessor((row) => row.participant?.username, {
+      id: "participant_username",
+      header: "Participant Username",
+      cell: (info) => info.getValue() || "-",
+    }),
+    columnHelper.accessor("model_name", {
+      header: "Model Name",
+      cell: (info) => info.getValue() || "-",
     }),
     columnHelper.accessor("created_at", {
       header: "Conversation Created",
@@ -265,7 +280,7 @@ export default function ConversationsTable() {
   const table = useReactTable({ data, columns, getCoreRowModel: getCoreRowModel() });
 
   const activeEntries = useMemo(() => {
-    const labels = { participant_username: "Username", turns_min: "Min turns", turns_max: "Max turns", participant_age: "Age", date_from: "From", date_to: "To" };
+    const labels = { participant_username: "Username", turns_min: "Min turns", turns_max: "Max turns", participant_age: "Age", date_from: "From", date_to: "To", cohort_id: "Cohort ID" };
     return Object.entries(applied)
       .filter(([, v]) => Boolean(v))
       .map(([key, value]) => ({ key, label: labels[key], value }));
@@ -299,7 +314,7 @@ export default function ConversationsTable() {
                     <Filter className="h-4 w-4 text-muted-foreground" />
                     Filter conversations
                   </div>
-                  {(draft.participant_username || draft.turns_min || draft.turns_max || draft.participant_age || draft.date_from || draft.date_to) && (
+                  {(draft.participant_username || draft.turns_min || draft.turns_max || draft.participant_age || draft.date_from || draft.date_to || draft.cohort_id) && (
                     <button
                       type="button"
                       onClick={() => setDraft(INITIAL_FILTERS)}
@@ -314,6 +329,32 @@ export default function ConversationsTable() {
 
                 {/* Fields */}
                 <div className="flex flex-col gap-4 p-4">
+                  {/* Cohort ID */}
+                  <div className="flex flex-col gap-2">
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <Group className="h-3.5 w-3.5" />
+                      Cohort ID
+                    </label>
+                    <div className="relative">
+                      <Input
+                        placeholder="e.g. 38709ffd-1aac-..."
+                        value={draft.cohort_id}
+                        onKeyDown={(e) => e.key === " " && e.preventDefault()}
+                        onChange={(e) => setDraft((p) => ({ ...p, cohort_id: e.target.value.replace(/\s/g, "") }))}
+                        className="h-9 pr-8 text-sm"
+                      />
+                      {draft.cohort_id && (
+                        <button
+                          type="button"
+                          onClick={() => setDraft((p) => ({ ...p, cohort_id: "" }))}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Participant username */}
                   <div className="flex flex-col gap-2">
                     <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -343,7 +384,7 @@ export default function ConversationsTable() {
                   {/* Turns */}
                   <div className="flex flex-col gap-2">
                     <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                      <Filter className="h-3.5 w-3.5" />
+                      <Hash className="h-3.5 w-3.5" />
                       Number of turns
                     </label>
                     <div className="flex items-center gap-2">
@@ -397,7 +438,7 @@ export default function ConversationsTable() {
                   {/* Participant age */}
                   <div className="flex flex-col gap-2">
                     <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                      <User className="h-3.5 w-3.5" />
+                      <Milestone className="h-3.5 w-3.5" />
                       Participant age (year)
                     </label>
                     <div className="relative">
