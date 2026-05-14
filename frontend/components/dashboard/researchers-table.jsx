@@ -285,7 +285,16 @@ export default function ResearchersTable({ refreshKey = 0, isAdminResearcher = f
           First Name <SortIcon field="first_name" ordering={ordering} />
         </button>
       ),
-      cell: (info) => info.getValue() || "-",
+      cell: (info) => {
+        const val = info.getValue();
+        if (!val) return "-";
+        const chars = [...val];
+        return (
+          <span title={chars.length > 20 ? val : undefined}>
+            {chars.length > 20 ? `${chars.slice(0, 20).join("")}...` : val}
+          </span>
+        );
+      },
     }),
     columnHelper.accessor("last_name", {
       header: () => (
@@ -296,7 +305,16 @@ export default function ResearchersTable({ refreshKey = 0, isAdminResearcher = f
           Last Name <SortIcon field="last_name" ordering={ordering} />
         </button>
       ),
-      cell: (info) => info.getValue() || "-",
+      cell: (info) => {
+        const val = info.getValue();
+        if (!val) return "-";
+        const chars = [...val];
+        return (
+          <span title={chars.length > 20 ? val : undefined}>
+            {chars.length > 20 ? `${chars.slice(0, 20).join("")}...` : val}
+          </span>
+        );
+      },
     }),
     columnHelper.accessor("email", {
       header: "Email",

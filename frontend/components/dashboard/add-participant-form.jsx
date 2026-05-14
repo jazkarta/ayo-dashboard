@@ -160,7 +160,13 @@ export default function AddParticipantForm({ onSuccess = null }) {
       }
     } catch (err) {
       const apiErrors = err.response?.data;
-      if (apiErrors?.email) {
+      if (apiErrors?.first_name || apiErrors?.last_name) {
+        setErrors({
+          ...(apiErrors.first_name ? { firstName: apiErrors.first_name[0] } : {}),
+          ...(apiErrors.last_name ? { lastName: apiErrors.last_name[0] } : {}),
+        });
+        setCurrentStep(1);
+      } else if (apiErrors?.email) {
         setErrors({ email: apiErrors.email[0] });
         setCurrentStep(1);
       } else if (apiErrors?.profile_data?.date_of_birth || apiErrors?.date_of_birth) {

@@ -253,7 +253,16 @@ export default function CohortsTable({ refreshKey = 0 }) {
           Name <SortIcon field="name" ordering={ordering} />
         </button>
       ),
-      cell: (info) => info.getValue() || "-",
+      cell: (info) => {
+        const val = info.getValue();
+        if (!val) return "-";
+        const chars = [...val];
+        return (
+          <span title={chars.length > 20 ? val : undefined}>
+            {chars.length > 20 ? `${chars.slice(0, 20).join("")}...` : val}
+          </span>
+        );
+      },
     }),
     columnHelper.accessor("description", {
       header: "Description",

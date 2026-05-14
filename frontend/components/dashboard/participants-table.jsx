@@ -19,6 +19,7 @@ import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, Pencil, Trash2, CalendarIcon,
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 import participantService from "../../services/participantService.js";
+import { extractFieldErrors } from "@/utils/apiErrors";
 import cohortService from "@/services/cohortService";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -91,8 +92,13 @@ function EditDialog({ participant, onClose, onSaved }) {
       });
       toast.success("Participant updated successfully.");
       onSaved();
-    } catch {
-      toast.error("Failed to update participant. Please try again.");
+    } catch (err) {
+      const fieldErrors = extractFieldErrors(err);
+      if (Object.keys(fieldErrors).length > 0) {
+        setErrors(fieldErrors);
+      } else {
+        toast.error("Failed to update participant. Please try again.");
+      }
     } finally {
       setSaving(false);
     }
@@ -363,7 +369,16 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
           First Name <SortIcon field="first_name" ordering={ordering} />
         </button>
       ),
-      cell: (info) => info.getValue() || "-",
+      cell: (info) => {
+        const val = info.getValue();
+        if (!val) return "-";
+        const chars = [...val];
+        return (
+          <span title={chars.length > 20 ? val : undefined}>
+            {chars.length > 20 ? `${chars.slice(0, 20).join("")}...` : val}
+          </span>
+        );
+      },
     }),
     columnHelper.accessor("last_name", {
       header: () => (
@@ -374,7 +389,16 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
           Last Name <SortIcon field="last_name" ordering={ordering} />
         </button>
       ),
-      cell: (info) => info.getValue() || "-",
+      cell: (info) => {
+        const val = info.getValue();
+        if (!val) return "-";
+        const chars = [...val];
+        return (
+          <span title={chars.length > 20 ? val : undefined}>
+            {chars.length > 20 ? `${chars.slice(0, 20).join("")}...` : val}
+          </span>
+        );
+      },
     }),
     columnHelper.accessor((row) => row.profile_data?.date_of_birth, {
       id: "date_of_birth",
@@ -389,7 +413,16 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
     columnHelper.accessor((row) => row.profile_data?.cohort?.name, {
       id: "cohort",
       header: "Cohort",
-      cell: (info) => info.getValue() || "-",
+      cell: (info) => {
+        const val = info.getValue();
+        if (!val) return "-";
+        const chars = [...val];
+        return (
+          <span title={chars.length > 20 ? val : undefined}>
+            {chars.length > 20 ? `${chars.slice(0, 20).join("")}...` : val}
+          </span>
+        );
+      },
     }),
     columnHelper.accessor("is_active", {
       header: "Status",
