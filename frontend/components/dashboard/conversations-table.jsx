@@ -104,6 +104,7 @@ export default function ConversationsTable() {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [fromOpen, setFromOpen] = useState(false);
   const [toOpen, setToOpen] = useState(false);
+  const [filterErrors, setFilterErrors] = useState({});
 
   const [exporting, setExporting] = useState(false);
   const [data, setData] = useState([]);
@@ -157,13 +158,21 @@ export default function ConversationsTable() {
     [draft, applied],
   );
 
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
   const handleApply = () => {
+    if (draft.cohort_id && !UUID_RE.test(draft.cohort_id)) {
+      setFilterErrors({ cohort_id: "Enter a valid UUID." });
+      return;
+    }
+    setFilterErrors({});
     navigatePage("/chats/conversations/", draft);
     setPopoverOpen(false);
   };
 
   const handleCancel = () => {
     setDraft(applied);
+    setFilterErrors({});
     setPopoverOpen(false);
   };
 
@@ -296,7 +305,7 @@ export default function ConversationsTable() {
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Filter popover */}
-            {(pagination.count > 0 || activeCount > 0 || loading) && <Popover open={popoverOpen} onOpenChange={(open) => { setDraft(applied); setPopoverOpen(open); }}>
+            {(pagination.count > 0 || activeCount > 0 || loading) && <Popover open={popoverOpen} onOpenChange={(open) => { setDraft(applied); setFilterErrors({}); setPopoverOpen(open); }}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -317,7 +326,7 @@ export default function ConversationsTable() {
                   {(draft.participant_username || draft.turns_min || draft.turns_max || draft.participant_age || draft.date_from || draft.date_to || draft.cohort_id) && (
                     <button
                       type="button"
-                      onClick={() => setDraft(INITIAL_FILTERS)}
+                      onClick={() => { setDraft(INITIAL_FILTERS); setFilterErrors({}); }}
                       className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       Reset
@@ -340,19 +349,25 @@ export default function ConversationsTable() {
                         placeholder="e.g. 38709ffd-1aac-..."
                         value={draft.cohort_id}
                         onKeyDown={(e) => e.key === " " && e.preventDefault()}
-                        onChange={(e) => setDraft((p) => ({ ...p, cohort_id: e.target.value.replace(/\s/g, "") }))}
-                        className="h-9 pr-8 text-sm"
+                        onChange={(e) => {
+                          setDraft((p) => ({ ...p, cohort_id: e.target.value.replace(/\s/g, "") }));
+                          setFilterErrors((p) => ({ ...p, cohort_id: "" }));
+                        }}
+                        className={`h-9 pr-8 text-sm ${filterErrors.cohort_id ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                       />
                       {draft.cohort_id && (
                         <button
                           type="button"
-                          onClick={() => setDraft((p) => ({ ...p, cohort_id: "" }))}
+                          onClick={() => { setDraft((p) => ({ ...p, cohort_id: "" })); setFilterErrors((p) => ({ ...p, cohort_id: "" })); }}
                           className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
                       )}
                     </div>
+                    {filterErrors.cohort_id && (
+                      <p className="text-xs text-red-500">{filterErrors.cohort_id}</p>
+                    )}
                   </div>
 
                   {/* Participant username */}
