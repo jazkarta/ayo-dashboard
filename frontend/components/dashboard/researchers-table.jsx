@@ -13,15 +13,14 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, CircleIcon, Pencil, Trash2, XIcon, UserX } from "lucide-react";
+import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, Pencil, Trash2, XIcon, UserX, FlaskConical } from "lucide-react";
 import toast from "react-hot-toast";
 import researcherService from "@/services/researcherService";
 import { logout } from "@/services/keycloakService";
 import { extractFieldErrors } from "@/utils/apiErrors";
+import EmptyState from "@/components/dashboard/empty-state";
 
 const columnHelper = createColumnHelper();
-
-const SORTABLE = ["first_name", "last_name"];
 
 function SortIcon({ field, ordering }) {
   if (ordering === field) return <ArrowUp className="h-3.5 w-3.5" />;
@@ -421,14 +420,20 @@ export default function ResearchersTable({ refreshKey = 0, isAdminResearcher = f
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={table.getAllColumns().length} className="h-24 text-center">
                   <Loader2 className="animate-spin h-8 w-8 mx-auto" />
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
-                  No researchers found.
+                <TableCell colSpan={table.getAllColumns().length}>
+                  <EmptyState
+                    icon={FlaskConical}
+                    title="No researchers found"
+                    description="Try adjusting your search to find what you're looking for."
+                    actionLabel="Go back"
+                    onAction={() => setSearch("")}
+                  />
                 </TableCell>
               </TableRow>
             ) : (

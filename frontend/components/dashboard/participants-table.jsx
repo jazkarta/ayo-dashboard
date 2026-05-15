@@ -15,16 +15,15 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, Pencil, Trash2, CalendarIcon, XIcon } from "lucide-react";
+import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, Pencil, Trash2, CalendarIcon, XIcon, Users } from "lucide-react";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 import participantService from "../../services/participantService.js";
 import { extractFieldErrors } from "@/utils/apiErrors";
 import CohortCombobox from "@/components/dashboard/cohort-combobox";
+import EmptyState from "@/components/dashboard/empty-state";
 
 const columnHelper = createColumnHelper();
-
-const SORTABLE = ["first_name", "last_name"];
 
 function SortIcon({ field, ordering }) {
   if (ordering === field) return <ArrowUp className="h-3.5 w-3.5" />;
@@ -490,14 +489,21 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
+                <TableCell colSpan={table.getAllColumns().length} className="h-24 text-center">
                   <Loader2 className="animate-spin h-8 w-8 mx-auto" />
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
-                  No participants found.
+                <TableCell colSpan={table.getAllColumns().length}>
+                  <EmptyState
+                    icon={Users}
+                    title="No participants found"
+                    description="Try adjusting your search to find what you're looking for."
+                    actionLabel="Go back"
+                    onAction={() => setSearch("")}
+
+                  />
                 </TableCell>
               </TableRow>
             ) : (

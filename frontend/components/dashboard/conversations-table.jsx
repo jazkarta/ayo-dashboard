@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import conversationService from "@/services/conversationService";
+import EmptyState from "@/components/dashboard/empty-state";
 
 const columnHelper = createColumnHelper();
 
@@ -645,22 +646,13 @@ export default function ConversationsTable() {
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7}>
-                  <div className="flex flex-col items-center justify-center gap-3 py-14">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                      <MessageSquareOff className="h-7 w-7" />
-                    </div>
-                    <div className="flex flex-col items-center gap-1 text-center">
-                      <p className="text-sm font-semibold text-foreground">No conversations found</p>
-                      <p className="text-xs text-muted-foreground">Try adjusting your search or filters to find what you&apos;re looking for.</p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => { setDraft(INITIAL_FILTERS); navigatePage("/chats/conversations/", INITIAL_FILTERS); }}
-                    >
-                      Go back
-                    </Button>
-                  </div>
+                  <EmptyState
+                    icon={MessageSquareOff}
+                    title="No conversations found"
+                    description="Try adjusting your search or filters to find what you're looking for."
+                    actionLabel="Go back"
+                    onAction={() => { setDraft(INITIAL_FILTERS); navigatePage("/chats/conversations/", INITIAL_FILTERS); }}
+                  />
                 </TableCell>
               </TableRow>
             ) : (
