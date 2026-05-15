@@ -22,12 +22,13 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, Pencil, Trash2, XIcon, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Loader2, Pencil, Trash2, XIcon, ArrowUp, ArrowDown, ArrowUpDown, LayoutList } from "lucide-react";
 import Link from "next/link";
 import { Textarea } from "@/components/ui/textarea";
 import toast from "react-hot-toast";
 import cohortService from "@/services/cohortService";
 import { extractFieldErrors } from "@/utils/apiErrors";
+import EmptyState from "@/components/dashboard/empty-state";
 
 const columnHelper = createColumnHelper();
 
@@ -355,14 +356,20 @@ export default function CohortsTable({ refreshKey = 0 }) {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
+                  <TableCell colSpan={table.getAllColumns().length} className="h-24 text-center">
                     <Loader2 className="animate-spin h-8 w-8 mx-auto" />
                   </TableCell>
                 </TableRow>
               ) : table.getRowModel().rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
-                    No cohorts found.
+                  <TableCell colSpan={table.getAllColumns().length}>
+                    <EmptyState
+                      icon={LayoutList}
+                      title="No cohorts found"
+                      description="Try adjusting your search to find what you're looking for."
+                      actionLabel="Go back"
+                      onAction={() => setSearch("")}
+                    />
                   </TableCell>
                 </TableRow>
               ) : (
