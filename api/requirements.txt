@@ -40,4 +40,6 @@ typing_extensions==4.15.0
 uritemplate==4.2.0
 urllib3==2.6.3
 whitenoise==6.9.0
-pymongo==4.10.1
+celery==5.4.0
+redis==5.0.8
+google-cloud-storage==2.18.2

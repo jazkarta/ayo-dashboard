@@ -10,19 +10,24 @@ from rest_framework.decorators import action
 from rest_framework.generics import CreateAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.viewsets import ReadOnlyModelViewSet
+from rest_framework.viewsets import GenericViewSet, ReadOnlyModelViewSet
+
 
 from chat.filters import ConversationFilter
 from chat.models.chat_models import Chat
 from chat.managers import ConversationBulkExportManager, ConversationExportManager
 from chat.models.conversation_models import ConversationModel
+from chat.models.export_job_model import ExportJob
+from chat.tasks import export_conversations_to_gcs
 from chat.serializers import (
     ChatCreateSerializer,
     ChatSerializer,
     ConversationCreateSerializer,
     ConversationDetailSerializer,
     ConversationListSerializer,
+    ExportJobSerializer,
 )
+
 
 
 _CONVERSATION_FILTER_PARAMS = [
@@ -152,3 +157,14 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
             'conversations-all.csv'
         )
         return ConversationBulkExportManager.streaming_response(queryset, filename)
+
+
+class ExportJobViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, GenericViewSet):
+    queryset = ExportJob.objects.all()
+    serializer_class = ExportJobSerializer
+    permission_classes = []  # No authentication for now
+
+    def perform_create(self, serializer):
+        job = serializer.save()
+        export_conversations_to_gcs.delay(job.id)
+

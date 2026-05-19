@@ -216,3 +216,5 @@ package-lock.json
 yarn.lock
 
 frontend/.env.local
+
+export/
