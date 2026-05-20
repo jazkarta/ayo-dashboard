@@ -57,26 +57,23 @@ class TestExportJobTask:
 
     @patch("chat.tasks.GCSManager.generate_signed_url")
     @patch("chat.tasks.GCSManager.upload_csv")
-    def test_export_conversations_to_gcs_success(self, mock_upload_csv, mock_generate_signed_url):
-        # Setup
-        job = ExportJob.objects.create(
-            cohort_id="8c42b2ab-9d83-4903-87bb-7b0ee56dcd69"
-        )
+    def test_export_conversations_to_gcs_success(self, mock_upload_csv, mock_generate_signed_url, conversation, chat):
+        job = ExportJob.objects.create()
         mock_upload_csv.return_value = f"exports/chat-export-{job.id}.csv"
         mock_generate_signed_url.return_value = "https://storage.googleapis.com/fake-bucket/signed-url"
 
-        # Action
         export_conversations_to_gcs(str(job.id))
 
-        # Assertions
         job.refresh_from_db()
         assert job.status == ExportJob.Status.DONE
         assert job.gcs_blob_name == f"exports/chat-export-{job.id}.csv"
         assert job.download_url == "https://storage.googleapis.com/fake-bucket/signed-url"
         assert job.error_message is None
 
-        # Verify GCSManager calls
-        assert mock_upload_csv.called
+        csv_buffer, blob_name = mock_upload_csv.call_args[0]
+        csv_buffer.seek(0)
+        content = csv_buffer.read()
+        assert conversation.conversation_id in content
         mock_generate_signed_url.assert_called_once_with(f"exports/chat-export-{job.id}.csv")
 
     @patch("chat.tasks.GCSManager.upload_csv")

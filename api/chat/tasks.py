@@ -2,6 +2,8 @@ import csv
 import io
 import logging
 from celery import shared_task
+from chat.managers import ConversationBulkExportManager
+from chat.models.conversation_models import ConversationModel
 from chat.models.export_job_model import ExportJob
 from utils.gcs_manager import GCSManager
 
@@ -20,28 +22,18 @@ def export_conversations_to_gcs(job_id):
     job.save()
 
     try:
-        # Initial dummy CSV generation as requested
+        queryset = ConversationModel.objects.select_related('user', 'user__participant_profile')
+        if job.cohort_id:
+            queryset = queryset.filter(cohort_id=job.cohort_id)
+        if job.date_from:
+            queryset = queryset.filter(created_at__date__gte=job.date_from)
+        if job.date_to:
+            queryset = queryset.filter(created_at__date__lte=job.date_to)
+
         csv_buffer = io.StringIO()
         writer = csv.writer(csv_buffer)
-
-        # Write dummy headers matching bulk export schema
-        writer.writerow([
-            'conversation_title', 'conversation_id', 'model_name',
-            'participant_name', 'family_id', 'cohort_id',
-            'prompts', 'responses', 'attachment_urls'
-        ])
-        # Write one dummy data row
-        writer.writerow([
-            'Dummy Conversation',
-            'dummy-conv-123',
-            'dummy-model',
-            'John Doe',
-            'fam-123',
-            str(job.cohort_id) if job.cohort_id else 'all',
-            'Hello | How are you?',
-            'Hi! | I am doing well, thank you.',
-            'https://example.com/attachment.png'
-        ])
+        for row in ConversationBulkExportManager.rows(queryset):
+            writer.writerow(row)
 
         blob_name = f"exports/chat-export-{job_id}.csv"
 
