@@ -5,7 +5,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
-from chat.models import ChatMedia, ConversationModel
+from chat.models import ChatMedia, ConversationModel, ExportJob
 from chat.models.chat_models import Chat
 from cohort.serializers import CohortReadSerializer
 from users.serializers.user_serializers import UserSerializer
@@ -139,4 +139,15 @@ class ConversationCreateSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         return ConversationDetailSerializer(instance, context=self.context).data
+
+
+class ExportJobSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExportJob
+        fields = [
+            'id', 'status', 'cohort_id', 'date_from', 'date_to',
+            'download_url', 'error_message', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'status', 'download_url', 'error_message', 'created_at', 'updated_at']
+
 
