@@ -297,7 +297,7 @@ function DeleteDialog({ participant, onClose, onDeleted }) {
     setDeleting(true);
     try {
       await participantService.deleteParticipant(participant.id);
-      toast.success(`${participant.username} has been deleted.`);
+      toast.success(`${participant.email} removed successfully.`);
       onDeleted();
     } catch {
       toast.error("Failed to delete participant. Please try again.");
@@ -314,7 +314,7 @@ function DeleteDialog({ participant, onClose, onDeleted }) {
           <AlertDialogDescription>
             Are you sure you want to delete{" "}
             <span className="font-semibold text-foreground">
-              {participant?.username}
+              {participant?.email}
             </span>
             ? This action cannot be undone.
           </AlertDialogDescription>
