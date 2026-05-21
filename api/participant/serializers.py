@@ -58,8 +58,8 @@ class ParticipantCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'email', 'first_name', 'last_name', 'is_active', 'profile_data']
-        read_only_fields = ['id', 'is_active']
+        fields = ['id', 'email', 'username', 'first_name', 'last_name', 'is_active', 'profile_data']
+        read_only_fields = ['id', 'is_active', 'username']
         extra_kwargs = {
             "email": {
                 "required": True,

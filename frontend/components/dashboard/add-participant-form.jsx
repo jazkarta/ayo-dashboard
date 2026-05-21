@@ -24,7 +24,7 @@ const sendInvite = async (id, email) => {
 
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-const STEPS = ["Participant Info", "Participant Details", "Send Invite"];
+const STEPS = ["Participant Info", "Send Invite"];
 
 export default function AddParticipantForm({ onSuccess = null }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -32,15 +32,12 @@ export default function AddParticipantForm({ onSuccess = null }) {
   const [loading, setLoading] = useState(false);
   const [userCreated, setUserCreated] = useState(false);
   const [createdParticipantId, setCreatedParticipantId] = useState(null);
-  const [invitationId, setInvitationId] = useState(null);
   const [errors, setErrors] = useState({});
   const [dob, setDob] = useState({ mm: "", dd: "", yyyy: "" });
   const dobMmRef = useRef(null);
   const dobDdRef = useRef(null);
   const dobYyyyRef = useRef(null);
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
     email: "",
     dateOfBirth: "",
     familyId: "",
@@ -103,60 +100,24 @@ export default function AddParticipantForm({ onSuccess = null }) {
     setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  const validateStep1 = () => {
+  const validate = () => {
     const newErrors = {};
-    if (!formData.firstName.trim()) newErrors.firstName = "First name is required.";
-    if (!formData.lastName.trim()) newErrors.lastName = "Last name is required.";
     if (!formData.email.trim()) {
       newErrors.email = "Email is required.";
     } else if (!isValidEmail(formData.email)) {
       newErrors.email = "Please enter a valid email address.";
     }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const validateStep2 = () => {
-    const newErrors = {};
-
     if (!formData.dateOfBirth) {
       newErrors.dateOfBirth = "Date of birth is required.";
     } else {
       const dobDate = new Date(formData.dateOfBirth);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      if (dobDate >= today) {
-        newErrors.dateOfBirth = "Date of birth must be in the past.";
-      }
+      if (dobDate >= today) newErrors.dateOfBirth = "Date of birth must be in the past.";
     }
-
     if (!formData.familyId.trim()) newErrors.familyId = "Family ID is required.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  const handleNext = async () => {
-    if (!validateStep1()) return;
-
-    setLoading(true);
-    try {
-      const res = await participantService.checkIsEmailAvailable(formData.email);
-      setCurrentStep((prev) => Math.min(prev + 1, STEPS.length));
-    } catch (err) {
-      const apiErrors = err.response?.data;
-      if (apiErrors?.email) {
-        setErrors({ email: apiErrors.email[0] });
-      } else {
-        setCurrentStep((prev) => Math.min(prev + 1, STEPS.length));
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const prevStep = () => {
-    setErrors({});
-    setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
   const handleClose = () => {
@@ -165,57 +126,46 @@ export default function AddParticipantForm({ onSuccess = null }) {
     setUserCreated(false);
     setErrors({});
     setDob({ mm: "", dd: "", yyyy: "" });
-    setFormData({
-      firstName: "",
-      lastName: "",
-      email: "",
-      dateOfBirth: "",
-      familyId: "",
-      cohort_id: "",
-    });
+    setFormData({ email: "", dateOfBirth: "", familyId: "", cohort_id: "" });
   };
 
   const handleSaveUser = async () => {
-    if (!validateStep2()) return;
-
-    const formattedData = {
-      email: formData.email,
-      first_name: formData.firstName,
-      last_name: formData.lastName,
-      profile_data: {
-        date_of_birth: formData.dateOfBirth,
-        family_id: formData.familyId,
-        ...(formData.cohort_id && { cohort_id: formData.cohort_id }),
-      },
-    };
+    if (!validate()) return;
 
     setLoading(true);
     try {
-      const res = await createUser(formattedData);
+      await participantService.checkIsEmailAvailable(formData.email);
+    } catch (err) {
+      const apiErrors = err.response?.data;
+      if (apiErrors?.email) {
+        setErrors({ email: apiErrors.email[0] });
+        setLoading(false);
+        return;
+      }
+    }
+
+    try {
+      const res = await createUser({
+        email: formData.email,
+        profile_data: {
+          date_of_birth: formData.dateOfBirth,
+          family_id: formData.familyId,
+          ...(formData.cohort_id && { cohort_id: formData.cohort_id }),
+        },
+      });
       if (res.status === 201 || res.status === 200) {
-        const id = res.data?.id || res?.id;
-        setCreatedParticipantId(id || null);
+        setCreatedParticipantId(res.data?.id || null);
         setUserCreated(true);
-        setCurrentStep((prev) => Math.min(prev + 1, STEPS.length));
+        setCurrentStep(2);
       }
     } catch (err) {
       const apiErrors = err.response?.data;
-      if (apiErrors?.first_name || apiErrors?.last_name) {
-        setErrors({
-          ...(apiErrors.first_name ? { firstName: apiErrors.first_name[0] } : {}),
-          ...(apiErrors.last_name ? { lastName: apiErrors.last_name[0] } : {}),
-        });
-        setCurrentStep(1);
-      } else if (apiErrors?.email) {
+      if (apiErrors?.email) {
         setErrors({ email: apiErrors.email[0] });
-        setCurrentStep(1);
       } else if (apiErrors?.profile_data?.date_of_birth || apiErrors?.date_of_birth) {
-        const dobError = apiErrors?.profile_data?.date_of_birth?.[0] || apiErrors?.date_of_birth?.[0];
-        setErrors({ dateOfBirth: dobError });
-        setCurrentStep(2);
+        setErrors({ dateOfBirth: apiErrors?.profile_data?.date_of_birth?.[0] || apiErrors?.date_of_birth?.[0] });
       } else if (apiErrors?.profile_data?.family_id) {
         setErrors({ familyId: apiErrors.profile_data.family_id[0] });
-        setCurrentStep(2);
       } else {
         toast.error("Something went wrong. Please try again.");
       }
@@ -229,21 +179,17 @@ export default function AddParticipantForm({ onSuccess = null }) {
       toast.error("No participant ID available to send invite.");
       return;
     }
-
     setLoading(true);
     try {
       const res = await sendInvite(createdParticipantId, formData.email);
       if (res.status === 201 || res.status === 200) {
-        const newInvitationId = res.data?.id;
-        setInvitationId(newInvitationId);
-
         toast.success("Participant invited successfully!");
         setTimeout(() => {
           handleClose();
           onSuccess?.();
         }, 1000);
       }
-    } catch (err) {
+    } catch {
       toast.error("Failed to send invite. Please try again.");
     } finally {
       setLoading(false);
@@ -306,39 +252,6 @@ export default function AddParticipantForm({ onSuccess = null }) {
               {/* Step 1: Participant Info */}
               {currentStep === 1 && (
                 <div className="space-y-4">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="firstName" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
-                        First Name
-                      </Label>
-                      <Input
-                        id="firstName"
-                        name="firstName"
-                        value={formData.firstName}
-                        onChange={handleChange}
-                        className={errors.firstName ? "border-destructive" : ""}
-                      />
-                      {errors.firstName && (
-                        <p className="text-xs text-destructive">{errors.firstName}</p>
-                      )}
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="lastName" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
-                        Last Name
-                      </Label>
-                      <Input
-                        id="lastName"
-                        name="lastName"
-                        value={formData.lastName}
-                        onChange={handleChange}
-                        className={errors.lastName ? "border-destructive" : ""}
-                      />
-                      {errors.lastName && (
-                        <p className="text-xs text-destructive">{errors.lastName}</p>
-                      )}
-                    </div>
-                  </div>
-
                   <div className="flex flex-col gap-2">
                     <Label htmlFor="email" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
                       Email
@@ -349,18 +262,12 @@ export default function AddParticipantForm({ onSuccess = null }) {
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
+                      disabled={loading}
                       className={errors.email ? "border-destructive" : ""}
                     />
-                    {errors.email && (
-                      <p className="text-xs text-destructive">{errors.email}</p>
-                    )}
+                    {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
                   </div>
-                </div>
-              )}
 
-              {/* Step 2: Participant Details */}
-              {currentStep === 2 && (
-                <div className="space-y-4">
                   <div className="flex flex-col gap-2">
                     <Label htmlFor="dateOfBirth" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
                       Date of Birth
@@ -402,9 +309,7 @@ export default function AddParticipantForm({ onSuccess = null }) {
                         className="w-12 bg-transparent outline-none text-center placeholder:text-muted-foreground"
                       />
                     </div>
-                    {errors.dateOfBirth && (
-                      <p className="text-xs text-destructive">{errors.dateOfBirth}</p>
-                    )}
+                    {errors.dateOfBirth && <p className="text-xs text-destructive">{errors.dateOfBirth}</p>}
                   </div>
 
                   <div className="flex flex-col gap-2">
@@ -417,11 +322,10 @@ export default function AddParticipantForm({ onSuccess = null }) {
                       placeholder="Enter family ID"
                       value={formData.familyId}
                       onChange={handleChange}
+                      disabled={loading}
                       className={errors.familyId ? "border-destructive" : ""}
                     />
-                    {errors.familyId && (
-                      <p className="text-xs text-destructive">{errors.familyId}</p>
-                    )}
+                    {errors.familyId && <p className="text-xs text-destructive">{errors.familyId}</p>}
                   </div>
 
                   <div className="flex flex-col gap-2">
@@ -435,8 +339,8 @@ export default function AddParticipantForm({ onSuccess = null }) {
                 </div>
               )}
 
-              {/* Step 3: Send Invite */}
-              {currentStep === 3 && (
+              {/* Step 2: Send Invite */}
+              {currentStep === 2 && (
                 <div className="space-y-4">
                   <Alert>
                     <CheckCircle2Icon className="h-4 w-4 text-green-500" />
@@ -449,38 +353,16 @@ export default function AddParticipantForm({ onSuccess = null }) {
               )}
 
               {/* Navigation */}
-              <div className="flex justify-between pt-4">
-                {currentStep !== 3 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={prevStep}
-                    disabled={currentStep === 1 || loading}
-                  >
-                    Back
-                  </Button>
-                )}
-
+              <div className="flex justify-end pt-4">
                 {currentStep === 1 && (
-                  <Button type="button" onClick={handleNext} disabled={loading}>
-                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Next
-                  </Button>
-                )}
-
-                {currentStep === 2 && (
                   <Button type="button" onClick={handleSaveUser} disabled={loading}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Save
                   </Button>
                 )}
 
-                {currentStep === 3 && (
-                  <Button
-                    type="button"
-                    onClick={handleSendInvite}
-                    disabled={loading || !userCreated}
-                  >
+                {currentStep === 2 && (
+                  <Button type="button" onClick={handleSendInvite} disabled={loading || !userCreated}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Send Invite
                   </Button>
