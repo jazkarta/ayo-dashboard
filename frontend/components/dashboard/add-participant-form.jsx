@@ -53,7 +53,7 @@ export default function AddParticipantForm({ onSuccess = null }) {
       const day = parseInt(dd, 10);
       const year = parseInt(yyyy, 10);
       const parsed = new Date(year, month - 1, day);
-      const isValid = !isNaN(parsed.getTime()) && parsed.getMonth() === month - 1;
+      const isValid = !isNaN(parsed.getTime()) && parsed.getMonth() === month - 1 && year >= 1900;
       const isPast = parsed < new Date(new Date().setHours(0, 0, 0, 0));
       if (!isValid) {
         setErrors((prev) => ({ ...prev, dateOfBirth: "Please enter a valid date." }));
@@ -79,6 +79,16 @@ export default function AddParticipantForm({ onSuccess = null }) {
     if (digits.length === maxLen) {
       if (segment === "mm") dobDdRef.current?.focus();
       if (segment === "dd") dobYyyyRef.current?.focus();
+    }
+  };
+
+  const handleDobBlur = (segment, maxLen) => (e) => {
+    const currentValue = e.target.value.replace(/\D/g, "");
+    if (currentValue.length > 0 && currentValue.length < maxLen) {
+      const padded = currentValue.padStart(maxLen, "0");
+      const next = { ...dob, [segment]: padded };
+      setDob(next);
+      commitDob(next.mm, next.dd, next.yyyy);
     }
   };
 
@@ -375,6 +385,7 @@ export default function AddParticipantForm({ onSuccess = null }) {
                         value={dob.mm}
                         onChange={handleDobChange("mm", 2)}
                         onKeyDown={handleDobKeyDown("mm")}
+                        onBlur={handleDobBlur("mm", 2)}
                         className="w-7 bg-transparent outline-none text-center placeholder:text-muted-foreground"
                       />
                       <span className="text-muted-foreground">/</span>
@@ -387,6 +398,7 @@ export default function AddParticipantForm({ onSuccess = null }) {
                         value={dob.dd}
                         onChange={handleDobChange("dd", 2)}
                         onKeyDown={handleDobKeyDown("dd")}
+                        onBlur={handleDobBlur("dd", 2)}
                         className="w-7 bg-transparent outline-none text-center placeholder:text-muted-foreground"
                       />
                       <span className="text-muted-foreground">/</span>
@@ -401,6 +413,20 @@ export default function AddParticipantForm({ onSuccess = null }) {
                         onKeyDown={handleDobKeyDown("yyyy")}
                         className="w-12 bg-transparent outline-none text-center placeholder:text-muted-foreground"
                       />
+                      {(dob.mm || dob.dd || dob.yyyy) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDob({ mm: "", dd: "", yyyy: "" });
+                            setFormData((prev) => ({ ...prev, dateOfBirth: "" }));
+                            setErrors((prev) => ({ ...prev, dateOfBirth: "" }));
+                            dobMmRef.current?.focus();
+                          }}
+                          className="ml-auto text-muted-foreground hover:text-foreground"
+                        >
+                          <XIcon className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </div>
                     {errors.dateOfBirth && (
                       <p className="text-xs text-destructive">{errors.dateOfBirth}</p>
