@@ -38,8 +38,8 @@ class ParticipantViewSet(viewsets.ModelViewSet):
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['is_active']
-    search_fields = ['first_name', 'last_name', 'email']
-    ordering_fields = ['first_name', 'last_name', 'email', 'date_joined']
+    search_fields = ['username', 'email']
+    ordering_fields = ['username', 'email', 'date_joined']
 
     @swagger_auto_schema(
         manual_parameters=[

@@ -35,8 +35,6 @@ function EditDialog({ participant, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [formData, setFormData] = useState({
-    first_name: participant?.first_name || "",
-    last_name: participant?.last_name || "",
     dateOfBirth: participant?.profile_data?.date_of_birth || "",
     family_id: participant?.profile_data?.family_id || "",
     cohort_id: participant?.profile_data?.cohort?.id || "",
@@ -51,8 +49,6 @@ function EditDialog({ participant, onClose, onSaved }) {
 
   const validate = () => {
     const newErrors = {};
-    if (!formData.first_name.trim()) newErrors.first_name = "First name is required.";
-    if (!formData.last_name.trim()) newErrors.last_name = "Last name is required.";
     if (!formData.dateOfBirth) {
       newErrors.dateOfBirth = "Date of birth is required.";
     } else {
@@ -71,8 +67,6 @@ function EditDialog({ participant, onClose, onSaved }) {
     setSaving(true);
     try {
       await participantService.editParticipant(participant.id, {
-        first_name: formData.first_name,
-        last_name: formData.last_name,
         profile_data: {
           date_of_birth: formData.dateOfBirth,
           family_id: formData.family_id,
@@ -106,37 +100,6 @@ function EditDialog({ participant, onClose, onSaved }) {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="edit_first_name" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
-                  First Name
-                </Label>
-                <Input
-                  id="edit_first_name"
-                  name="first_name"
-                  value={formData.first_name}
-                  onChange={handleChange}
-                  disabled={saving}
-                  className={errors.first_name ? "border-destructive" : ""}
-                />
-                {errors.first_name && <p className="text-xs text-destructive">{errors.first_name}</p>}
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="edit_last_name" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
-                  Last Name
-                </Label>
-                <Input
-                  id="edit_last_name"
-                  name="last_name"
-                  value={formData.last_name}
-                  onChange={handleChange}
-                  disabled={saving}
-                  className={errors.last_name ? "border-destructive" : ""}
-                />
-                {errors.last_name && <p className="text-xs text-destructive">{errors.last_name}</p>}
-              </div>
-            </div>
-
             <div className="flex flex-col gap-2">
               <Label className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
                 Date of Birth
@@ -220,7 +183,7 @@ function DeleteDialog({ participant, onClose, onDeleted }) {
     setDeleting(true);
     try {
       await participantService.deleteParticipant(participant.id);
-      toast.success(`${participant.first_name} ${participant.last_name} has been deleted.`);
+      toast.success(`${participant.username} has been deleted.`);
       onDeleted();
     } catch {
       toast.error("Failed to delete participant. Please try again.");
@@ -237,7 +200,7 @@ function DeleteDialog({ participant, onClose, onDeleted }) {
           <AlertDialogDescription>
             Are you sure you want to delete{" "}
             <span className="font-semibold text-foreground">
-              {participant?.first_name} {participant?.last_name}
+              {participant?.username}
             </span>
             ? This action cannot be undone.
           </AlertDialogDescription>
@@ -329,33 +292,13 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
       header: "Email",
       cell: (info) => info.getValue() || "-",
     }),
-    columnHelper.accessor("first_name", {
+    columnHelper.accessor("username", {
       header: () => (
         <button
-          onClick={() => toggleOrdering("first_name")}
+          onClick={() => toggleOrdering("username")}
           className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
         >
-          First Name <SortIcon field="first_name" ordering={ordering} />
-        </button>
-      ),
-      cell: (info) => {
-        const val = info.getValue();
-        if (!val) return "-";
-        const chars = [...val];
-        return (
-          <span title={chars.length > 20 ? val : undefined}>
-            {chars.length > 20 ? `${chars.slice(0, 20).join("")}...` : val}
-          </span>
-        );
-      },
-    }),
-    columnHelper.accessor("last_name", {
-      header: () => (
-        <button
-          onClick={() => toggleOrdering("last_name")}
-          className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
-        >
-          Last Name <SortIcon field="last_name" ordering={ordering} />
+          Username <SortIcon field="username" ordering={ordering} />
         </button>
       ),
       cell: (info) => {
