@@ -16,8 +16,6 @@ class TestParticipantViewSet:
         # Case 1: Researcher creates participant with valid data
         ("researcher_user", {
             "email": "new_participant@example.com",
-            "first_name": "New",
-            "last_name": "Participant",
             "profile_data": {
                 "date_of_birth": "2010-01-01",
                 "gender": "M",
@@ -28,15 +26,11 @@ class TestParticipantViewSet:
         # Case 2: Non-researcher tries to create participant
         ("regular_user", {
             "email": "should_fail@example.com",
-            "first_name": "Fail",
-            "last_name": "Fail",
             "profile_data": {"date_of_birth": "2010-01-01", "gender": "F", "family_id": "FAM002"}
         }, status.HTTP_403_FORBIDDEN),
         # Case 3: Invalid data (future DOB)
         ("researcher_user", {
             "email": "invalid@example.com",
-            "first_name": "Invalid",
-            "last_name": "DOB",
             "profile_data": {
                 "date_of_birth": "2030-01-01",
                 "gender": "M",
@@ -62,8 +56,6 @@ class TestParticipantViewSet:
         api_client.force_authenticate(user=researcher_user)
         payload = {
             "email": "cohort_participant@example.com",
-            "first_name": "Cohort",
-            "last_name": "Member",
             "profile_data": {
                 "date_of_birth": "2010-01-01",
                 "gender": "M",
@@ -109,8 +101,6 @@ class TestParticipantViewSet:
         # Create initial participant
         payload1 = {
             "email": initial_email,
-            "first_name": "Original",
-            "last_name": "User",
             "profile_data": {
                 "date_of_birth": "2010-01-01",
                 "gender": "M",
@@ -124,8 +114,6 @@ class TestParticipantViewSet:
         # Attempt duplicate email with different cases
         payload2 = {
             "email": duplicate_email,
-            "first_name": "Duplicate",
-            "last_name": "User",
             "profile_data": {
                 "date_of_birth": "2010-01-01",
                 "gender": "M",
@@ -194,17 +182,17 @@ class TestParticipantViewSet:
         assert len(results) == expected_count
 
     @pytest.mark.parametrize("search_term, expected_emails", [
-        ("Alice", ["alice@example.com"]),
-        ("Smith", ["bob@example.com"]),
+        ("alice_user", ["alice@example.com"]),
+        ("bob_user", ["bob@example.com"]),
         ("charlie@example.com", ["charlie@example.com"]),
         ("notfound", []),
     ])
     def test_search_participants(self, api_client, researcher_user, search_term, expected_emails):
         expiry = timezone.now() + timedelta(days=7)
 
-        alice = User.objects.create_user(email="alice@example.com", first_name="Alice", last_name="Jones", role=UserRole.PARTICIPANT)
-        bob = User.objects.create_user(email="bob@example.com", first_name="Bob", last_name="Smith", role=UserRole.PARTICIPANT)
-        charlie = User.objects.create_user(email="charlie@example.com", first_name="Charlie", last_name="Brown", role=UserRole.PARTICIPANT)
+        alice = User.objects.create_user(email="alice@example.com", username="alice_user", role=UserRole.PARTICIPANT)
+        bob = User.objects.create_user(email="bob@example.com", username="bob_user", role=UserRole.PARTICIPANT)
+        charlie = User.objects.create_user(email="charlie@example.com", username="charlie_user", role=UserRole.PARTICIPANT)
 
         for user in [alice, bob, charlie]:
             Invitation.objects.create(user=user, invited_by=researcher_user, expiry_date=expiry)
@@ -217,17 +205,17 @@ class TestParticipantViewSet:
         assert set(p["email"] for p in results) == set(expected_emails)
 
     @pytest.mark.parametrize("ordering, key, expected_order", [
-        ("first_name", "first_name", ["Alice", "Bob", "Charlie"]),
-        ("-first_name", "first_name", ["Charlie", "Bob", "Alice"]),
+        ("username", "username", ["alice_user", "bob_user", "charlie_user"]),
+        ("-username", "username", ["charlie_user", "bob_user", "alice_user"]),
         ("email", "email", ["alice@example.com", "bob@example.com", "charlie@example.com"]),
         ("-email", "email", ["charlie@example.com", "bob@example.com", "alice@example.com"]),
     ])
     def test_ordering_participants(self, api_client, researcher_user, ordering, key, expected_order):
         expiry = timezone.now() + timedelta(days=7)
 
-        charlie = User.objects.create_user(email="charlie@example.com", first_name="Charlie", last_name="Brown", role=UserRole.PARTICIPANT)
-        alice = User.objects.create_user(email="alice@example.com", first_name="Alice", last_name="Jones", role=UserRole.PARTICIPANT)
-        bob = User.objects.create_user(email="bob@example.com", first_name="Bob", last_name="Smith", role=UserRole.PARTICIPANT)
+        charlie = User.objects.create_user(email="charlie@example.com", username="charlie_user", role=UserRole.PARTICIPANT)
+        alice = User.objects.create_user(email="alice@example.com", username="alice_user", role=UserRole.PARTICIPANT)
+        bob = User.objects.create_user(email="bob@example.com", username="bob_user", role=UserRole.PARTICIPANT)
 
         for user in [charlie, alice, bob]:
             Invitation.objects.create(user=user, invited_by=researcher_user, expiry_date=expiry)
