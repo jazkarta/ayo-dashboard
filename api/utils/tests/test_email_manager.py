@@ -82,5 +82,5 @@ class TestEmailManager:
         mock_send.assert_called_once_with(
             subject='Invited!',
             to='parent@example.com',
-            body='Hello John, click http://link'
+            body='Invited by Dr. X, click http://link'
         )
