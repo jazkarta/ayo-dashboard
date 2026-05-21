@@ -24,6 +24,7 @@ import {
 import toast from "react-hot-toast";
 import conversationService from "@/services/conversationService";
 import EmptyState from "@/components/dashboard/empty-state";
+import CohortCombobox from "@/components/dashboard/cohort-combobox";
 
 const columnHelper = createColumnHelper();
 
@@ -101,11 +102,12 @@ export default function ConversationsTable() {
 
   // Draft is the in-progress editing state inside the filter popover
   const [draft, setDraft] = useState(applied);
+  const [cohortDraft, setCohortDraft] = useState(null);
+  const [appliedCohort, setAppliedCohort] = useState(null);
 
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [fromOpen, setFromOpen] = useState(false);
   const [toOpen, setToOpen] = useState(false);
-  const [filterErrors, setFilterErrors] = useState({});
 
   const [exporting, setExporting] = useState(false);
   const [data, setData] = useState([]);
@@ -159,26 +161,21 @@ export default function ConversationsTable() {
     [draft, applied],
   );
 
-  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
   const handleApply = () => {
-    if (draft.cohort_id && !UUID_RE.test(draft.cohort_id)) {
-      setFilterErrors({ cohort_id: "Enter a valid UUID." });
-      return;
-    }
-    setFilterErrors({});
+    setAppliedCohort(cohortDraft);
     navigatePage("/chats/conversations/", draft);
     setPopoverOpen(false);
   };
 
   const handleCancel = () => {
     setDraft(applied);
-    setFilterErrors({});
+    setCohortDraft(appliedCohort);
     setPopoverOpen(false);
   };
 
   const handleRemoveFilter = (key) => {
     const next = { ...applied, [key]: "" };
+    if (key === "cohort_id") { setAppliedCohort(null); setCohortDraft(null); }
     setDraft(next);
     navigatePage("/chats/conversations/", next);
   };
@@ -290,11 +287,15 @@ export default function ConversationsTable() {
   const table = useReactTable({ data, columns, getCoreRowModel: getCoreRowModel() });
 
   const activeEntries = useMemo(() => {
-    const labels = { participant_username: "Username", turns_min: "Min turns", turns_max: "Max turns", participant_age: "Age", date_from: "From", date_to: "To", cohort_id: "Cohort ID" };
+    const labels = { participant_username: "Username", turns_min: "Min turns", turns_max: "Max turns", participant_age: "Age", date_from: "From", date_to: "To", cohort_id: "Cohort" };
     return Object.entries(applied)
       .filter(([, v]) => Boolean(v))
-      .map(([key, value]) => ({ key, label: labels[key], value }));
-  }, [applied]);
+      .map(([key, value]) => ({
+        key,
+        label: labels[key],
+        value: key === "cohort_id" && appliedCohort?.name ? appliedCohort.name : value,
+      }));
+  }, [applied, appliedCohort]);
 
   return (
     <Card className="m-5">
@@ -306,7 +307,7 @@ export default function ConversationsTable() {
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Filter popover */}
-            {(pagination.count > 0 || activeCount > 0 || loading) && <Popover open={popoverOpen} onOpenChange={(open) => { setDraft(applied); setFilterErrors({}); setPopoverOpen(open); }}>
+            {(pagination.count > 0 || activeCount > 0 || loading) && <Popover open={popoverOpen} onOpenChange={(open) => { setDraft(applied); setCohortDraft(appliedCohort); setPopoverOpen(open); }}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -327,7 +328,7 @@ export default function ConversationsTable() {
                   {(draft.participant_username || draft.turns_min || draft.turns_max || draft.participant_age || draft.date_from || draft.date_to || draft.cohort_id) && (
                     <button
                       type="button"
-                      onClick={() => { setDraft(INITIAL_FILTERS); setFilterErrors({}); }}
+                      onClick={() => { setDraft(INITIAL_FILTERS); setCohortDraft(null); }}
                       className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       Reset
@@ -339,36 +340,20 @@ export default function ConversationsTable() {
 
                 {/* Fields */}
                 <div className="flex flex-col gap-4 p-4">
-                  {/* Cohort ID */}
+                  {/* Cohort */}
                   <div className="flex flex-col gap-2">
                     <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                       <Group className="h-3.5 w-3.5" />
-                      Cohort ID
+                      Cohort
                     </label>
-                    <div className="relative">
-                      <Input
-                        placeholder="e.g. 38709ffd-1aac-..."
-                        value={draft.cohort_id}
-                        onKeyDown={(e) => e.key === " " && e.preventDefault()}
-                        onChange={(e) => {
-                          setDraft((p) => ({ ...p, cohort_id: e.target.value.replace(/\s/g, "") }));
-                          setFilterErrors((p) => ({ ...p, cohort_id: "" }));
-                        }}
-                        className={`h-9 pr-8 text-sm ${filterErrors.cohort_id ? "border-red-500 focus-visible:ring-red-500" : ""}`}
-                      />
-                      {draft.cohort_id && (
-                        <button
-                          type="button"
-                          onClick={() => { setDraft((p) => ({ ...p, cohort_id: "" })); setFilterErrors((p) => ({ ...p, cohort_id: "" })); }}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </div>
-                    {filterErrors.cohort_id && (
-                      <p className="text-xs text-red-500">{filterErrors.cohort_id}</p>
-                    )}
+                    <CohortCombobox
+                      value={draft.cohort_id}
+                      initialCohort={cohortDraft}
+                      onChange={(id, cohort) => {
+                        setDraft((p) => ({ ...p, cohort_id: id }));
+                        setCohortDraft(id ? cohort ?? null : null);
+                      }}
+                    />
                   </div>
 
                   {/* Participant username */}
@@ -592,7 +577,7 @@ export default function ConversationsTable() {
               <Button
                 className="h-9 gap-1.5 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:text-red-700 hover:border-red-300"
                 variant="ghost"
-                onClick={() => { setDraft(INITIAL_FILTERS); navigatePage("/chats/conversations/", INITIAL_FILTERS); }}
+                onClick={() => { setDraft(INITIAL_FILTERS); setCohortDraft(null); setAppliedCohort(null); navigatePage("/chats/conversations/", INITIAL_FILTERS); }}
               >
                 <X className="h-3.5 w-3.5" />
                 Clear

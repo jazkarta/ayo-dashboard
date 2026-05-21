@@ -360,6 +360,7 @@ export default function AddParticipantForm({ onSuccess = null }) {
                       value={formData.cohort_id}
                       onChange={(val) => setFormData((prev) => ({ ...prev, cohort_id: val }))}
                       disabled={loading}
+                      allowCreate
                     />
                   </div>
                 </div>
