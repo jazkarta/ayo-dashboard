@@ -10,7 +10,7 @@ import { CheckCircle2Icon, Loader2, XIcon } from "lucide-react";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 import participantService from "@/services/participantService";
-import CohortCombobox from "@/components/dashboard/cohort-combobox";
+import CohortComboboxWithCreate from "@/components/dashboard/cohort-combobox-with-create";
 
 const createUser = async (data) => {
   const response = await participantService.createParticipant(data);
@@ -356,7 +356,7 @@ export default function AddParticipantForm({ onSuccess = null }) {
 
                   <div className="flex flex-col gap-2">
                     <Label>Cohort</Label>
-                    <CohortCombobox
+                    <CohortComboboxWithCreate
                       value={formData.cohort_id}
                       onChange={(val) => setFormData((prev) => ({ ...prev, cohort_id: val }))}
                       disabled={loading}
