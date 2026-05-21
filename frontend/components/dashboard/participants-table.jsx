@@ -118,7 +118,9 @@ function EditDialog({ participant, onClose, onSaved }) {
   const validate = () => {
     const newErrors = {};
     if (!formData.dateOfBirth) {
-      newErrors.dateOfBirth = "Date of birth is required.";
+      newErrors.dateOfBirth = dob.mm || dob.dd || dob.yyyy
+        ? "Please complete the date of birth."
+        : "Date of birth is required.";
     } else {
       const dobDate = new Date(formData.dateOfBirth);
       const today = new Date();
@@ -172,10 +174,27 @@ function EditDialog({ participant, onClose, onSaved }) {
               <Label htmlFor="dob-mm" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
                 Date of Birth
               </Label>
-              <div className={`flex items-center gap-1 h-9 w-full rounded-md border bg-background px-3 text-sm ${errors.dateOfBirth ? "border-destructive" : "border-input"} ${saving ? "opacity-50 pointer-events-none" : ""}`}>
+              <div
+                role="group"
+                aria-label="Date of birth"
+                className={`flex items-center gap-1 h-9 w-full rounded-md border bg-background px-3 text-sm cursor-text ${errors.dateOfBirth ? "border-destructive" : "border-input"} ${saving ? "opacity-50 pointer-events-none" : ""}`}
+                onClick={(e) => {
+                  if (e.target.tagName === "INPUT" || e.target.tagName === "BUTTON") return;
+                  const x = e.clientX;
+                  const mmRect = dobMmRef.current?.getBoundingClientRect();
+                  const ddRect = dobDdRef.current?.getBoundingClientRect();
+                  const yyyyRect = dobYyyyRef.current?.getBoundingClientRect();
+                  const distMm = mmRect ? Math.abs(x - (mmRect.left + mmRect.right) / 2) : Infinity;
+                  const distDd = ddRect ? Math.abs(x - (ddRect.left + ddRect.right) / 2) : Infinity;
+                  const distYyyy = yyyyRect ? Math.abs(x - (yyyyRect.left + yyyyRect.right) / 2) : Infinity;
+                  if (distMm <= distDd && distMm <= distYyyy) dobMmRef.current?.focus();
+                  else if (distDd <= distYyyy) dobDdRef.current?.focus();
+                  else dobYyyyRef.current?.focus();
+                }}
+              >
                 <input
                   ref={dobMmRef}
-                  id="dob-mm"
+                  aria-label="Month"
                   type="text"
                   inputMode="numeric"
                   placeholder="MM"
@@ -186,9 +205,10 @@ function EditDialog({ participant, onClose, onSaved }) {
                   onBlur={handleDobBlur("mm", 2)}
                   className="w-7 bg-transparent outline-none text-center placeholder:text-muted-foreground"
                 />
-                <span className="text-muted-foreground">/</span>
+                <span aria-hidden="true" className="text-muted-foreground">/</span>
                 <input
                   ref={dobDdRef}
+                  aria-label="Day"
                   type="text"
                   inputMode="numeric"
                   placeholder="DD"
@@ -199,9 +219,10 @@ function EditDialog({ participant, onClose, onSaved }) {
                   onBlur={handleDobBlur("dd", 2)}
                   className="w-7 bg-transparent outline-none text-center placeholder:text-muted-foreground"
                 />
-                <span className="text-muted-foreground">/</span>
+                <span aria-hidden="true" className="text-muted-foreground">/</span>
                 <input
                   ref={dobYyyyRef}
+                  aria-label="Year"
                   type="text"
                   inputMode="numeric"
                   placeholder="YYYY"
