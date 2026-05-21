@@ -40,7 +40,7 @@ export default function CohortCombobox({ value, onChange, initialCohort = null, 
 
   const handleSelect = (cohort) => {
     setSelectedCohort(cohort);
-    onChange(cohort.id);
+    onChange(cohort.id, cohort);
     setOpen(false);
   };
 
