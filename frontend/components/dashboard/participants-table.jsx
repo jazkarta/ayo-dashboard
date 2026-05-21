@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -13,9 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, Pencil, Trash2, CalendarIcon, XIcon, Users } from "lucide-react";
+import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, Pencil, Trash2, XIcon, Users } from "lucide-react";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 import participantService from "../../services/participantService.js";
@@ -31,9 +29,19 @@ function SortIcon({ field, ordering }) {
   return <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />;
 }
 
+function parseDobString(dateStr) {
+  if (!dateStr) return { mm: "", dd: "", yyyy: "" };
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return { mm: "", dd: "", yyyy: "" };
+  return { mm: parts[1], dd: parts[2], yyyy: parts[0] };
+}
+
 function EditDialog({ participant, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
-  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [dob, setDob] = useState(() => parseDobString(participant?.profile_data?.date_of_birth || ""));
+  const dobMmRef = useRef(null);
+  const dobDdRef = useRef(null);
+  const dobYyyyRef = useRef(null);
   const [formData, setFormData] = useState({
     dateOfBirth: participant?.profile_data?.date_of_birth || "",
     family_id: participant?.profile_data?.family_id || "",
@@ -47,15 +55,75 @@ function EditDialog({ participant, onClose, onSaved }) {
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
+  const commitDob = (mm, dd, yyyy) => {
+    if (mm.length === 2 && dd.length === 2 && yyyy.length === 4) {
+      const month = parseInt(mm, 10);
+      const day = parseInt(dd, 10);
+      const year = parseInt(yyyy, 10);
+      const parsed = new Date(year, month - 1, day);
+      const isValid = !isNaN(parsed.getTime()) && parsed.getMonth() === month - 1 && year >= 1900;
+      const isPast = parsed < new Date(new Date().setHours(0, 0, 0, 0));
+      if (!isValid) {
+        setErrors((prev) => ({ ...prev, dateOfBirth: "Please enter a valid date." }));
+        setFormData((prev) => ({ ...prev, dateOfBirth: "" }));
+      } else if (!isPast) {
+        setErrors((prev) => ({ ...prev, dateOfBirth: "Date of birth must be in the past." }));
+        setFormData((prev) => ({ ...prev, dateOfBirth: "" }));
+      } else {
+        setErrors((prev) => ({ ...prev, dateOfBirth: "" }));
+        setFormData((prev) => ({ ...prev, dateOfBirth: format(parsed, "yyyy-MM-dd") }));
+      }
+    } else {
+      setErrors((prev) => ({ ...prev, dateOfBirth: "" }));
+      setFormData((prev) => ({ ...prev, dateOfBirth: "" }));
+    }
+  };
+
+  const handleDobChange = (segment, maxLen) => (e) => {
+    const digits = e.target.value.replace(/\D/g, "").slice(0, maxLen);
+    const next = { ...dob, [segment]: digits };
+    setDob(next);
+    commitDob(next.mm, next.dd, next.yyyy);
+    if (digits.length === maxLen) {
+      if (segment === "mm") dobDdRef.current?.focus();
+      if (segment === "dd") dobYyyyRef.current?.focus();
+    }
+  };
+
+  const handleDobBlur = (segment, maxLen) => (e) => {
+    const currentValue = e.target.value.replace(/\D/g, "");
+    if (currentValue.length > 0 && currentValue.length < maxLen) {
+      const padded = currentValue.padStart(maxLen, "0");
+      const next = { ...dob, [segment]: padded };
+      setDob(next);
+      commitDob(next.mm, next.dd, next.yyyy);
+    }
+  };
+
+  const handleDobKeyDown = (segment) => (e) => {
+    if (e.key === "Backspace" && dob[segment] === "") {
+      if (segment === "dd") dobMmRef.current?.focus();
+      if (segment === "yyyy") dobDdRef.current?.focus();
+    }
+    if (e.key === "ArrowLeft" && e.target.selectionStart === 0) {
+      if (segment === "dd") dobMmRef.current?.focus();
+      if (segment === "yyyy") dobDdRef.current?.focus();
+    }
+    if (e.key === "ArrowRight" && e.target.selectionStart === e.target.value.length) {
+      if (segment === "mm") dobDdRef.current?.focus();
+      if (segment === "dd") dobYyyyRef.current?.focus();
+    }
+  };
+
   const validate = () => {
     const newErrors = {};
     if (!formData.dateOfBirth) {
       newErrors.dateOfBirth = "Date of birth is required.";
     } else {
-      const dob = new Date(formData.dateOfBirth);
+      const dobDate = new Date(formData.dateOfBirth);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      if (dob >= today) newErrors.dateOfBirth = "Date of birth must be in the past.";
+      if (dobDate >= today) newErrors.dateOfBirth = "Date of birth must be in the past.";
     }
     if (!formData.family_id.trim()) newErrors.family_id = "Family ID is required.";
     setErrors(newErrors);
@@ -101,38 +169,63 @@ function EditDialog({ participant, onClose, onSaved }) {
         <CardContent>
           <div className="space-y-4">
             <div className="flex flex-col gap-2">
-              <Label className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
+              <Label htmlFor="dob-mm" className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">
                 Date of Birth
               </Label>
-              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    disabled={saving}
-                    className={`w-full justify-start text-left font-normal ${!formData.dateOfBirth ? "text-muted-foreground" : ""} ${errors.dateOfBirth ? "border-destructive" : ""}`}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formData.dateOfBirth ? format(new Date(formData.dateOfBirth), "PPP") : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    captionLayout="dropdown"
-                    fromYear={1900}
-                    toYear={new Date().getFullYear()}
-                    selected={formData.dateOfBirth ? new Date(formData.dateOfBirth) : undefined}
-                    onSelect={(date) => {
-                      const value = date ? format(date, "yyyy-MM-dd") : "";
-                      setFormData((prev) => ({ ...prev, dateOfBirth: value }));
+              <div className={`flex items-center gap-1 h-9 w-full rounded-md border bg-background px-3 text-sm ${errors.dateOfBirth ? "border-destructive" : "border-input"} ${saving ? "opacity-50 pointer-events-none" : ""}`}>
+                <input
+                  ref={dobMmRef}
+                  id="dob-mm"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="MM"
+                  maxLength={2}
+                  value={dob.mm}
+                  onChange={handleDobChange("mm", 2)}
+                  onKeyDown={handleDobKeyDown("mm")}
+                  onBlur={handleDobBlur("mm", 2)}
+                  className="w-7 bg-transparent outline-none text-center placeholder:text-muted-foreground"
+                />
+                <span className="text-muted-foreground">/</span>
+                <input
+                  ref={dobDdRef}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="DD"
+                  maxLength={2}
+                  value={dob.dd}
+                  onChange={handleDobChange("dd", 2)}
+                  onKeyDown={handleDobKeyDown("dd")}
+                  onBlur={handleDobBlur("dd", 2)}
+                  className="w-7 bg-transparent outline-none text-center placeholder:text-muted-foreground"
+                />
+                <span className="text-muted-foreground">/</span>
+                <input
+                  ref={dobYyyyRef}
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="YYYY"
+                  maxLength={4}
+                  value={dob.yyyy}
+                  onChange={handleDobChange("yyyy", 4)}
+                  onKeyDown={handleDobKeyDown("yyyy")}
+                  className="w-12 bg-transparent outline-none text-center placeholder:text-muted-foreground"
+                />
+                {(dob.mm || dob.dd || dob.yyyy) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDob({ mm: "", dd: "", yyyy: "" });
+                      setFormData((prev) => ({ ...prev, dateOfBirth: "" }));
                       setErrors((prev) => ({ ...prev, dateOfBirth: "" }));
-                      setCalendarOpen(false);
+                      dobMmRef.current?.focus();
                     }}
-                    disabled={(date) => date >= new Date(new Date().setHours(0, 0, 0, 0))}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+                    className="ml-auto text-muted-foreground hover:text-foreground"
+                  >
+                    <XIcon className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
               {errors.dateOfBirth && <p className="text-xs text-destructive">{errors.dateOfBirth}</p>}
             </div>
 
