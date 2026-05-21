@@ -69,7 +69,9 @@ class ParticipantCreateSerializer(serializers.ModelSerializer):
                         lookup="iexact"
                     )
                 ]
-            }
+            },
+            "first_name": {"required": False, "allow_blank": True, "allow_null": True},
+            "last_name": {"required": False, "allow_blank": True, "allow_null": True},
         }
 
     def __init__(self, *args, **kwargs):
@@ -189,7 +191,6 @@ class InvitationSendSerializer(serializers.Serializer):
 
         # send email to guardian
         context = {
-            "participant_name": participant.get_full_name(),
             "invited_by": validated_data['invited_by'].get_full_name(),
             "expiry_date": expiry_date.strftime("%Y-%m-%d %H:%M"),
             "invitation_id": invitation.id,

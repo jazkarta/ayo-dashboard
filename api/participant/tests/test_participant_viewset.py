@@ -16,8 +16,6 @@ class TestParticipantViewSet:
         # Case 1: Researcher creates participant with valid data
         ("researcher_user", {
             "email": "new_participant@example.com",
-            "first_name": "New",
-            "last_name": "Participant",
             "profile_data": {
                 "date_of_birth": "2010-01-01",
                 "gender": "M",
@@ -28,15 +26,11 @@ class TestParticipantViewSet:
         # Case 2: Non-researcher tries to create participant
         ("regular_user", {
             "email": "should_fail@example.com",
-            "first_name": "Fail",
-            "last_name": "Fail",
             "profile_data": {"date_of_birth": "2010-01-01", "gender": "F", "family_id": "FAM002"}
         }, status.HTTP_403_FORBIDDEN),
         # Case 3: Invalid data (future DOB)
         ("researcher_user", {
             "email": "invalid@example.com",
-            "first_name": "Invalid",
-            "last_name": "DOB",
             "profile_data": {
                 "date_of_birth": "2030-01-01",
                 "gender": "M",
@@ -62,8 +56,6 @@ class TestParticipantViewSet:
         api_client.force_authenticate(user=researcher_user)
         payload = {
             "email": "cohort_participant@example.com",
-            "first_name": "Cohort",
-            "last_name": "Member",
             "profile_data": {
                 "date_of_birth": "2010-01-01",
                 "gender": "M",
@@ -109,8 +101,6 @@ class TestParticipantViewSet:
         # Create initial participant
         payload1 = {
             "email": initial_email,
-            "first_name": "Original",
-            "last_name": "User",
             "profile_data": {
                 "date_of_birth": "2010-01-01",
                 "gender": "M",
@@ -124,8 +114,6 @@ class TestParticipantViewSet:
         # Attempt duplicate email with different cases
         payload2 = {
             "email": duplicate_email,
-            "first_name": "Duplicate",
-            "last_name": "User",
             "profile_data": {
                 "date_of_birth": "2010-01-01",
                 "gender": "M",

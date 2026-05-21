@@ -24,7 +24,7 @@ class EmailTemplateManager:
                     "AYO Research Team\n\n"
                     "KIDD LAB | Department of Psychology University of California, Berkeley | kiddlab.com"
                 ),
-                'templates': ['%invitationLink%', '%participantName%', '%invitedBy%', '%expiryDate%']
+                'templates': ['%invitationLink%', '%invitedBy%', '%expiryDate%']
             }
         }
 

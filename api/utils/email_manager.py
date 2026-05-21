@@ -65,7 +65,7 @@ class EmailManager:
         Sends an invitation email to the participant's guardian.
 
         :param to_email: Recipient email address.
-        :param invitation_data: Dict containing invitation_id, participant_name, invited_by, expiry_date.
+        :param invitation_data: Dict containing invitation_id, invited_by, expiry_date.
         :returns: True if the email was sent successfully, False otherwise.
         """
         template_name = 'participate_invitation_email'
@@ -74,7 +74,7 @@ class EmailManager:
             logger.error("Cannot send invitation email: recipient address is empty.")
             return False
 
-        required_fields = ['invitation_id', 'participant_name', 'invited_by', 'expiry_date']
+        required_fields = ['invitation_id', 'invited_by', 'expiry_date']
         missing = [f for f in required_fields if f not in invitation_data]
         if missing:
             logger.error(
@@ -85,7 +85,6 @@ class EmailManager:
 
         context = {
             '%invitationLink%': f"{settings.DASHBOARD_URL}/invitation/{invitation_data['invitation_id']}/accept",
-            '%participantName%': invitation_data['participant_name'],
             '%invitedBy%': invitation_data['invited_by'],
             '%expiryDate%': invitation_data['expiry_date'],
         }
