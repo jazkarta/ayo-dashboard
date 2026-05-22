@@ -9,7 +9,7 @@ from utils.csv_export_manager import BaseCSVExportManager
 class ConversationExportManager(BaseCSVExportManager):
 
     CSV_HEADERS = [
-        'conversation_id', 'model_name',
+        'conversation_id', 'model_name', 'username',
         'family_id', 'cohort_id', 'message_date',
         'prompt', 'response', 'attachment_urls',
     ]
@@ -36,6 +36,7 @@ class ConversationExportManager(BaseCSVExportManager):
             yield [
                 conversation.conversation_id,
                 conversation.model_name or '',
+                conversation.user.username or '',
                 family_id,
                 str(conversation.cohort_id) if conversation.cohort_id else '',
                 chat.created_at.isoformat(),
@@ -48,7 +49,7 @@ class ConversationExportManager(BaseCSVExportManager):
 class ConversationBulkExportManager(BaseCSVExportManager):
 
     CSV_HEADERS = [
-        'conversation_id', 'model_name',
+        'conversation_id', 'model_name', 'username',
         'family_id', 'cohort_id',
         'prompts', 'responses', 'attachment_urls',
     ]
@@ -66,6 +67,7 @@ class ConversationBulkExportManager(BaseCSVExportManager):
             yield [
                 conversation.conversation_id,
                 conversation.model_name or '',
+                conversation.user.username or '',
                 cls._family_id(conversation.user),
                 str(conversation.cohort_id) if conversation.cohort_id else '',
                 '|'.join(chat.prompt or '' for chat in chats),
