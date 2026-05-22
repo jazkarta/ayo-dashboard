@@ -108,6 +108,7 @@ export default function ConversationsTable() {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [fromOpen, setFromOpen] = useState(false);
   const [toOpen, setToOpen] = useState(false);
+  const [turnsError, setTurnsError] = useState("");
 
   const [exporting, setExporting] = useState(false);
   const [data, setData] = useState([]);
@@ -162,6 +163,15 @@ export default function ConversationsTable() {
   );
 
   const handleApply = () => {
+    if (draft.turns_min && !draft.turns_max) {
+      setTurnsError(`Please enter a max value greater than or equal to ${draft.turns_min}`);
+      return;
+    }
+    if (draft.turns_min && draft.turns_max && Number(draft.turns_max) < Number(draft.turns_min)) {
+      setTurnsError(`Max value must be greater than or equal to ${draft.turns_min}`);
+      return;
+    }
+    setTurnsError("");
     setAppliedCohort(cohortDraft);
     navigatePage("/chats/conversations/", draft);
     setPopoverOpen(false);
@@ -170,6 +180,7 @@ export default function ConversationsTable() {
   const handleCancel = () => {
     setDraft(applied);
     setCohortDraft(appliedCohort);
+    setTurnsError("");
     setPopoverOpen(false);
   };
 
@@ -328,7 +339,7 @@ export default function ConversationsTable() {
                   {(draft.participant_username || draft.turns_min || draft.turns_max || draft.participant_age || draft.date_from || draft.date_to || draft.cohort_id) && (
                     <button
                       type="button"
-                      onClick={() => { setDraft(INITIAL_FILTERS); setCohortDraft(null); }}
+                      onClick={() => { setDraft(INITIAL_FILTERS); setCohortDraft(null); setTurnsError(""); }}
                       className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       Reset
@@ -415,25 +426,27 @@ export default function ConversationsTable() {
                         <Input
                           type="number"
                           onKeyDown={(e) => ["e", "E", "+", "-", "."].includes(e.key) && e.preventDefault()}
-                          min={draft.turns_min || "1"}
+                          min="1"
                           step="1"
                           placeholder="Max"
                           value={draft.turns_max}
                           onChange={(e) => {
-                            if (e.target.value === "") { setDraft((p) => ({ ...p, turns_max: "" })); return; }
-                            const val = Math.floor(Number(e.target.value));
-                            const min = draft.turns_min ? Number(draft.turns_min) : 1;
-                            setDraft((p) => ({ ...p, turns_max: String(Math.max(val, min)) }));
+                            const val = e.target.value === "" ? "" : String(Math.floor(Number(e.target.value)));
+                            setDraft((p) => ({ ...p, turns_max: val }));
+                            setTurnsError("");
                           }}
-                          className="h-9 pr-7 text-sm"
+                          className={`h-9 pr-7 text-sm ${turnsError ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                         />
                         {draft.turns_max && (
-                          <button type="button" onClick={() => setDraft((p) => ({ ...p, turns_max: "" }))} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                          <button type="button" onClick={() => { setDraft((p) => ({ ...p, turns_max: "" })); setTurnsError(""); }} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                             <X className="h-3 w-3" />
                           </button>
                         )}
                       </div>
                     </div>
+                    {turnsError && (
+                      <p className="text-xs text-red-500">{turnsError}</p>
+                    )}
                   </div>
 
                   {/* Participant age */}
