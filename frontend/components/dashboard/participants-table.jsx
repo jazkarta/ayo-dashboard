@@ -455,12 +455,12 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
       cell: (info) => {
         const active = info.getValue();
         return active ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-600">
+          <span className="inline-flex items-center justify-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-600 w-20">
             <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
             Active
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-semibold text-yellow-600">
+          <span className="inline-flex items-center justify-center gap-1.5 rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-semibold text-yellow-600 w-20">
             <span className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
             Pending
           </span>
