@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 // import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import researcherService from "@/services/researcherService";
+import { StatsContext } from "@/components/dashboard/stats-cards";
 
 const getName = (r) =>
   r.full_name || `${r.first_name || ""} ${r.last_name || ""}`.trim() || "Unknown";
@@ -30,6 +31,7 @@ const getInitials = (r) => {
 };
 
 export function RecentResearchers() {
+  const { setResearcherCount } = useContext(StatsContext);
   const [researchers, setResearchers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,16 +39,18 @@ export function RecentResearchers() {
     const fetchResearchers = async () => {
       try {
         const res = await researcherService.getAllResearchers();
+        setResearcherCount(res.data?.count ?? 0);
         const data = res.data?.results ?? res.data ?? [];
         setResearchers(data.slice(0, 5));
       } catch {
+        setResearcherCount(0);
         toast.error("Failed to load researchers.");
       } finally {
         setLoading(false);
       }
     };
     fetchResearchers();
-  }, []);
+  }, [setResearcherCount]);
 
   return (
     <Card className="animate-fade-in flex flex-col">

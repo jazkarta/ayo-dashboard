@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Loader2, User } from "lucide-react";
 import toast from "react-hot-toast";
@@ -14,6 +14,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import participantService from "@/services/participantService";
+import { StatsContext } from "@/components/dashboard/stats-cards";
 
 
 const getName = (participant) =>
@@ -30,6 +31,7 @@ const getInitials = (participant) => {
 };
 
 export function RecentParticipants() {
+  const { setParticipantCount } = useContext(StatsContext);
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,16 +39,18 @@ export function RecentParticipants() {
     const fetchParticipants = async () => {
       try {
         const res = await participantService.getAllParticipants();
+        setParticipantCount(res.data?.count ?? 0);
         const data = res.data?.results ?? res.data ?? [];
         setParticipants(data.slice(0, 5));
       } catch (err) {
+        setParticipantCount(0);
         toast.error("Failed to load participants.");
       } finally {
         setLoading(false);
       }
     };
     fetchParticipants();
-  }, []);
+  }, [setParticipantCount]);
 
   return (
     <Card className="animate-fade-in flex flex-col">
