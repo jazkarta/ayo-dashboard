@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, Users, FlaskConical } from "lucide-react";
 
 export const StatsContext = createContext({
   participantCount: null,
@@ -35,11 +35,13 @@ export function StatsCards() {
       title: "Total Participants",
       value: participantCount,
       description: "Registered participants",
+      icon: Users,
     },
     {
       title: "Total Researchers",
       value: researcherCount,
       description: "Registered researchers",
+      icon: FlaskConical,
     },
   ];
 
@@ -48,17 +50,22 @@ export function StatsCards() {
       {statsData.map((stat) => (
         <Card key={stat.title} className="animate-fade-in">
           <CardContent className="p-6">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground font-medium">
-                {stat.title}
-              </p>
-              {stat.value === null ? (
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mt-2" />
-              ) : (
-                <p className="text-3xl font-bold tracking-tight text-foreground">
-                  {stat.value}
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground font-medium">
+                  {stat.title}
                 </p>
-              )}
+                {stat.value === null ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mt-2" />
+                ) : (
+                  <p className="text-3xl font-bold tracking-tight text-foreground">
+                    {stat.value}
+                  </p>
+                )}
+              </div>
+              <div className="rounded-full bg-muted p-2.5">
+                <stat.icon className="h-5 w-5 text-muted-foreground" />
+              </div>
             </div>
             <p className="text-xs text-muted-foreground mt-3">
               {stat.description}
