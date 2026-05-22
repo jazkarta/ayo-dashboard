@@ -195,7 +195,7 @@ export default function ConversationsTable() {
         blob,
         parseFilename(response.headers?.["content-disposition"], `conversations-${new Date().toISOString().slice(0, 10)}.csv`),
       );
-      toast.success("Export started.");
+      toast.success("Export completed successfully.");
     } catch (err) {
       toast.error((await readBlobMessage(err?.response?.data)) || "Failed to export. Please try again.");
     } finally {
