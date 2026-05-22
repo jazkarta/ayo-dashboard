@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+// import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import researcherService from "@/services/researcherService";
 
@@ -96,12 +96,12 @@ export function RecentResearchers() {
                   </p>
                 </div>
 
-                <Badge
+                {/* <Badge
                   variant={researcher.is_active ? "success" : "outline"}
                   className="shrink-0"
                 >
                   {researcher.is_active ? "Active" : "Inactive"}
-                </Badge>
+                </Badge> */}
               </div>
             ))}
           </div>
