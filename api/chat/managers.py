@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import timezone
 
 from django.db.models import Prefetch
 
@@ -39,7 +40,7 @@ class ConversationExportManager(BaseCSVExportManager):
                 conversation.user.username or '',
                 family_id,
                 str(conversation.cohort_id) if conversation.cohort_id else '',
-                chat.created_at.isoformat(),
+                chat.created_at.astimezone(timezone.utc).isoformat(),
                 chat.prompt,
                 chat.response,
                 '|'.join(media_map.get(chat.id, [])),
@@ -51,14 +52,14 @@ class ConversationBulkExportManager(BaseCSVExportManager):
     CSV_HEADERS = [
         'conversation_id', 'model_name', 'username',
         'family_id', 'cohort_id',
-        'prompts', 'responses', 'attachment_urls',
+        'prompts', 'responses', 'datetime', 'attachment_urls',
     ]
 
     @classmethod
     def rows(cls, queryset):
         yield cls.CSV_HEADERS
         queryset = queryset.prefetch_related(
-            Prefetch('chats', queryset=Chat.objects.only('id', 'prompt', 'response').order_by('created_at')),
+            Prefetch('chats', queryset=Chat.objects.only('id', 'prompt', 'response', 'created_at').order_by('created_at')),
             'chats__media',
         )
         for conversation in queryset:
@@ -72,5 +73,7 @@ class ConversationBulkExportManager(BaseCSVExportManager):
                 str(conversation.cohort_id) if conversation.cohort_id else '',
                 '|'.join(chat.prompt or '' for chat in chats),
                 '|'.join(chat.response or '' for chat in chats),
+                '|'.join(chat.created_at.astimezone(timezone.utc).isoformat() for chat in chats),
                 '|'.join(attachment_urls),
             ]
+
