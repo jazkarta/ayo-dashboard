@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models.functions import Lower
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
@@ -6,7 +7,7 @@ from common.models import BaseModel
 
 
 class Cohort(BaseModel):
-    name = models.CharField(_('name'), max_length=50, unique=True)
+    name = models.CharField(_('name'), max_length=50)
     description = models.TextField(_('description'), blank=True, null=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -22,3 +23,6 @@ class Cohort(BaseModel):
         verbose_name = _('Cohort')
         verbose_name_plural = _('Cohorts')
         ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(Lower('name'), name='cohort_name_case_insensitive_unique'),
+        ]

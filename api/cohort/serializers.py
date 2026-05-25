@@ -1,5 +1,6 @@
 from django.db import transaction
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 
 from participant.models import ParticipantProfile
 from researcher.serializers import ResearcherReadSerializer
@@ -41,6 +42,11 @@ class CohortDetailSerializer(CohortReadSerializer):
 
 
 class CohortCreateSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(
+        max_length=50,
+        validators=[UniqueValidator(queryset=Cohort.objects.all(), lookup='iexact')],
+    )
+
     class Meta:
         model = Cohort
         fields = ['id', 'name', 'description']
@@ -55,6 +61,12 @@ class CohortCreateSerializer(serializers.ModelSerializer):
 
 
 class CohortUpdateSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(
+        max_length=50,
+        required=False,
+        validators=[UniqueValidator(queryset=Cohort.objects.all(), lookup='iexact')],
+    )
+
     class Meta:
         model = Cohort
         fields = ['name', 'description']
