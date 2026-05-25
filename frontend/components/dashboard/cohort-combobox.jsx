@@ -169,7 +169,67 @@ export default function CohortCombobox({ value, onChange, initialCohort = null, 
         </div>
 
         <div className="max-h-56 overflow-y-auto p-1">
-          {cohorts.length === 0 && !loading && !showCreate && (
+          {allowCreate && !showInlineCreate && !search && (
+            <div className="px-3 pt-2 pb-2 border-b">
+              <button
+                type="button"
+                onClick={() => { setShowInlineCreate(true); setCreateName(""); setCreateError(""); }}
+                disabled={anyCreating}
+                className="flex items-center gap-1.5 text-sm text-gray-600 transition-colors hover:text-gray-900 disabled:opacity-50"
+              >
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary/10">
+                  <Plus className="h-3 w-3 text-primary" />
+                </span>
+                Create Cohort
+              </button>
+            </div>
+          )}
+
+          {showInlineCreate && (
+            <div className="flex flex-col gap-1.5 px-3 py-2 border-b">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <input
+                    autoFocus
+                    value={createName}
+                    onChange={(e) => { setCreateName(e.target.value); setCreateError(""); }}
+                    onKeyDown={(e) => e.key === "Enter" && handleInlineCreate()}
+                    placeholder="Cohort name"
+                    disabled={inlineCreating}
+                    className={`flex h-8 w-full rounded-md border bg-transparent px-2 pr-6 text-sm outline-none placeholder:text-muted-foreground disabled:opacity-50 ${createError ? "border-destructive" : "border-input"}`}
+                  />
+                  {createName && !inlineCreating && (
+                    <button
+                      type="button"
+                      onClick={() => { setCreateName(""); setCreateError(""); }}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleInlineCreate}
+                  disabled={inlineCreating || !createName.trim()}
+                  className="flex h-8 shrink-0 items-center rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {inlineCreating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Create"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowInlineCreate(false); setCreateName(""); setCreateError(""); }}
+                  disabled={inlineCreating}
+                  className="flex h-8 shrink-0 items-center rounded-md bg-destructive/10 px-2.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/20 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+              {createError && <p className="text-xs text-destructive px-0.5">{createError}</p>}
+            </div>
+          )}
+
+          {cohorts.length === 0 && !loading && !showCreate && !showInlineCreate && (
             <p className="px-3 py-4 text-center text-sm text-muted-foreground">
               {search ? "No cohorts match your search." : "No cohorts available."}
             </p>
@@ -177,63 +237,9 @@ export default function CohortCombobox({ value, onChange, initialCohort = null, 
 
           {cohorts.length > 0 && (
             <>
-              <div className="flex items-center justify-between px-3 py-2">
+              <div className="px-3 pt-2 pb-1">
                 <p className="text-xs font-medium text-muted-foreground">Please select:</p>
-                {allowCreate && !showInlineCreate && (
-                  <button
-                    type="button"
-                    onClick={() => { setShowInlineCreate(true); setCreateName(""); setCreateError(""); }}
-                    disabled={anyCreating}
-                    className="flex items-center gap-1 rounded-md bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-                  >
-                    <Plus className="h-3 w-3" />
-                    Add Cohort
-                  </button>
-                )}
               </div>
-              {showInlineCreate && (
-                <div className="flex flex-col gap-1.5 px-3 pb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <input
-                        autoFocus
-                        value={createName}
-                        onChange={(e) => { setCreateName(e.target.value); setCreateError(""); }}
-                        onKeyDown={(e) => e.key === "Enter" && handleInlineCreate()}
-                        placeholder="Cohort name"
-                        disabled={inlineCreating}
-                        className={`flex h-8 w-full rounded-md border bg-transparent px-2 pr-6 text-sm outline-none placeholder:text-muted-foreground disabled:opacity-50 ${createError ? "border-destructive" : "border-input"}`}
-                      />
-                      {createName && !inlineCreating && (
-                        <button
-                          type="button"
-                          onClick={() => { setCreateName(""); setCreateError(""); }}
-                          className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleInlineCreate}
-                      disabled={inlineCreating || !createName.trim()}
-                      className="flex h-8 shrink-0 items-center rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                    >
-                      {inlineCreating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Create"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setShowInlineCreate(false); setCreateName(""); setCreateError(""); }}
-                      disabled={inlineCreating}
-                      className="flex h-8 shrink-0 items-center rounded-md bg-destructive/10 px-2.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/20 disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                  {createError && <p className="text-xs text-destructive px-0.5">{createError}</p>}
-                </div>
-              )}
               {cohorts.map((cohort) => (
                 <button
                   key={cohort.id}
