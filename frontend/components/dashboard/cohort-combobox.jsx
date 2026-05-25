@@ -175,7 +175,7 @@ export default function CohortCombobox({ value, onChange, initialCohort = null, 
                 type="button"
                 onClick={() => { setShowInlineCreate(true); setCreateName(""); setCreateError(""); }}
                 disabled={anyCreating}
-                className="flex items-center gap-1.5 text-sm text-gray-600 transition-colors hover:text-gray-900 disabled:opacity-50"
+                className="flex cursor-pointer items-center gap-1.5 text-sm text-gray-600 transition-colors hover:text-gray-900 disabled:opacity-50"
               >
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary/10">
                   <Plus className="h-3 w-3 text-primary" />
