@@ -6,7 +6,7 @@ import { ChevronDown, Search, X, Loader2, Plus } from "lucide-react";
 import cohortService from "@/services/cohortService";
 import toast from "react-hot-toast";
 
-export default function CohortCombobox({ value, onChange, initialCohort = null, disabled = false, allowCreate = false }) {
+export default function CohortCombobox({ value, onChange, initialCohort = null, disabled = false, allowCreate = false, triggerClassName = "" }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [cohorts, setCohorts] = useState([]);
@@ -80,7 +80,7 @@ export default function CohortCombobox({ value, onChange, initialCohort = null, 
         <button
           type="button"
           disabled={disabled}
-          className="flex h-9 w-full items-center justify-between rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors hover:bg-accent/5 focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          className={`flex h-9 w-full items-center justify-between rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors hover:bg-accent/5 focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${triggerClassName}`}
         >
           <span className={selectedCohort ? "text-foreground" : "text-muted-foreground"}>
             {selectedCohort ? selectedCohort.name : allowCreate ? "Select or create a cohort" : "Select a cohort"}

@@ -3,13 +3,15 @@ import apiClient from "./axiosService.js";
 const urlBase = '/participants/'
 
 const participantService = {
-  getAllParticipants(url = urlBase, search = "", ordering = "") {
+  getAllParticipants(url = urlBase, search = "", ordering = "", isActive = "", cohortId = "") {
     if (url.includes('?')) {
       return apiClient.get(url);
     }
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (ordering) params.set('ordering', ordering);
+    if (isActive !== "") params.set('is_active', isActive);
+    if (cohortId) params.set('cohort_id', cohortId);
     const queryString = params.toString();
     return apiClient.get(queryString ? `${url}?${queryString}` : url);
   },

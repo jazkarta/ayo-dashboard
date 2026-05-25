@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, Pencil, Trash2, XIcon, Users } from "lucide-react";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
@@ -339,6 +340,8 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [ordering, setOrdering] = useState("");
+  const [isActive, setIsActive] = useState("");
+  const [cohortId, setCohortId] = useState("");
   const [data, setData] = useState([]);
   const [pagination, setPagination] = useState({ count: 0, next: null, previous: null });
   const [currentUrl, setCurrentUrl] = useState("/participants/");
@@ -374,10 +377,10 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
     });
   };
 
-  const fetchParticipants = async (url = "/participants/", searchTerm = "", orderingTerm = "") => {
+  const fetchParticipants = async (url = "/participants/", searchTerm = "", orderingTerm = "", isActiveTerm = "", cohortIdTerm = "") => {
     setLoading(true);
     try {
-      const response = await participantService.getAllParticipants(url, searchTerm, orderingTerm);
+      const response = await participantService.getAllParticipants(url, searchTerm, orderingTerm, isActiveTerm, cohortIdTerm);
       setData(response.data?.results || []);
       setPagination({
         count: response.data?.count || 0,
@@ -394,8 +397,8 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
   };
 
   useEffect(() => {
-    fetchParticipants(currentUrl, debouncedSearch, ordering);
-  }, [currentUrl, debouncedSearch, ordering, refreshKey, internalRefresh]);
+    fetchParticipants(currentUrl, debouncedSearch, ordering, isActive, cohortId);
+  }, [currentUrl, debouncedSearch, ordering, isActive, cohortId, refreshKey, internalRefresh]);
 
   const columns = useMemo(() => [
     columnHelper.accessor("id", {
@@ -503,11 +506,9 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
   return (
     <>
     <Card className="m-5">
-      <CardHeader className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <CardTitle>Participants List</CardTitle>
-        </div>
-        <div className="flex items-center gap-2">
+      <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <CardTitle>Participants List</CardTitle>
+        <div className="flex flex-wrap items-center gap-2">
           {ordering && (
             <Button
               variant="outline"
@@ -517,6 +518,26 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
               Reset sort
             </Button>
           )}
+          <Select
+            value={isActive || "all"}
+            onValueChange={(val) => { setIsActive(val === "all" ? "" : val); setCurrentUrl("/participants/"); }}
+          >
+            <SelectTrigger className="h-9 w-44 rounded-sm">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent position="popper" side="bottom" sideOffset={4} className="p-1">
+              <SelectItem value="all" className="py-2 px-3">All</SelectItem>
+              <SelectItem value="true" className="py-2 px-3">Active</SelectItem>
+              <SelectItem value="false" className="py-2 px-3">Pending</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="w-56">
+            <CohortCombobox
+              value={cohortId}
+              onChange={(val) => { setCohortId(val); setCurrentUrl("/participants/"); }}
+              triggerClassName="rounded-sm"
+            />
+          </div>
           <Input
             placeholder="Search participants..."
             value={search}
