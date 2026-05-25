@@ -44,7 +44,7 @@ class CohortDetailSerializer(CohortReadSerializer):
 class CohortCreateSerializer(serializers.ModelSerializer):
     name = serializers.CharField(
         max_length=50,
-        validators=[UniqueValidator(queryset=Cohort.objects.all(), lookup='iexact')],
+        validators=[UniqueValidator(queryset=Cohort.objects.all(), lookup='iexact', message='A cohort with this name already exists.')],
     )
 
     class Meta:
@@ -64,7 +64,7 @@ class CohortUpdateSerializer(serializers.ModelSerializer):
     name = serializers.CharField(
         max_length=50,
         required=False,
-        validators=[UniqueValidator(queryset=Cohort.objects.all(), lookup='iexact')],
+        validators=[UniqueValidator(queryset=Cohort.objects.all(), lookup='iexact', message='A cohort with this name already exists.')],
     )
 
     class Meta:
