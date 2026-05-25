@@ -82,7 +82,7 @@ export default function CohortCombobox({ value, onChange, initialCohort = null, 
           disabled={disabled}
           className={`flex h-9 w-full items-center justify-between rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors hover:bg-accent/5 focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${triggerClassName}`}
         >
-          <span className={selectedCohort ? "text-foreground" : "text-muted-foreground"}>
+          <span className={`min-w-0 truncate ${selectedCohort ? "text-foreground" : "text-muted-foreground"}`}>
             {selectedCohort ? selectedCohort.name : allowCreate ? "Select or create a cohort" : "Select a cohort"}
           </span>
           <div className="flex items-center gap-1.5">
