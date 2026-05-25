@@ -132,7 +132,7 @@ export default function AddParticipantForm({ onSuccess = null }) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleClose = () => {
+const handleClose = () => {
     setIsModalOpen(false);
     setCurrentStep(1);
     setUserCreated(false);
