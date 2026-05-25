@@ -43,6 +43,20 @@ class TestCohortCreate:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "name" in response.data
 
+    @pytest.mark.parametrize("variant", ["test cohort", "Test Cohort", "TEST COHORT", "tEsT cOhOrT"])
+    def test_create_cohort_case_insensitive_duplicate_fails(self, api_client, researcher_user, variant):
+        Cohort.objects.create(name="Test Cohort", created_by=researcher_user)
+        api_client.force_authenticate(user=researcher_user)
+        response = api_client.post(BASE_URL, {"name": variant}, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "name" in response.data
+
+    def test_create_cohort_preserves_original_casing(self, api_client, researcher_user):
+        api_client.force_authenticate(user=researcher_user)
+        response = api_client.post(BASE_URL, {"name": "My Cohort"}, format="json")
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["name"] == "My Cohort"
+
 
 @pytest.mark.django_db
 class TestCohortList:
@@ -75,6 +89,14 @@ class TestCohortUpdate:
         Cohort.objects.create(name="Existing", created_by=researcher_user)
         api_client.force_authenticate(user=researcher_user)
         response = api_client.patch(detail_url(cohort.id), {"name": "Existing"}, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "name" in response.data
+
+    @pytest.mark.parametrize("variant", ["existing", "EXISTING", "eXiStInG"])
+    def test_update_to_case_insensitive_duplicate_fails(self, api_client, researcher_user, cohort, variant):
+        Cohort.objects.create(name="Existing", created_by=researcher_user)
+        api_client.force_authenticate(user=researcher_user)
+        response = api_client.patch(detail_url(cohort.id), {"name": variant}, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "name" in response.data
 
