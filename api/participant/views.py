@@ -16,6 +16,7 @@ from .serializers import (
     InvitationAcceptSerializer, InvitationSendSerializer,
     UsernameSuggestionSerializer, ParticipantEmailCheckSerializer
 )
+from .filters import ParticipantFilter
 from .permissions import IsResearcher
 from .models import Invitation
 
@@ -25,6 +26,13 @@ from users.models import UserRole
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
+
+_PARTICIPANT_FILTER_PARAMS = [
+    openapi.Parameter('is_active', openapi.IN_QUERY, type=openapi.TYPE_BOOLEAN, description='Filter by active status'),
+    openapi.Parameter('cohort_id', openapi.IN_QUERY, type=openapi.TYPE_STRING, format=openapi.FORMAT_UUID, description='Filter by cohort UUID'),
+    openapi.Parameter('search', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Search by username or email'),
+    openapi.Parameter('ordering', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Order by field. Prefix with `-` for descending. Options: username, email, date_joined'),
+]
 
 
 class ParticipantViewSet(viewsets.ModelViewSet):
@@ -37,9 +45,13 @@ class ParticipantViewSet(viewsets.ModelViewSet):
     queryset = User.objects.filter(role=UserRole.PARTICIPANT).order_by('-date_joined')
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['is_active']
+    filterset_class = ParticipantFilter
     search_fields = ['username', 'email']
     ordering_fields = ['username', 'email', 'date_joined']
+
+    @swagger_auto_schema(manual_parameters=_PARTICIPANT_FILTER_PARAMS)
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
     @swagger_auto_schema(
         manual_parameters=[
