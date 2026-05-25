@@ -181,6 +181,22 @@ class TestParticipantViewSet:
         results = response.data["results"] if "results" in response.data else response.data
         assert len(results) == expected_count
 
+    def test_filter_by_cohort_id(self, api_client, researcher_user, cohort):
+        p_in = User.objects.create_user(email="in_cohort@example.com", role=UserRole.PARTICIPANT)
+        p_out = User.objects.create_user(email="out_cohort@example.com", role=UserRole.PARTICIPANT)
+
+        from participant.models import ParticipantProfile
+        ParticipantProfile.objects.create(user=p_in, date_of_birth="2010-01-01", gender="M", cohort=cohort)
+        ParticipantProfile.objects.create(user=p_out, date_of_birth="2010-01-01", gender="M")
+
+        api_client.force_authenticate(user=researcher_user)
+        response = api_client.get(reverse("participant-list"), {"cohort_id": str(cohort.id)})
+
+        assert response.status_code == status.HTTP_200_OK
+        results = response.data["results"] if "results" in response.data else response.data
+        assert len(results) == 1
+        assert results[0]["email"] == "in_cohort@example.com"
+
     @pytest.mark.parametrize("search_term, expected_emails", [
         ("alice_user", ["alice@example.com"]),
         ("bob_user", ["bob@example.com"]),
