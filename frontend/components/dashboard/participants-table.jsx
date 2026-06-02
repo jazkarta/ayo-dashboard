@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import Image from "next/image";
 import {
   useReactTable,
   getCoreRowModel,
@@ -14,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, Pencil, Trash2, XIcon, Users, Mail, Copy } from "lucide-react";
+import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, Pencil, Trash2, XIcon, Users, Copy } from "lucide-react";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 import participantService from "../../services/participantService.js";
@@ -507,14 +508,14 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
               className="flex h-8 w-8 items-center justify-center rounded-sm shadow-sm border border-slate-200 bg-white text-slate-500 hover:text-blue-600 hover:border-blue-200 hover:shadow-md transition-all duration-150 cursor-pointer"
               title="Edit Participant"
             >
-              <Pencil className="h-3.5 w-3.5" />
+              <Pencil className="h-3.5 w-3.5 text-black" />
             </button>
             <button
               onClick={() => handleDelete(participant)}
               className="flex h-8 w-8 items-center justify-center rounded-sm shadow-sm border border-slate-200 bg-white text-slate-500 hover:text-red-600 hover:border-red-200 hover:shadow-md transition-all duration-150 cursor-pointer"
               title="Delete Participant"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="h-3.5 w-3.5 text-black" />
             </button>
             <button
               onClick={() => handleResendEmail(participant)}
@@ -524,7 +525,7 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
             >
               {resendingId === participant?.id
                 ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                : <Mail className="h-3.5 w-3.5" />}
+                : <Image src="/reload.png" alt="Resend" width={18} height={18} />}
             </button>
             <button
               onClick={() => {
@@ -535,7 +536,7 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
               className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm shadow-sm border border-slate-200 bg-white text-slate-500 hover:text-violet-600 hover:border-violet-200 hover:shadow-md transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-slate-500 disabled:hover:border-slate-200 disabled:hover:shadow-sm"
               title={participant.invitation_link ? "Copy Invite Link" : "No invite link available"}
             >
-              <Copy className="h-3.5 w-3.5" />
+              <Copy className="h-3.5 w-3.5 text-black" />
             </button>
           </div>
         );
