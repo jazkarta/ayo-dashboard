@@ -12,8 +12,9 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
 from .serializers import (
-    ParticipantCreateSerializer, InvitationSerializer,
-    InvitationAcceptSerializer, InvitationSendSerializer,
+    ParticipantCreateSerializer, ParticipantListSerializer,
+    InvitationSerializer, InvitationAcceptSerializer,
+    InvitationSendSerializer, InvitationResendSerializer,
     UsernameSuggestionSerializer, ParticipantEmailCheckSerializer
 )
 from .filters import ParticipantFilter
@@ -42,12 +43,22 @@ class ParticipantViewSet(viewsets.ModelViewSet):
     """
     serializer_class = ParticipantCreateSerializer
     permission_classes = [IsResearcher]
-    queryset = User.objects.filter(role=UserRole.PARTICIPANT).order_by('-date_joined')
+    queryset = (
+        User.objects
+        .filter(role=UserRole.PARTICIPANT)
+        .select_related('invitations', 'participant_profile')
+        .order_by('-date_joined')
+    )
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = ParticipantFilter
     search_fields = ['username', 'email']
     ordering_fields = ['username', 'email', 'date_joined']
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return ParticipantListSerializer
+        return super().get_serializer_class()
 
     @swagger_auto_schema(manual_parameters=_PARTICIPANT_FILTER_PARAMS)
     def list(self, request, *args, **kwargs):
@@ -86,6 +97,26 @@ class ParticipantViewSet(viewsets.ModelViewSet):
             logger.info(f"Invitation {invitation.id} created for participant {participant.username}")
             serializer = InvitationSerializer(invitation)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @swagger_auto_schema(
+        request_body=openapi.Schema(type=openapi.TYPE_OBJECT),
+        responses={200: InvitationSerializer}
+    )
+    @action(detail=True, methods=['post'], url_path='resend-invite', serializer_class=InvitationResendSerializer)
+    def resend_invite(self, request, pk=None):
+        """
+        Resend an invitation email to a participant's guardian using the existing invitation link.
+        Resets the expiry date if the invitation has expired.
+        """
+        participant = self.get_object()
+        serializer = self.get_serializer(data={}, context={'participant': participant})
+
+        if serializer.is_valid():
+            invitation = serializer.save()
+            logger.info(f"Invitation {invitation.id} resent for participant {participant.username}")
+            return Response(InvitationSerializer(invitation).data, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
