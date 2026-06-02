@@ -46,6 +46,9 @@ const participantService = {
 
   editParticipant(id, data) {
     return apiClient.patch(`${urlBase}${id}/`, data);
+  },
+  resendInvitation(id) {
+    return apiClient.post(`${urlBase}${id}/resend-invite/`);
   }
 };
 

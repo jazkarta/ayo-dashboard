@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, Pencil, Trash2, XIcon, Users } from "lucide-react";
+import { Loader2, ArrowUp, ArrowDown, ArrowUpDown, Pencil, Trash2, XIcon, Users, Mail, Copy } from "lucide-react";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
 import participantService from "../../services/participantService.js";
@@ -349,6 +349,7 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
   const [internalRefresh, setInternalRefresh] = useState(0);
+  const [resendingId, setResendingId] = useState(null);
 
   const baseUrl = process.env.NEXT_PUBLIC_API_URL;
 
@@ -367,6 +368,30 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
   const handleDelete = useCallback((participant) => {
     setDeleteTarget(participant);
   }, []);
+
+  const handleResendEmail = useCallback(async (participant) => {
+    if (resendingId) return;
+    setResendingId(participant?.id);
+    try {
+      await participantService.resendInvitation(participant?.id);
+      toast.success(`Invitation email resent to ${participant?.email}`);
+    } catch (e) {
+      const status = e?.response?.status;
+      const serverMessage = e?.response?.data?.detail || e?.response?.data?.message;
+
+      if (serverMessage) {
+        toast.error(serverMessage);
+      } else if (status === 404) {
+        toast.error("Participant not found. Please refresh and try again.");
+      } else if (status >= 500) {
+        toast.error("Server error. Please try again later.");
+      } else {
+        toast.error("Failed to resend invitation email. Please try again.");
+      }
+    } finally {
+      setResendingId(null);
+    }
+  }, [resendingId]);
 
   const toggleOrdering = (field) => {
     setCurrentUrl("/participants/");
@@ -480,22 +505,43 @@ export default function ParticipantsTable({ refreshKey = 0 }) {
             <button
               onClick={() => handleEdit(participant)}
               className="flex h-8 w-8 items-center justify-center rounded-sm shadow-sm border border-slate-200 bg-white text-slate-500 hover:text-blue-600 hover:border-blue-200 hover:shadow-md transition-all duration-150 cursor-pointer"
-              title="Edit"
+              title="Edit Participant"
             >
               <Pencil className="h-3.5 w-3.5" />
             </button>
             <button
               onClick={() => handleDelete(participant)}
               className="flex h-8 w-8 items-center justify-center rounded-sm shadow-sm border border-slate-200 bg-white text-slate-500 hover:text-red-600 hover:border-red-200 hover:shadow-md transition-all duration-150 cursor-pointer"
-              title="Delete"
+              title="Delete Participant"
             >
               <Trash2 className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => handleResendEmail(participant)}
+              disabled={participant.is_active || !!resendingId}
+              className="flex cursor-pointer h-8 w-8 items-center justify-center rounded-sm shadow-sm border border-slate-200 bg-white text-slate-500 hover:text-green-600 hover:border-green-200 hover:shadow-md transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-slate-500 disabled:hover:border-slate-200 disabled:hover:shadow-sm"
+              title={participant.is_active ? "Email already confirmed" : resendingId === participant?.id ? "Sending..." : "Resend Email"}
+            >
+              {resendingId === participant?.id
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Mail className="h-3.5 w-3.5" />}
+            </button>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(participant.invitation_link);
+                toast.success("Link copied to clipboard");
+              }}
+              disabled={!participant.invitation_link}
+              className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm shadow-sm border border-slate-200 bg-white text-slate-500 hover:text-violet-600 hover:border-violet-200 hover:shadow-md transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-slate-500 disabled:hover:border-slate-200 disabled:hover:shadow-sm"
+              title={participant.invitation_link ? "Copy Invite Link" : "No invite link available"}
+            >
+              <Copy className="h-3.5 w-3.5" />
             </button>
           </div>
         );
       },
     }),
-  ], [ordering, handleEdit, handleDelete]);
+  ], [ordering, handleEdit, handleDelete, handleResendEmail, resendingId]);
 
   const table = useReactTable({
     data,
