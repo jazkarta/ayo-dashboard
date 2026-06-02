@@ -242,3 +242,61 @@ class TestParticipantViewSet:
         assert response.status_code == status.HTTP_200_OK
         results = response.data["results"] if "results" in response.data else response.data
         assert [p[key] for p in results] == expected_order
+
+    def test_list_includes_invitation_link(self, api_client, researcher_user, participant_user, invitation):
+        api_client.force_authenticate(user=researcher_user)
+        response = api_client.get(reverse("participant-list"))
+
+        results = response.data["results"] if "results" in response.data else response.data
+        participant_data = next(p for p in results if p["email"] == participant_user.email)
+        assert str(invitation.id) in participant_data["invitation_link"]
+
+    def test_list_invitation_link_none_when_no_invitation(self, api_client, researcher_user, participant_user):
+        api_client.force_authenticate(user=researcher_user)
+        response = api_client.get(reverse("participant-list"))
+
+        results = response.data["results"] if "results" in response.data else response.data
+        participant_data = next(p for p in results if p["email"] == participant_user.email)
+        assert participant_data["invitation_link"] is None
+
+
+@pytest.mark.django_db
+class TestResendInvite:
+
+    def test_resend_invite_success(self, api_client, researcher_user, participant_user, invitation, mock_email_manager):
+        api_client.force_authenticate(user=researcher_user)
+        url = reverse("participant-resend-invite", kwargs={"pk": participant_user.pk})
+
+        response = api_client.post(url, {}, format="json")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["id"] == str(invitation.id)
+        assert mock_email_manager.send_participant_invitation_email.called
+
+    def test_resend_invite_expired_resets_expiry(self, api_client, researcher_user, expired_invitation, mock_email_manager):
+        old_expiry = expired_invitation.expiry_date
+        api_client.force_authenticate(user=researcher_user)
+        url = reverse("participant-resend-invite", kwargs={"pk": expired_invitation.user.pk})
+
+        response = api_client.post(url, {}, format="json")
+
+        assert response.status_code == status.HTTP_200_OK
+        expired_invitation.refresh_from_db()
+        assert expired_invitation.expiry_date > old_expiry
+        assert mock_email_manager.send_participant_invitation_email.called
+
+    def test_resend_invite_no_invitation_returns_400(self, api_client, researcher_user, participant_user):
+        api_client.force_authenticate(user=researcher_user)
+        url = reverse("participant-resend-invite", kwargs={"pk": participant_user.pk})
+
+        response = api_client.post(url, {}, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_resend_invite_already_accepted_returns_400(self, api_client, researcher_user, accepted_invitation):
+        api_client.force_authenticate(user=researcher_user)
+        url = reverse("participant-resend-invite", kwargs={"pk": accepted_invitation.user.pk})
+
+        response = api_client.post(url, {}, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST

@@ -1,5 +1,7 @@
 import logging
 
+from django.conf import settings
+from django.conf import settings
 from django.utils import timezone
 from rest_framework import serializers
 from django.db import transaction
@@ -133,6 +135,40 @@ class ParticipantCreateSerializer(serializers.ModelSerializer):
         return representation
 
 
+class ParticipantListSerializer(ParticipantCreateSerializer):
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        try:
+            invitation = instance.invitations
+            if not invitation.has_accepted:
+                representation['invitation_link'] = (
+                    f"{settings.DASHBOARD_URL}/invitation/{invitation.id}/accept"
+                )
+            else:
+                representation['invitation_link'] = None
+        except Invitation.DoesNotExist:
+            representation['invitation_link'] = None
+        return representation
+
+
+class ParticipantListSerializer(ParticipantCreateSerializer):
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        try:
+            invitation = instance.invitations
+            if not invitation.has_accepted:
+                representation['invitation_link'] = (
+                    f"{settings.DASHBOARD_URL}/invitation/{invitation.id}/accept"
+                )
+            else:
+                representation['invitation_link'] = None
+        except Invitation.DoesNotExist:
+            representation['invitation_link'] = None
+        return representation
+
+
 class ParticipantEmailCheckSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
@@ -202,6 +238,45 @@ class InvitationSendSerializer(serializers.Serializer):
         )
 
         return invitation
+
+class InvitationResendSerializer(serializers.Serializer):
+
+    def validate(self, attrs):
+        participant = self.context['participant']
+        try:
+            invitation = participant.invitations
+        except Invitation.DoesNotExist:
+            raise serializers.ValidationError("No invitation found for this participant.")
+
+        if invitation.has_accepted:
+            raise serializers.ValidationError("Invitation has already been accepted.")
+
+        return attrs
+
+    def save(self, **kwargs):
+        participant = self.context['participant']
+        invitation = participant.invitations
+        email_manager = EmailManager()
+
+        if invitation.expiry_date < timezone.now():
+            invitation.expiry_date = timezone.now() + timezone.timedelta(days=2)
+            invitation.save(update_fields=['expiry_date', 'updated_at'])
+
+        context = {
+            "invited_by": invitation.invited_by.get_full_name(),
+            "expiry_date": invitation.expiry_date.strftime("%Y-%m-%d %H:%M"),
+            "invitation_id": invitation.id,
+        }
+
+        email_manager.send_participant_invitation_email(
+            to_email=invitation.parent_email, invitation_data=context
+        )
+
+        return invitation
+
+    def to_representation(self, instance):
+        return InvitationSerializer(instance, context=self.context).data
+
 
 class InvitationAcceptSerializer(serializers.Serializer):
     username = serializers.CharField(max_length=150, required=True)
