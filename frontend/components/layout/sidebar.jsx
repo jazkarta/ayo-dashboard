@@ -52,16 +52,16 @@ const navItems = [
     href: "/dashboard/cohorts",
     icon: Group,
   },
-  {
-    title: "Reports",
-    href: "/dashboard/reports",
-    icon: BarChart3,
-  },
-  {
-    title: "Documents",
-    href: "/dashboard/documents",
-    icon: FileText,
-  },
+  // {
+  //   title: "Reports",
+  //   href: "/dashboard/reports",
+  //   icon: BarChart3,
+  // },
+  // {
+  //   title: "Documents",
+  //   href: "/dashboard/documents",
+  //   icon: FileText,
+  // },
 ];
 
 const bottomNavItems = [
