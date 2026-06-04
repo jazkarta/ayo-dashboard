@@ -24,6 +24,8 @@ const ApiClient = () => {
     // Allow callers to force-send the token on public routes with { sendToken: true }
     const sendToken = request.sendToken !== undefined ? request.sendToken : false;
 
+    request.headers["X-Timezone"] = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
     // Set Content-Type unless FormData (browser handles it automatically)
     const contentType = request.contentType;
     if (contentType) {
