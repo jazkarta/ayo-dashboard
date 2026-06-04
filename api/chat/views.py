@@ -58,11 +58,6 @@ class ConversationViewSet(TimezoneMixin, mixins.CreateModelMixin, ReadOnlyModelV
     }
 
     def get_queryset(self):
-        if self.action in ('export', 'bulk_export'):
-            return ConversationModel.objects.select_related(
-                'user', 'user__participant_profile'
-            ).annotate(number_of_turns=Count('chats', filter=~Q(chats__response__startswith=Chat.ERROR_RESPONSE_PREFIX)))
-
         return ConversationModel.objects.select_related('user', 'user__participant_profile').order_by('-created_at').annotate(
             number_of_turns=Count('chats', filter=~Q(chats__response__startswith=Chat.ERROR_RESPONSE_PREFIX))
         )
