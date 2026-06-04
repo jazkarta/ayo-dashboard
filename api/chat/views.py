@@ -14,6 +14,7 @@ from rest_framework.viewsets import GenericViewSet, ReadOnlyModelViewSet
 
 
 from chat.filters import ConversationFilter
+from utils.timezone_mixin import TimezoneMixin
 from chat.models.chat_models import Chat
 from chat.managers import ConversationBulkExportManager, ConversationExportManager
 from chat.models.conversation_models import ConversationModel
@@ -46,7 +47,7 @@ class ChatCreateAPIView(CreateAPIView):
     serializer_class = ChatCreateSerializer
 
 
-class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
+class ConversationViewSet(TimezoneMixin, mixins.CreateModelMixin, ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_class = ConversationFilter
@@ -103,7 +104,7 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
     @action(detail=True, methods=['get'])
     def details(self, request, pk=None):
         instance = self.get_object()
-        chats = instance.chats.prefetch_related('media').order_by('-created_at')
+        chats = instance.chats.prefetch_related('media').order_by('created_at')
 
         page = self.paginate_queryset(chats)
         if page is not None:
@@ -128,8 +129,8 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
     def export(self, request, pk=None):
         instance = self.get_object()
         queryset = ConversationModel.objects.filter(pk=instance.pk).select_related('user', 'user__participant_profile')
-        filename = f'conversation-{slugify(instance.title) or "untitled"}.csv'
-        return ConversationExportManager.streaming_response(queryset, filename)
+        filename = f'conversation-{instance.conversation_id}.csv'
+        return ConversationExportManager.streaming_response(queryset, filename, self.get_request_timezone())
 
     @swagger_auto_schema(
         method='get',
@@ -156,7 +157,7 @@ class ConversationViewSet(mixins.CreateModelMixin, ReadOnlyModelViewSet):
             if active_filters else
             'conversations-all.csv'
         )
-        return ConversationBulkExportManager.streaming_response(queryset, filename)
+        return ConversationBulkExportManager.streaming_response(queryset, filename, self.get_request_timezone())
 
 
 class ExportJobViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, GenericViewSet):

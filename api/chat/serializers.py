@@ -1,4 +1,5 @@
 from datetime import date
+from zoneinfo import ZoneInfo
 
 from rest_framework import serializers
 
@@ -111,7 +112,10 @@ class ConversationListSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'conversation_id', 'model_name', 'participant', 'cohort', 'created_at', 'number_of_turns', 'is_deleted']
 
     def get_created_at(self, obj):
-        return obj.created_at.strftime('%B %d, %Y, %I:%M %p') if obj.created_at else None
+        if not obj.created_at:
+            return None
+        tz = ZoneInfo(self.context.get('timezone', 'UTC'))
+        return obj.created_at.astimezone(tz).strftime('%B %d, %Y, %I:%M %p')
 
     def get_number_of_turns(self, obj):
         if hasattr(obj, 'number_of_turns'):
