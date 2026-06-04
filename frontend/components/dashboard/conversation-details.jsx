@@ -214,7 +214,7 @@ export default function ConversationDetails({ id }) {
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2">
             <CardTitle className="font-mono text-base">
-              {details.conversation_id || "-"}
+              {details.conversation_id ? `Conversation - ${details.conversation_id}` : "-"}
             </CardTitle>
             {details.is_deleted && (
               <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-600">
