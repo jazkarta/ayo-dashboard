@@ -179,7 +179,7 @@ class TestConversationExport:
         assert response.status_code == status.HTTP_200_OK
         assert response['Content-Type'] == 'text/csv'
         assert 'attachment' in response['Content-Disposition']
-        assert 'conversation-test-conversation.csv' in response['Content-Disposition']
+        assert 'conversation-conv-test-001.csv' in response['Content-Disposition']
         assert response.streaming is True
 
     def test_export_csv_has_correct_headers(self, api_client, chat_user, conversation):
