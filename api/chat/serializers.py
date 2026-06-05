@@ -81,7 +81,11 @@ class ChatCreateSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        instance.metadata = validated_data.get('metadata')
+        incoming = validated_data.get('metadata')
+        if incoming is None:
+            instance.metadata = None
+        else:
+            instance.metadata = {**(instance.metadata or {}), **incoming}
         instance.save(update_fields=['metadata', 'updated_at'])
         return instance
 
