@@ -109,12 +109,12 @@ class ConversationListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ConversationModel
-        fields = ['id', 'title', 'conversation_id', 'model_name', 'participant', 'cohort', 'created_at', 'number_of_turns', 'is_deleted']
+        fields = ['id', 'title', 'conversation_id', 'model_name', 'participant', 'cohort', 'created_at', 'timezone', 'number_of_turns', 'is_deleted']
 
     def get_created_at(self, obj):
         if not obj.created_at:
             return None
-        tz = ZoneInfo(self.context.get('timezone', 'UTC'))
+        tz = ZoneInfo(obj.timezone or 'UTC')
         return obj.created_at.astimezone(tz).strftime('%B %d, %Y, %I:%M %p')
 
     def get_number_of_turns(self, obj):
@@ -139,7 +139,8 @@ class ConversationCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user = self.context['request'].user
         cohort = getattr(getattr(user, 'participant_profile', None), 'cohort', None)
-        return ConversationModel.objects.create(user=user, cohort=cohort, **validated_data)
+        timezone = self.context.get('timezone', 'UTC')
+        return ConversationModel.objects.create(user=user, cohort=cohort, timezone=timezone, **validated_data)
 
     def to_representation(self, instance):
         return ConversationDetailSerializer(instance, context=self.context).data
