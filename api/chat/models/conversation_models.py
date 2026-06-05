@@ -14,6 +14,7 @@ class ConversationModel(BaseModel):
     )
 
     model_name = models.CharField(max_length=512, blank=True, null=True)
+    timezone = models.CharField(max_length=100, default='UTC')
     is_deleted = models.BooleanField(default=False)
     cohort = models.ForeignKey(
         'cohort.Cohort',
