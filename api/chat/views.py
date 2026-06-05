@@ -125,7 +125,7 @@ class ConversationViewSet(TimezoneMixin, mixins.CreateModelMixin, ReadOnlyModelV
         instance = self.get_object()
         queryset = ConversationModel.objects.filter(pk=instance.pk).select_related('user', 'user__participant_profile')
         filename = f'conversation-{instance.conversation_id}.csv'
-        return ConversationExportManager.streaming_response(queryset, filename, self.get_request_timezone())
+        return ConversationExportManager.streaming_response(queryset, filename)
 
     @swagger_auto_schema(
         method='get',
@@ -152,7 +152,7 @@ class ConversationViewSet(TimezoneMixin, mixins.CreateModelMixin, ReadOnlyModelV
             if active_filters else
             'conversations-all.csv'
         )
-        return ConversationBulkExportManager.streaming_response(queryset, filename, self.get_request_timezone())
+        return ConversationBulkExportManager.streaming_response(queryset, filename)
 
 
 class ExportJobViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, GenericViewSet):

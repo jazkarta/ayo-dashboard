@@ -13,14 +13,14 @@ class BaseCSVExportManager:
     CSV_HEADERS = []
 
     @classmethod
-    def rows(cls, queryset, timezone='UTC'):
+    def rows(cls, queryset):
         raise NotImplementedError
 
     @classmethod
-    def streaming_response(cls, queryset, filename, timezone='UTC'):
+    def streaming_response(cls, queryset, filename):
         writer = csv.writer(_Echo())
         response = StreamingHttpResponse(
-            (writer.writerow(row) for row in cls.rows(queryset, timezone)),
+            (writer.writerow(row) for row in cls.rows(queryset)),
             content_type='text/csv',
         )
         response['Content-Disposition'] = f'attachment; filename="{filename}"'

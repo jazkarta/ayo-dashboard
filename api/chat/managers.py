@@ -16,14 +16,13 @@ class ConversationExportManager(BaseCSVExportManager):
     ]
 
     @classmethod
-    def rows(cls, queryset, timezone='UTC'):
+    def rows(cls, queryset):
         yield cls.CSV_HEADERS
-        tz = ZoneInfo(timezone)
         for conversation in queryset.iterator():
-            yield from cls._conversation_rows(conversation, tz)
+            yield from cls._conversation_rows(conversation)
 
     @classmethod
-    def _conversation_rows(cls, conversation, tz):
+    def _conversation_rows(cls, conversation):
         media_map = defaultdict(list)
         for item in ChatMedia.objects.filter(
             chat__conversation=conversation
@@ -31,6 +30,7 @@ class ConversationExportManager(BaseCSVExportManager):
             media_map[item['chat_id']].append(item['url'])
 
         family_id = cls._family_id(conversation.user)
+        tz = ZoneInfo(conversation.timezone or 'UTC')
 
         for chat in Chat.objects.filter(
             conversation=conversation
@@ -57,9 +57,8 @@ class ConversationBulkExportManager(BaseCSVExportManager):
     ]
 
     @classmethod
-    def rows(cls, queryset, timezone='UTC'):
+    def rows(cls, queryset):
         yield cls.CSV_HEADERS
-        tz = ZoneInfo(timezone)
         queryset = queryset.prefetch_related(
             Prefetch('chats', queryset=Chat.objects.only('id', 'prompt', 'response', 'created_at').order_by('created_at')),
             'chats__media',
@@ -67,6 +66,7 @@ class ConversationBulkExportManager(BaseCSVExportManager):
         for conversation in queryset:
             chats = list(conversation.chats.all())
             attachment_urls = [media.url for chat in chats for media in chat.media.all()]
+            tz = ZoneInfo(conversation.timezone or 'UTC')
             yield [
                 conversation.conversation_id,
                 conversation.model_name or '',
