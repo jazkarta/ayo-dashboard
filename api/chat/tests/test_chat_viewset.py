@@ -801,6 +801,15 @@ class TestChatUpdateMetadata:
         chat.refresh_from_db()
         assert chat.metadata is None
 
+    def test_merges_with_existing_metadata(self, api_client, chat_user, chat):
+        chat.metadata = {'disliked': 'inaccurate'}
+        chat.save()
+        api_client.force_authenticate(user=chat_user)
+        response = api_client.patch(self._url(chat), {'metadata': {'regeneration': 'some-uuid'}}, format='json')
+        assert response.status_code == status.HTTP_200_OK
+        chat.refresh_from_db()
+        assert chat.metadata == {'disliked': 'inaccurate', 'regeneration': 'some-uuid'}
+
     def test_other_user_returns_404(self, api_client, chat):
         other_user = User.objects.create_user(email='other@example.com', password='pass')
         api_client.force_authenticate(user=other_user)
