@@ -14,6 +14,7 @@ class Chat(BaseModel):
     )
     prompt = models.TextField()
     response = models.TextField()
+    metadata = models.JSONField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Chat"
