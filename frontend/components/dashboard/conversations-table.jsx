@@ -19,7 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import {
-  Loader2, SlidersHorizontal, X, Download, MessageSquareOff, User, Filter, CalendarIcon, ArrowRight, Group, Hash, Milestone,
+  Loader2, SlidersHorizontal, X, Download, MessageSquareOff, User, Filter, CalendarIcon, ArrowRight, Group, Hash, Milestone, Clock,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import conversationService from "@/services/conversationService";
@@ -275,20 +275,30 @@ export default function ConversationsTable() {
       header: "Model Name",
       cell: (info) => info.getValue() || "-",
     }),
-    columnHelper.accessor("created_at", {
+    columnHelper.accessor((row) => row, {
+      id: "created_at",
       header: "Conversation Created",
       cell: (info) => {
-        const value = info.getValue();
-        if (!value) return "-";
-        const parts = value.match(/^(.+,\s\d{4}),\s(.+)$/);
-        const date = parts?.[1] ?? value;
+        const { created_at, timezone } = info.getValue();
+        if (!created_at) return "-";
+        const parts = created_at.match(/^(.+,\s\d{4}),\s(.+)$/);
+        const date = parts?.[1] ?? created_at;
         const time = parts?.[2] ?? "";
+        const tzCity = timezone?.replace(/_/g, " ");
         return (
-          <div className="flex items-center gap-1.5 text-sm">
-            <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-            <span className="font-medium text-foreground">{date}</span>
-            <span className="text-muted-foreground">·</span>
-            <span className="text-muted-foreground">{time}</span>
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-1.5 text-sm mb-1">
+              <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span className="font-medium text-foreground">{date}</span>
+              <span className="text-muted-foreground">·</span>
+              <span className="text-muted-foreground">{time}</span>
+            </div>
+            {tzCity && (
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Clock className="h-3.5 w-3.5 shrink-0" />
+                {tzCity}
+              </div>
+            )}
           </div>
         );
       },
