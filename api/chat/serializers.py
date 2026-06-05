@@ -31,7 +31,7 @@ class ChatCreateSerializer(serializers.ModelSerializer):
     conversation_id = serializers.CharField(required=True, write_only=True)
     user_email = serializers.EmailField(required=True, write_only=True)
     model_name = serializers.CharField(required=True, write_only=True)
-    attachments = ChatMediaInputSerializer(many=True, required=False, default=list, write_only=True)
+    attachments = ChatMediaInputSerializer(many=True, required=False, write_only=True)
 
     class Meta:
         model = Chat
@@ -40,6 +40,8 @@ class ChatCreateSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         user_email = attrs.get('user_email')
+        if not user_email:
+            return attrs
 
         try:
             user = User.objects.get(email=user_email)
@@ -76,6 +78,12 @@ class ChatCreateSerializer(serializers.ModelSerializer):
             ])
 
         return chat
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        instance.metadata = validated_data.get('metadata')
+        instance.save(update_fields=['metadata', 'updated_at'])
+        return instance
 
 
 class ChatSerializer(serializers.ModelSerializer):

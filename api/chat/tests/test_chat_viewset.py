@@ -14,7 +14,7 @@ from chat.tests.helpers import BULK_EXPORT_FIELD_VALUES, EXPORT_FIELD_VALUES
 
 User = get_user_model()
 
-CHAT_CREATE_URL = 'chat_create'
+CHAT_CREATE_URL = 'chat-list'
 
 
 def conversation_details_url(pk):
@@ -777,6 +777,35 @@ class TestConversationListParticipantAge:
         assert response.status_code == status.HTTP_200_OK
         results = response.data.get('results', response.data)
         assert results[0]['participant']['age'] == 10
+
+
+@pytest.mark.django_db
+class TestChatUpdateMetadata:
+
+    def _url(self, chat):
+        return reverse('chat-detail', kwargs={'pk': str(chat.pk)})
+
+    def test_sets_metadata(self, api_client, chat_user, chat):
+        api_client.force_authenticate(user=chat_user)
+        response = api_client.patch(self._url(chat), {'metadata': {'liked': 'accurate_reliable'}}, format='json')
+        assert response.status_code == status.HTTP_200_OK
+        chat.refresh_from_db()
+        assert chat.metadata == {'liked': 'accurate_reliable'}
+
+    def test_clears_metadata_with_null(self, api_client, chat_user, chat):
+        chat.metadata = {'liked': 'accurate_reliable'}
+        chat.save()
+        api_client.force_authenticate(user=chat_user)
+        response = api_client.patch(self._url(chat), {'metadata': None}, format='json')
+        assert response.status_code == status.HTTP_200_OK
+        chat.refresh_from_db()
+        assert chat.metadata is None
+
+    def test_other_user_returns_404(self, api_client, chat):
+        other_user = User.objects.create_user(email='other@example.com', password='pass')
+        api_client.force_authenticate(user=other_user)
+        response = api_client.patch(self._url(chat), {'metadata': {'liked': 'accurate_reliable'}}, format='json')
+        assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.django_db

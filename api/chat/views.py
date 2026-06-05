@@ -7,10 +7,9 @@ from drf_yasg.utils import swagger_auto_schema
 
 from rest_framework import filters, mixins, status
 from rest_framework.decorators import action
-from rest_framework.generics import CreateAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.viewsets import GenericViewSet, ReadOnlyModelViewSet
+from rest_framework.viewsets import GenericViewSet, ModelViewSet, ReadOnlyModelViewSet
 
 
 from chat.filters import ConversationFilter
@@ -43,8 +42,23 @@ _CONVERSATION_FILTER_PARAMS = [
 ]
 
 
-class ChatCreateAPIView(CreateAPIView):
-    serializer_class = ChatCreateSerializer
+class ChatViewSet(ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_action_classes = {
+        'list': ChatSerializer,
+        'retrieve': ChatSerializer,
+    }
+
+    def get_queryset(self):
+        return (
+            Chat.objects.filter(conversation__user=self.request.user)
+            .select_related('conversation')
+            .prefetch_related('media')
+            .order_by('-created_at')
+        )
+
+    def get_serializer_class(self):
+        return self.serializer_action_classes.get(self.action, ChatCreateSerializer)
 
 
 class ConversationViewSet(TimezoneMixin, mixins.CreateModelMixin, ReadOnlyModelViewSet):
