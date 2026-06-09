@@ -29,3 +29,10 @@ class ConversationModel(BaseModel):
         verbose_name_plural = "Conversations"
         db_table = "conversation"
         ordering = ["-created_at"]
+
+    @property
+    def turn_count(self):
+        if hasattr(self, 'number_of_turns'):
+            return self.number_of_turns
+        from chat.models.chat_models import Chat
+        return self.chats.exclude(response__startswith=Chat.ERROR_RESPONSE_PREFIX).count()

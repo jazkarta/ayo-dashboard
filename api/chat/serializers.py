@@ -130,9 +130,7 @@ class ConversationListSerializer(serializers.ModelSerializer):
         return obj.created_at.astimezone(tz).strftime('%B %d, %Y, %I:%M %p')
 
     def get_number_of_turns(self, obj):
-        if hasattr(obj, 'number_of_turns'):
-            return obj.number_of_turns
-        return obj.chats.exclude(response__startswith=Chat.ERROR_RESPONSE_PREFIX).count()
+        return obj.turn_count
 
 class ConversationDetailSerializer(serializers.ModelSerializer):
     participant = ConversationUserSerializer(read_only=True, source='user')
