@@ -29,7 +29,7 @@ def export_conversations_to_gcs(job_id):
             ConversationModel.objects
             .select_related('user', 'user__participant_profile')
             .prefetch_related(
-                Prefetch('chats', queryset=Chat.objects.only('id', 'prompt', 'response', 'created_at').order_by('created_at')),
+                Prefetch('chats', queryset=Chat.objects.only('id', 'prompt', 'response', 'metadata', 'created_at').order_by('created_at')),
                 'chats__media',
             )
         )

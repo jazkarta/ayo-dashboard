@@ -1,3 +1,4 @@
+import json
 from zoneinfo import ZoneInfo
 
 from utils.csv_export_manager import BaseCSVExportManager
@@ -6,9 +7,9 @@ from utils.csv_export_manager import BaseCSVExportManager
 class ConversationExportManager(BaseCSVExportManager):
 
     CSV_HEADERS = [
-        'conversation_id', 'model_name', 'username',
+        'conversation_id', 'turn_id', 'turn_index', 'model_name', 'username',
         'family_id', 'cohort_id', 'message_date',
-        'prompt', 'response', 'attachment_urls',
+        'prompt', 'response', 'metadata', 'attachment_urls',
     ]
 
     @classmethod
@@ -25,9 +26,11 @@ class ConversationExportManager(BaseCSVExportManager):
     def _conversation_rows(cls, conversation):
         family_id = cls._family_id(conversation.user)
         tz = ZoneInfo(conversation.timezone or 'UTC')
-        for chat in conversation.chats.all():
+        for index, chat in enumerate(conversation.chats.all(), start=1):
             yield [
                 conversation.conversation_id,
+                str(chat.id),
+                index,
                 conversation.model_name or '',
                 conversation.user.username or '',
                 family_id,
@@ -35,6 +38,7 @@ class ConversationExportManager(BaseCSVExportManager):
                 chat.created_at.astimezone(tz).strftime('%B %d, %Y, %I:%M %p'),
                 chat.prompt,
                 chat.response,
+                json.dumps(chat.metadata, indent=4) if chat.metadata else '',
                 '|'.join(media.url for media in chat.media.all()),
             ]
 
@@ -43,7 +47,7 @@ class ConversationBulkExportManager(BaseCSVExportManager):
 
     CSV_HEADERS = [
         'conversation_id', 'model_name', 'username',
-        'family_id', 'cohort_id',
+        'family_id', 'cohort_id', 'number_of_turns',
         # 'prompts', 'responses',
         'datetime', 'attachment_urls',
     ]
@@ -70,6 +74,7 @@ class ConversationBulkExportManager(BaseCSVExportManager):
             conversation.user.username or '',
             cls._family_id(conversation.user),
             str(conversation.cohort_id) if conversation.cohort_id else '',
+            conversation.turn_count,
             # '|'.join(chat.prompt or '' for chat in chats),
             # '|'.join(chat.response or '' for chat in chats),
             f"{conversation.created_at.astimezone(tz).strftime('%B %d, %Y, %I:%M %p')} ({tz_name})",
