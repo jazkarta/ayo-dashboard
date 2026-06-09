@@ -1,3 +1,4 @@
+import json
 from zoneinfo import ZoneInfo
 
 EXPORT_FIELD_VALUES = {
@@ -11,6 +12,7 @@ EXPORT_FIELD_VALUES = {
     'message_date':    lambda conv, chat: chat.created_at.astimezone(ZoneInfo(conv.timezone or 'UTC')).strftime('%B %d, %Y, %I:%M %p'),
     'prompt':          lambda conv, chat: chat.prompt,
     'response':        lambda conv, chat: chat.response,
+    'metadata':        lambda conv, chat: json.dumps(chat.metadata, indent=4) if chat.metadata else '',
     'attachment_urls': lambda conv, chat: '',
 }
 

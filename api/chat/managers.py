@@ -1,3 +1,4 @@
+import json
 from zoneinfo import ZoneInfo
 
 from utils.csv_export_manager import BaseCSVExportManager
@@ -8,7 +9,7 @@ class ConversationExportManager(BaseCSVExportManager):
     CSV_HEADERS = [
         'conversation_id', 'turn_id', 'turn_index', 'model_name', 'username',
         'family_id', 'cohort_id', 'message_date',
-        'prompt', 'response', 'attachment_urls',
+        'prompt', 'response', 'metadata', 'attachment_urls',
     ]
 
     @classmethod
@@ -37,6 +38,7 @@ class ConversationExportManager(BaseCSVExportManager):
                 chat.created_at.astimezone(tz).strftime('%B %d, %Y, %I:%M %p'),
                 chat.prompt,
                 chat.response,
+                json.dumps(chat.metadata, indent=4) if chat.metadata else '',
                 '|'.join(media.url for media in chat.media.all()),
             ]
 
