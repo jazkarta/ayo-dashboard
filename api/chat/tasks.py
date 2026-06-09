@@ -1,10 +1,13 @@
-import csv
-import io
 import logging
+
 from celery import shared_task
-from chat.managers import ConversationBulkExportManager
+from django.db.models import Prefetch
+
+from chat.managers import ConversationBulkExportManager, ConversationExportManager
+from chat.models.chat_models import Chat
 from chat.models.conversation_models import ConversationModel
 from chat.models.export_job_model import ExportJob
+from utils.csv_export_manager import BaseCSVExportManager
 from utils.gcs_manager import GCSManager
 
 logger = logging.getLogger(__name__)
@@ -22,7 +25,14 @@ def export_conversations_to_gcs(job_id):
     job.save()
 
     try:
-        queryset = ConversationModel.objects.select_related('user', 'user__participant_profile')
+        queryset = (
+            ConversationModel.objects
+            .select_related('user', 'user__participant_profile')
+            .prefetch_related(
+                Prefetch('chats', queryset=Chat.objects.only('id', 'prompt', 'response', 'created_at').order_by('created_at')),
+                'chats__media',
+            )
+        )
         if job.cohort_id:
             queryset = queryset.filter(cohort_id=job.cohort_id)
         if job.date_from:
@@ -30,17 +40,13 @@ def export_conversations_to_gcs(job_id):
         if job.date_to:
             queryset = queryset.filter(created_at__date__lte=job.date_to)
 
-        csv_buffer = io.StringIO()
-        writer = csv.writer(csv_buffer)
-        for row in ConversationBulkExportManager.rows(queryset):
-            writer.writerow(row)
+        csv_buffer = BaseCSVExportManager.combined_to_buffer([
+            ('Table: conversations', ConversationBulkExportManager, queryset),
+            ('Table: turns', ConversationExportManager, queryset),
+        ])
 
         blob_name = f"exports/chat-export-{job_id}.csv"
-
-        # Upload using GCSManager
         GCSManager.upload_csv(csv_buffer, blob_name)
-
-        # Generate signed URL
         download_url = GCSManager.generate_signed_url(blob_name)
 
         job.status = ExportJob.Status.DONE

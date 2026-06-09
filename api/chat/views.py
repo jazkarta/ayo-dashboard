@@ -1,5 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Count, Q
+from django.db.models import Count, Prefetch, Q
 from django.utils.text import slugify
 
 from drf_yasg import openapi
@@ -13,6 +13,7 @@ from rest_framework.viewsets import GenericViewSet, ModelViewSet, ReadOnlyModelV
 
 
 from chat.filters import ConversationFilter
+from utils.csv_export_manager import BaseCSVExportManager
 from utils.timezone_mixin import TimezoneMixin
 from chat.models.chat_models import Chat
 from chat.managers import ConversationBulkExportManager, ConversationExportManager
@@ -137,9 +138,20 @@ class ConversationViewSet(TimezoneMixin, mixins.CreateModelMixin, ReadOnlyModelV
     @action(detail=True, methods=['get'], url_path='export')
     def export(self, request, pk=None):
         instance = self.get_object()
-        queryset = ConversationModel.objects.filter(pk=instance.pk).select_related('user', 'user__participant_profile')
+        queryset = (
+            ConversationModel.objects
+            .filter(pk=instance.pk)
+            .select_related('user', 'user__participant_profile')
+            .prefetch_related(
+                Prefetch('chats', queryset=Chat.objects.only('id', 'prompt', 'response', 'created_at').order_by('created_at')),
+                'chats__media',
+            )
+        )
         filename = f'conversation-{instance.conversation_id}.csv'
-        return ConversationExportManager.streaming_response(queryset, filename)
+        return BaseCSVExportManager.combined_streaming_response([
+            ('Table: conversations', ConversationBulkExportManager, queryset),
+            ('Table: turns', ConversationExportManager, queryset),
+        ], filename)
 
     @swagger_auto_schema(
         method='get',
@@ -166,7 +178,14 @@ class ConversationViewSet(TimezoneMixin, mixins.CreateModelMixin, ReadOnlyModelV
             if active_filters else
             'conversations-all.csv'
         )
-        return ConversationBulkExportManager.streaming_response(queryset, filename)
+        queryset = queryset.prefetch_related(
+            Prefetch('chats', queryset=Chat.objects.only('id', 'prompt', 'response', 'created_at').order_by('created_at')),
+            'chats__media',
+        )
+        return BaseCSVExportManager.combined_streaming_response([
+            ('Table: conversations', ConversationBulkExportManager, queryset),
+            ('Table: turns', ConversationExportManager, queryset),
+        ], filename)
 
 
 class ExportJobViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, GenericViewSet):

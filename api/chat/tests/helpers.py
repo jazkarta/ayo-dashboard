@@ -18,9 +18,7 @@ BULK_EXPORT_FIELD_VALUES = {
     'username':         lambda conv, chat: conv.user.username or '',
     'family_id':        lambda conv, chat: getattr(getattr(conv.user, 'participant_profile', None), 'family_id', None) or '',
     'cohort_id':        lambda conv, chat: str(conv.cohort_id) if conv.cohort_id else '',
-    'prompts':          lambda conv, chat: chat.prompt or '',
-    'responses':        lambda conv, chat: chat.response or '',
-    'datetime':         lambda conv, chat: chat.created_at.astimezone(ZoneInfo(conv.timezone or 'UTC')).strftime('%B %d, %Y, %I:%M %p'),
+    'datetime':         lambda conv, chat: f"{conv.created_at.astimezone(ZoneInfo(conv.timezone or 'UTC')).strftime('%B %d, %Y, %I:%M %p')} ({conv.timezone or 'UTC'})",
     'attachment_urls':  lambda conv, chat: '',
 }
 
