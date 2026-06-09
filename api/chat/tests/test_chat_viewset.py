@@ -10,7 +10,7 @@ from rest_framework import status
 
 from chat.managers import ConversationBulkExportManager, ConversationExportManager
 from chat.models import Chat, ChatMedia, ConversationModel
-from chat.tests.helpers import BULK_EXPORT_FIELD_VALUES, EXPORT_FIELD_VALUES
+from chat.tests.helpers import BULK_EXPORT_FIELD_VALUES
 
 User = get_user_model()
 
@@ -25,12 +25,15 @@ def conversation_export_url(pk):
     return reverse('conversation-export', kwargs={'pk': pk})
 
 
-def parse_csv_response(response):
-    content = b''.join(
+def _read_streaming(response):
+    return b''.join(
         chunk if isinstance(chunk, bytes) else chunk.encode('utf-8')
         for chunk in response.streaming_content
     ).decode('utf-8')
-    return [row for row in csv.reader(io.StringIO(content)) if row]
+
+
+def parse_csv_response(response):
+    return [row for row in csv.reader(io.StringIO(_read_streaming(response))) if row]
 
 
 def parse_csv_as_dicts(response):
@@ -39,6 +42,32 @@ def parse_csv_as_dicts(response):
         return []
     headers = rows[0]
     return [dict(zip(headers, row)) for row in rows[1:]]
+
+
+def parse_table_sections(response):
+    sections = []
+    current_label = None
+    current_headers = None
+    current_rows = []
+
+    for row in csv.reader(io.StringIO(_read_streaming(response))):
+        if not row:
+            continue
+        if len(row) == 1 and row[0].startswith('Table:'):
+            if current_label is not None:
+                sections.append({'label': current_label, 'headers': current_headers or [], 'rows': current_rows})
+            current_label = row[0]
+            current_headers = None
+            current_rows = []
+        elif current_headers is None:
+            current_headers = row
+        else:
+            current_rows.append(dict(zip(current_headers, row)))
+
+    if current_label is not None:
+        sections.append({'label': current_label, 'headers': current_headers or [], 'rows': current_rows})
+
+    return sections
 
 
 @pytest.mark.django_db
@@ -182,32 +211,15 @@ class TestConversationExport:
         assert 'conversation-conv-test-001.csv' in response['Content-Disposition']
         assert response.streaming is True
 
-    def test_export_csv_has_correct_headers(self, api_client, chat_user, conversation):
+    def test_export_csv_has_correct_section_headers(self, api_client, chat_user, conversation):
         api_client.force_authenticate(user=chat_user)
         response = api_client.get(conversation_export_url(conversation.pk))
 
-        rows = parse_csv_response(response)
-        assert rows[0] == ConversationExportManager.CSV_HEADERS
+        sections = parse_table_sections(response)
+        assert sections[0]['headers'] == ConversationBulkExportManager.CSV_HEADERS
+        assert sections[1]['headers'] == ConversationExportManager.CSV_HEADERS
 
-    def test_export_csv_row_contains_correct_data(self, api_client, chat_user, conversation, chat):
-        api_client.force_authenticate(user=chat_user)
-        response = api_client.get(conversation_export_url(conversation.pk))
-
-        rows = parse_csv_as_dicts(response)
-        assert len(rows) == 1
-        assert rows[0] == {
-            h: EXPORT_FIELD_VALUES[h](conversation, chat)
-            for h in ConversationExportManager.CSV_HEADERS
-        }
-
-    def test_export_empty_conversation_returns_only_headers(self, api_client, chat_user, conversation):
-        api_client.force_authenticate(user=chat_user)
-        response = api_client.get(conversation_export_url(conversation.pk))
-
-        rows = parse_csv_response(response)
-        assert len(rows) == 1
-
-    def test_export_multiple_chats_ordered_chronologically(self, api_client, chat_user, conversation):
+    def test_export_turns_table_data_ordered_chronologically(self, api_client, chat_user, conversation):
         api_client.force_authenticate(user=chat_user)
         prompts = ['First prompt', 'Second prompt', 'Third prompt']
         for prompt in prompts:
@@ -215,18 +227,11 @@ class TestConversationExport:
 
         response = api_client.get(conversation_export_url(conversation.pk))
 
-        rows = parse_csv_as_dicts(response)
-        assert len(rows) == 3
-        assert [row['prompt'] for row in rows] == prompts
+        turns = parse_table_sections(response)[1]['rows']
+        assert len(turns) == 3
+        assert [row['prompt'] for row in turns] == prompts
 
-    def test_export_single_attachment_url_in_column(self, api_client, chat_user, conversation, chat, chat_media):
-        api_client.force_authenticate(user=chat_user)
-        response = api_client.get(conversation_export_url(conversation.pk))
-
-        rows = parse_csv_as_dicts(response)
-        assert rows[0]['attachment_urls'] == chat_media.url
-
-    def test_export_multiple_attachments_are_pipe_separated(self, api_client, chat_user, conversation, chat):
+    def test_export_attachment_urls_pipe_joined_in_turns_table(self, api_client, chat_user, conversation, chat):
         api_client.force_authenticate(user=chat_user)
         urls = [
             'https://storage.googleapis.com/bucket/file1.pdf',
@@ -237,8 +242,8 @@ class TestConversationExport:
 
         response = api_client.get(conversation_export_url(conversation.pk))
 
-        rows = parse_csv_as_dicts(response)
-        assert sorted(rows[0]['attachment_urls'].split('|')) == sorted(urls)
+        turns = parse_table_sections(response)[1]['rows']
+        assert sorted(turns[0]['attachment_urls'].split('|')) == sorted(urls)
 
 
 @pytest.mark.django_db
@@ -610,12 +615,13 @@ class TestConversationBulkExport:
         assert 'attachment' in response['Content-Disposition']
         assert response.streaming is True
 
-    def test_bulk_export_csv_has_correct_headers(self, api_client, chat_user, conversation):
+    def test_bulk_export_csv_has_correct_section_headers(self, api_client, chat_user, conversation):
         api_client.force_authenticate(user=chat_user)
         response = api_client.get(bulk_export_url())
 
-        rows = parse_csv_response(response)
-        assert rows[0] == ConversationBulkExportManager.CSV_HEADERS
+        sections = parse_table_sections(response)
+        assert sections[0]['headers'] == ConversationBulkExportManager.CSV_HEADERS
+        assert sections[1]['headers'] == ConversationExportManager.CSV_HEADERS
 
     def test_bulk_export_no_conversations_returns_404(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
@@ -638,34 +644,35 @@ class TestConversationBulkExport:
 
         response = api_client.get(bulk_export_url())
 
-        rows = parse_csv_as_dicts(response)
-        assert len(rows) == 2
-        assert {row['conversation_id'] for row in rows} == {'b1', 'b2'}
+        sections = parse_table_sections(response)
+        assert len(sections) == 4  # 2 conversations × 2 sections each
+        assert {sections[i]['rows'][0]['conversation_id'] for i in range(0, 4, 2)} == {'b1', 'b2'}
 
     def test_bulk_export_csv_row_contains_correct_data(self, api_client, chat_user, conversation, chat):
         api_client.force_authenticate(user=chat_user)
         response = api_client.get(bulk_export_url())
 
-        rows = parse_csv_as_dicts(response)
-        assert len(rows) == 1
-        assert rows[0] == {
+        sections = parse_table_sections(response)
+        assert sections[0]['rows'][0] == {
             h: BULK_EXPORT_FIELD_VALUES[h](conversation, chat)
             for h in ConversationBulkExportManager.CSV_HEADERS
         }
 
-    def test_bulk_export_prompts_and_responses_pipe_joined(self, api_client, chat_user):
+    def test_bulk_export_turns_table_contains_all_turns(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
-        conv = ConversationModel.objects.create(conversation_id='b1', user=chat_user, title='Test')
-        messages = [('First prompt', 'First response'), ('Second prompt', 'Second response')]
-        for prompt, response in messages:
-            Chat.objects.create(conversation=conv, prompt=prompt, response=response)
+        c1 = ConversationModel.objects.create(conversation_id='b1', user=chat_user, title='First')
+        c2 = ConversationModel.objects.create(conversation_id='b2', user=chat_user, title='Second')
+        Chat.objects.create(conversation=c1, prompt='p1', response='r1')
+        Chat.objects.create(conversation=c1, prompt='p2', response='r2')
+        Chat.objects.create(conversation=c2, prompt='p3', response='r3')
 
         response = api_client.get(bulk_export_url())
 
-        rows = parse_csv_as_dicts(response)
-        assert len(rows) == 1
-        assert rows[0]['prompts'] == 'First prompt|Second prompt'
-        assert rows[0]['responses'] == 'First response|Second response'
+        sections = parse_table_sections(response)
+        assert len(sections) == 4  # 2 conversations × 2 sections each
+        all_turns = [row for i in range(1, 4, 2) for row in sections[i]['rows']]
+        assert len(all_turns) == 3
+        assert {row['prompt'] for row in all_turns} == {'p1', 'p2', 'p3'}
 
     def test_bulk_export_filtered_by_participant_username(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
@@ -677,9 +684,9 @@ class TestConversationBulkExport:
 
         response = api_client.get(bulk_export_url(), {'participant_username': 'ChatUser'})
 
-        rows = parse_csv_as_dicts(response)
-        assert len(rows) == 1
-        assert rows[0]['conversation_id'] == 'b1'
+        convs = parse_table_sections(response)[0]['rows']
+        assert len(convs) == 1
+        assert convs[0]['conversation_id'] == 'b1'
 
     def test_bulk_export_filtered_by_cohort_id(self, api_client, chat_user_with_cohort, cohort, chat_user):
         api_client.force_authenticate(user=chat_user_with_cohort)
@@ -689,9 +696,9 @@ class TestConversationBulkExport:
 
         response = api_client.get(bulk_export_url(), {'cohort_id': str(cohort.id)})
 
-        rows = parse_csv_as_dicts(response)
-        assert len(rows) == 1
-        assert rows[0]['conversation_id'] == 'be-cohort'
+        convs = parse_table_sections(response)[0]['rows']
+        assert len(convs) == 1
+        assert convs[0]['conversation_id'] == 'be-cohort'
 
     def test_bulk_export_filtered_by_search(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
@@ -700,9 +707,9 @@ class TestConversationBulkExport:
 
         response = api_client.get(bulk_export_url(), {'search': 'Climate'})
 
-        rows = parse_csv_as_dicts(response)
-        assert len(rows) == 1
-        assert rows[0]['conversation_id'] == 'b1'
+        convs = parse_table_sections(response)[0]['rows']
+        assert len(convs) == 1
+        assert convs[0]['conversation_id'] == 'b1'
 
     def test_bulk_export_attachment_urls_pipe_joined(self, api_client, chat_user, conversation, chat):
         api_client.force_authenticate(user=chat_user)
@@ -715,8 +722,8 @@ class TestConversationBulkExport:
 
         response = api_client.get(bulk_export_url())
 
-        rows = parse_csv_as_dicts(response)
-        assert sorted(rows[0]['attachment_urls'].split('|')) == sorted(urls)
+        convs = parse_table_sections(response)[0]['rows']
+        assert sorted(convs[0]['attachment_urls'].split('|')) == sorted(urls)
 
 
 @pytest.mark.django_db

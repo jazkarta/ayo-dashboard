@@ -1,9 +1,5 @@
-from collections import defaultdict
 from zoneinfo import ZoneInfo
 
-from django.db.models import Prefetch
-
-from chat.models.chat_models import Chat, ChatMedia
 from utils.csv_export_manager import BaseCSVExportManager
 
 
@@ -18,23 +14,18 @@ class ConversationExportManager(BaseCSVExportManager):
     @classmethod
     def rows(cls, queryset):
         yield cls.CSV_HEADERS
-        for conversation in queryset.iterator():
+        for conversation in queryset:
             yield from cls._conversation_rows(conversation)
 
     @classmethod
-    def _conversation_rows(cls, conversation):
-        media_map = defaultdict(list)
-        for item in ChatMedia.objects.filter(
-            chat__conversation=conversation
-        ).values('chat_id', 'url'):
-            media_map[item['chat_id']].append(item['url'])
+    def per_conversation_rows(cls, conversation):
+        yield from cls._conversation_rows(conversation)
 
+    @classmethod
+    def _conversation_rows(cls, conversation):
         family_id = cls._family_id(conversation.user)
         tz = ZoneInfo(conversation.timezone or 'UTC')
-
-        for chat in Chat.objects.filter(
-            conversation=conversation
-        ).only('prompt', 'response', 'created_at').order_by('created_at').iterator():
+        for chat in conversation.chats.all():
             yield [
                 conversation.conversation_id,
                 conversation.model_name or '',
@@ -44,7 +35,7 @@ class ConversationExportManager(BaseCSVExportManager):
                 chat.created_at.astimezone(tz).strftime('%B %d, %Y, %I:%M %p'),
                 chat.prompt,
                 chat.response,
-                '|'.join(media_map.get(chat.id, [])),
+                '|'.join(media.url for media in chat.media.all()),
             ]
 
 
@@ -53,29 +44,34 @@ class ConversationBulkExportManager(BaseCSVExportManager):
     CSV_HEADERS = [
         'conversation_id', 'model_name', 'username',
         'family_id', 'cohort_id',
-        'prompts', 'responses', 'datetime', 'attachment_urls',
+        # 'prompts', 'responses',
+        'datetime', 'attachment_urls',
     ]
 
     @classmethod
     def rows(cls, queryset):
         yield cls.CSV_HEADERS
-        queryset = queryset.prefetch_related(
-            Prefetch('chats', queryset=Chat.objects.only('id', 'prompt', 'response', 'created_at').order_by('created_at')),
-            'chats__media',
-        )
         for conversation in queryset:
-            chats = list(conversation.chats.all())
-            attachment_urls = [media.url for chat in chats for media in chat.media.all()]
-            tz = ZoneInfo(conversation.timezone or 'UTC')
-            yield [
-                conversation.conversation_id,
-                conversation.model_name or '',
-                conversation.user.username or '',
-                cls._family_id(conversation.user),
-                str(conversation.cohort_id) if conversation.cohort_id else '',
-                '|'.join(chat.prompt or '' for chat in chats),
-                '|'.join(chat.response or '' for chat in chats),
-                '|'.join(chat.created_at.astimezone(tz).strftime('%B %d, %Y, %I:%M %p') for chat in chats),
-                '|'.join(attachment_urls),
-            ]
+            yield cls._conversation_row(conversation)
 
+    @classmethod
+    def per_conversation_rows(cls, conversation):
+        yield cls._conversation_row(conversation)
+
+    @classmethod
+    def _conversation_row(cls, conversation):
+        chats = list(conversation.chats.all())
+        attachment_urls = [media.url for chat in chats for media in chat.media.all()]
+        tz_name = conversation.timezone or 'UTC'
+        tz = ZoneInfo(tz_name)
+        return [
+            conversation.conversation_id,
+            conversation.model_name or '',
+            conversation.user.username or '',
+            cls._family_id(conversation.user),
+            str(conversation.cohort_id) if conversation.cohort_id else '',
+            # '|'.join(chat.prompt or '' for chat in chats),
+            # '|'.join(chat.response or '' for chat in chats),
+            f"{conversation.created_at.astimezone(tz).strftime('%B %d, %Y, %I:%M %p')} ({tz_name})",
+            '|'.join(attachment_urls),
+        ]
