@@ -1,5 +1,9 @@
+import io
+import zipfile
 from unittest.mock import patch
+
 import pytest
+
 from chat.models.export_job_model import ExportJob
 from chat.tasks import export_conversations_to_gcs
 
@@ -56,31 +60,42 @@ class TestExportJobAPI:
 class TestExportJobTask:
 
     @patch("chat.tasks.GCSManager.generate_signed_url")
-    @patch("chat.tasks.GCSManager.upload_csv")
-    def test_export_conversations_to_gcs_success(self, mock_upload_csv, mock_generate_signed_url, conversation, chat):
+    @patch("chat.tasks.GCSManager.upload_file")
+    def test_export_conversations_to_gcs_success(self, mock_upload_file, mock_generate_signed_url, conversation, chat):
         job = ExportJob.objects.create()
-        mock_upload_csv.return_value = f"exports/chat-export-{job.id}.csv"
+        captured = {}
+
+        def capture_upload(file_obj, blob_name, content_type):
+            file_obj.seek(0)
+            captured['content'] = file_obj.read()
+            captured['content_type'] = content_type
+            return blob_name
+
+        mock_upload_file.side_effect = capture_upload
         mock_generate_signed_url.return_value = "https://storage.googleapis.com/fake-bucket/signed-url"
 
         export_conversations_to_gcs(str(job.id))
 
         job.refresh_from_db()
         assert job.status == ExportJob.Status.DONE
-        assert job.gcs_blob_name == f"exports/chat-export-{job.id}.csv"
+        assert job.gcs_blob_name == f"exports/chat-export-{job.id}.zip"
         assert job.download_url == "https://storage.googleapis.com/fake-bucket/signed-url"
         assert job.error_message is None
 
-        csv_buffer, blob_name = mock_upload_csv.call_args[0]
-        csv_buffer.seek(0)
-        content = csv_buffer.read()
-        assert conversation.conversation_id in content
-        mock_generate_signed_url.assert_called_once_with(f"exports/chat-export-{job.id}.csv")
+        assert captured['content_type'] == 'application/zip'
+        archive = zipfile.ZipFile(io.BytesIO(captured['content']))
+        names = archive.namelist()
+        assert f'conversation-{conversation.conversation_id}-conversations.csv' in names
+        assert f'conversation-{conversation.conversation_id}-turns.csv' in names
+        turns_csv = archive.read(f'conversation-{conversation.conversation_id}-turns.csv').decode('utf-8')
+        assert chat.prompt in turns_csv
+        mock_generate_signed_url.assert_called_once_with(f"exports/chat-export-{job.id}.zip")
 
-    @patch("chat.tasks.GCSManager.upload_csv")
-    def test_export_conversations_to_gcs_failure(self, mock_upload_csv):
+    @patch("chat.tasks.GCSManager.upload_file")
+    def test_export_conversations_to_gcs_failure(self, mock_upload_file):
         # Setup
         job = ExportJob.objects.create()
-        mock_upload_csv.side_effect = Exception("Connection error to GCS")
+        mock_upload_file.side_effect = Exception("Connection error to GCS")
 
         # Action
         export_conversations_to_gcs(str(job.id))

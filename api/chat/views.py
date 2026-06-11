@@ -13,10 +13,9 @@ from rest_framework.viewsets import GenericViewSet, ModelViewSet, ReadOnlyModelV
 
 
 from chat.filters import ConversationFilter
-from utils.csv_export_manager import BaseCSVExportManager
 from utils.timezone_mixin import TimezoneMixin
-from chat.models.chat_models import Chat
-from chat.managers import ConversationBulkExportManager, ConversationExportManager
+from chat.models.chat_models import Chat, ChatMedia
+from chat.managers import export_zip_response
 from chat.models.conversation_models import ConversationModel
 from chat.models.export_job_model import ExportJob
 from chat.tasks import export_conversations_to_gcs
@@ -29,6 +28,11 @@ from chat.serializers import (
     ExportJobSerializer,
 )
 
+
+
+# Conversations fetched per batch while exporting; each batch prefetches all of
+# its chats and media, so keep this small enough to bound memory on long chats.
+EXPORT_CHUNK_SIZE = 20
 
 
 _CONVERSATION_FILTER_PARAMS = [
@@ -76,6 +80,17 @@ class ConversationViewSet(TimezoneMixin, mixins.CreateModelMixin, ReadOnlyModelV
         return ConversationModel.objects.select_related('user', 'user__participant_profile').order_by('-created_at').annotate(
             number_of_turns=Count('chats', filter=~Q(chats__response__startswith=Chat.ERROR_RESPONSE_PREFIX))
         )
+
+    def _export_conversations(self, queryset):
+        return queryset.prefetch_related(
+            Prefetch(
+                'chats',
+                queryset=Chat.objects.only(
+                    'id', 'conversation', 'prompt', 'response', 'metadata', 'created_at'
+                ).order_by('created_at'),
+            ),
+            Prefetch('chats__media', queryset=ChatMedia.objects.only('id', 'chat', 'url')),
+        ).iterator(chunk_size=EXPORT_CHUNK_SIZE)
 
     def get_serializer_class(self):
         return self.serializer_action_classes.get(
@@ -130,7 +145,7 @@ class ConversationViewSet(TimezoneMixin, mixins.CreateModelMixin, ReadOnlyModelV
         method='get',
         responses={
             200: openapi.Response(
-                description='CSV file with all messages in the conversation',
+                description='Zip archive with a conversations CSV and a turns CSV for the conversation',
                 schema=openapi.Schema(type=openapi.TYPE_FILE),
             )
         },
@@ -138,27 +153,16 @@ class ConversationViewSet(TimezoneMixin, mixins.CreateModelMixin, ReadOnlyModelV
     @action(detail=True, methods=['get'], url_path='export')
     def export(self, request, pk=None):
         instance = self.get_object()
-        queryset = (
-            ConversationModel.objects
-            .filter(pk=instance.pk)
-            .select_related('user', 'user__participant_profile')
-            .prefetch_related(
-                Prefetch('chats', queryset=Chat.objects.only('id', 'prompt', 'response', 'created_at').order_by('created_at')),
-                'chats__media',
-            )
-        )
-        filename = f'conversation-{instance.conversation_id}.csv'
-        return BaseCSVExportManager.combined_streaming_response([
-            ('Table: conversations', ConversationBulkExportManager, queryset),
-            ('Table: turns', ConversationExportManager, queryset),
-        ], filename)
+        conversations = self._export_conversations(self.get_queryset().filter(pk=instance.pk))
+        filename = f'conversation-{instance.conversation_id}.zip'
+        return export_zip_response(conversations, filename)
 
     @swagger_auto_schema(
         method='get',
         manual_parameters=_CONVERSATION_FILTER_PARAMS,
         responses={
             200: openapi.Response(
-                description='CSV file with all messages from matching conversations',
+                description='Zip archive with a conversations CSV and a turns CSV per matching conversation',
                 schema=openapi.Schema(type=openapi.TYPE_FILE),
             )
         },
@@ -174,18 +178,11 @@ class ConversationViewSet(TimezoneMixin, mixins.CreateModelMixin, ReadOnlyModelV
             if request.query_params.get(key)
         ]
         filename = (
-            f"conversations-{'-'.join(active_filters)}.csv"
+            f"conversations-{'-'.join(active_filters)}.zip"
             if active_filters else
-            'conversations-all.csv'
+            'conversations-all.zip'
         )
-        queryset = queryset.prefetch_related(
-            Prefetch('chats', queryset=Chat.objects.only('id', 'prompt', 'response', 'created_at').order_by('created_at')),
-            'chats__media',
-        )
-        return BaseCSVExportManager.combined_streaming_response([
-            ('Table: conversations', ConversationBulkExportManager, queryset),
-            ('Table: turns', ConversationExportManager, queryset),
-        ], filename)
+        return export_zip_response(self._export_conversations(queryset), filename)
 
 
 class ExportJobViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, GenericViewSet):

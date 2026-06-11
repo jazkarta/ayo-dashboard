@@ -8,7 +8,8 @@ from chat.models import Chat, ConversationModel
 from chat.tests.test_chat_viewset import (
     bulk_export_url,
     conversation_export_url,
-    parse_table_sections,
+    parse_zip_tables,
+    table_rows,
 )
 
 _FIXED_UTC = datetime(2026, 6, 3, 17, 0, 0, tzinfo=dt_timezone.utc)
@@ -53,7 +54,7 @@ class TestTimezoneConversion:
 
         response = api_client.get(conversation_export_url(conv.pk))
 
-        turns = parse_table_sections(response)[1]['rows']
+        turns = table_rows(parse_zip_tables(response), '-turns.csv')
         assert turns[0]['message_date'] == expected
 
     @pytest.mark.parametrize('tz, expected', _TIMEZONE_SCENARIOS)
@@ -65,5 +66,5 @@ class TestTimezoneConversion:
 
         response = api_client.get(bulk_export_url())
 
-        convs = parse_table_sections(response)[0]['rows']
+        convs = table_rows(parse_zip_tables(response), '-conversations.csv')
         assert convs[0]['datetime'] == f"{expected} ({tz or 'UTC'})"
