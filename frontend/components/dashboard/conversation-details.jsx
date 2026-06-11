@@ -145,9 +145,9 @@ export default function ConversationDetails({ id }) {
       const response = await conversationService.exportConversation(id);
       const blob = response.data;
       const contentType = (response.headers?.["content-type"] || "").toLowerCase();
-      const isCsv = contentType.includes("csv") || contentType.includes("octet-stream");
+      const isZip = contentType.includes("zip") || contentType.includes("octet-stream");
 
-      if (!blob || blob.size === 0 || !isCsv) {
+      if (!blob || blob.size === 0 || !isZip) {
         const message = await readBlobMessage(blob);
         toast.error(message || "No data to export.");
         return;
@@ -155,7 +155,7 @@ export default function ConversationDetails({ id }) {
 
       const filename = parseFilename(
         response.headers?.["content-disposition"],
-        `conversation-${id}.csv`,
+        `conversation-${id}.zip`,
       );
       downloadBlob(blob, filename);
     } catch (err) {
@@ -204,7 +204,7 @@ export default function ConversationDetails({ id }) {
               </Button>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="bg-white text-black border">
-              Export as CSV
+              Export as ZIP
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

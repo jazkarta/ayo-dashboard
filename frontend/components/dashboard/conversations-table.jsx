@@ -197,14 +197,14 @@ export default function ConversationsTable() {
       const response = await conversationService.bulkExportConversations(debouncedSearch, applied);
       const blob = response.data;
       const contentType = (response.headers?.["content-type"] || "").toLowerCase();
-      const isCsv = contentType.includes("csv") || contentType.includes("octet-stream");
-      if (!blob || blob.size === 0 || !isCsv) {
+      const isZip = contentType.includes("zip") || contentType.includes("octet-stream");
+      if (!blob || blob.size === 0 || !isZip) {
         toast.error((await readBlobMessage(blob)) || "No data to export.");
         return;
       }
       downloadBlob(
         blob,
-        parseFilename(response.headers?.["content-disposition"], `conversations-${new Date().toISOString().slice(0, 10)}.csv`),
+        parseFilename(response.headers?.["content-disposition"], `conversations-${new Date().toISOString().slice(0, 10)}.zip`),
       );
       toast.success("Export completed successfully.");
     } catch (err) {
