@@ -27,28 +27,22 @@ class GCSManager:
         return cls._client().bucket(settings.GCS_BUCKET_NAME)
 
     @classmethod
-    def upload_csv(cls, file_obj: io.IOBase, blob_name: str) -> str:
+    def upload_file(cls, file_obj: io.IOBase, blob_name: str, content_type: str) -> str:
         """
-        Upload a file-like object as a CSV blob to GCS.
+        Upload a binary file-like object to GCS.
 
         Args:
-            file_obj: An open file-like object (StringIO or BytesIO) with CSV content.
-            blob_name: The destination path within the bucket (e.g. 'exports/job-123.csv').
+            file_obj: An open binary file-like object (BytesIO, SpooledTemporaryFile, ...).
+            blob_name: The destination path within the bucket (e.g. 'exports/job-123.zip').
+            content_type: MIME type stored on the blob (e.g. 'application/zip').
 
         Returns:
             The blob_name that was used (for later reference / signed URL generation).
         """
         bucket = cls._bucket()
         blob = bucket.blob(blob_name)
-
-        # Ensure we're at the start
-        file_obj.seek(0)
-        content = file_obj.read()
-        if isinstance(content, str):
-            content = content.encode('utf-8')
-
-        blob.upload_from_string(content, content_type='text/csv')
-        logger.info("Uploaded CSV to gs://%s/%s", settings.GCS_BUCKET_NAME, blob_name)
+        blob.upload_from_file(file_obj, content_type=content_type, rewind=True)
+        logger.info("Uploaded %s to gs://%s/%s", content_type, settings.GCS_BUCKET_NAME, blob_name)
         return blob_name
 
     @classmethod

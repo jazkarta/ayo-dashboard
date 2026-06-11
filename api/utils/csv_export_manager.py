@@ -4,9 +4,22 @@ import io
 from django.http import StreamingHttpResponse
 
 
-class _Echo:
+class ZipStreamBuffer(io.RawIOBase):
+    """Unseekable write sink for zipfile so archive bytes can be drained incrementally."""
+
+    def __init__(self):
+        self._chunks = []
+
+    def writable(self):
+        return True
+
     def write(self, value):
-        return value
+        self._chunks.append(bytes(value))
+        return len(value)
+
+    def drain(self):
+        chunks, self._chunks = self._chunks, []
+        return b''.join(chunks)
 
 
 class BaseCSVExportManager:
@@ -14,51 +27,20 @@ class BaseCSVExportManager:
     CSV_HEADERS = []
 
     @classmethod
-    def rows(cls, queryset):
-        raise NotImplementedError
-
-    @classmethod
     def per_conversation_rows(cls, conversation):
         raise NotImplementedError
 
     @classmethod
-    def streaming_response(cls, queryset, filename):
-        writer = csv.writer(_Echo())
-        response = StreamingHttpResponse(
-            (writer.writerow(row) for row in cls.rows(queryset)),
-            content_type='text/csv',
-        )
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
+    def write_csv_member(cls, archive, arcname, conversation):
+        with archive.open(arcname, mode='w') as member:
+            with io.TextIOWrapper(member, encoding='utf-8', newline='') as text:
+                writer = csv.writer(text)
+                writer.writerow(cls.CSV_HEADERS)
+                writer.writerows(cls.per_conversation_rows(conversation))
 
     @staticmethod
-    def combined_rows(sections):
-        queryset = sections[0][2]
-        for conv_idx, conversation in enumerate(queryset):
-            if conv_idx > 0:
-                yield []
-            for sec_idx, (label, manager_cls, _) in enumerate(sections):
-                if sec_idx > 0:
-                    yield []
-                yield [label]
-                yield manager_cls.CSV_HEADERS
-                yield from manager_cls.per_conversation_rows(conversation)
-
-    @staticmethod
-    def combined_to_buffer(sections):
-        buffer = io.StringIO()
-        writer = csv.writer(buffer)
-        for row in BaseCSVExportManager.combined_rows(sections):
-            writer.writerow(row)
-        return buffer
-
-    @staticmethod
-    def combined_streaming_response(sections, filename):
-        writer = csv.writer(_Echo())
-        response = StreamingHttpResponse(
-            (writer.writerow(row) for row in BaseCSVExportManager.combined_rows(sections)),
-            content_type='text/csv',
-        )
+    def zip_streaming_response(chunks, filename):
+        response = StreamingHttpResponse(chunks, content_type='application/zip')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
 

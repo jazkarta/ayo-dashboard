@@ -1,16 +1,23 @@
 import logging
+import tempfile
 
 from celery import shared_task
-from django.db.models import Prefetch
+from django.db.models import Count, Prefetch, Q
 
-from chat.managers import ConversationBulkExportManager, ConversationExportManager
-from chat.models.chat_models import Chat
+from chat.managers import export_zip_chunks
+from chat.models.chat_models import Chat, ChatMedia
 from chat.models.conversation_models import ConversationModel
 from chat.models.export_job_model import ExportJob
-from utils.csv_export_manager import BaseCSVExportManager
 from utils.gcs_manager import GCSManager
 
 logger = logging.getLogger(__name__)
+
+# Conversations fetched per batch while exporting; each batch prefetches all of
+# its chats and media, so keep this small enough to bound memory on long chats.
+EXPORT_CHUNK_SIZE = 20
+
+# Keep the assembled archive in memory up to this size, then spill to disk.
+EXPORT_SPOOL_MAX_BYTES = 32 * 1024 * 1024
 
 
 @shared_task
@@ -29,8 +36,16 @@ def export_conversations_to_gcs(job_id):
             ConversationModel.objects
             .select_related('user', 'user__participant_profile')
             .prefetch_related(
-                Prefetch('chats', queryset=Chat.objects.only('id', 'prompt', 'response', 'metadata', 'created_at').order_by('created_at')),
-                'chats__media',
+                Prefetch(
+                    'chats',
+                    queryset=Chat.objects.only(
+                        'id', 'conversation', 'prompt', 'response', 'metadata', 'created_at'
+                    ).order_by('created_at'),
+                ),
+                Prefetch('chats__media', queryset=ChatMedia.objects.only('id', 'chat', 'url')),
+            )
+            .annotate(
+                number_of_turns=Count('chats', filter=~Q(chats__response__startswith=Chat.ERROR_RESPONSE_PREFIX))
             )
         )
         if job.cohort_id:
@@ -40,13 +55,11 @@ def export_conversations_to_gcs(job_id):
         if job.date_to:
             queryset = queryset.filter(created_at__date__lte=job.date_to)
 
-        csv_buffer = BaseCSVExportManager.combined_to_buffer([
-            ('Table: conversations', ConversationBulkExportManager, queryset),
-            ('Table: turns', ConversationExportManager, queryset),
-        ])
-
-        blob_name = f"exports/chat-export-{job_id}.csv"
-        GCSManager.upload_csv(csv_buffer, blob_name)
+        blob_name = f"exports/chat-export-{job_id}.zip"
+        with tempfile.SpooledTemporaryFile(max_size=EXPORT_SPOOL_MAX_BYTES) as archive_file:
+            for chunk in export_zip_chunks(queryset.iterator(chunk_size=EXPORT_CHUNK_SIZE)):
+                archive_file.write(chunk)
+            GCSManager.upload_file(archive_file, blob_name, 'application/zip')
         download_url = GCSManager.generate_signed_url(blob_name)
 
         job.status = ExportJob.Status.DONE
