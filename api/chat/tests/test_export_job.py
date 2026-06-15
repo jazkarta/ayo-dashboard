@@ -84,11 +84,8 @@ class TestExportJobTask:
 
         assert captured['content_type'] == 'application/zip'
         archive = zipfile.ZipFile(io.BytesIO(captured['content']))
-        names = archive.namelist()
-        assert f'conversation-{conversation.conversation_id}-conversations.csv' in names
-        assert f'conversation-{conversation.conversation_id}-turns.csv' in names
-        turns_csv = archive.read(f'conversation-{conversation.conversation_id}-turns.csv').decode('utf-8')
-        assert chat.prompt in turns_csv
+        assert set(archive.namelist()) == {'conversations.csv', 'turns.csv'}
+        assert chat.prompt in archive.read('turns.csv').decode('utf-8')
         mock_generate_signed_url.assert_called_once_with(f"exports/chat-export-{job.id}.zip")
 
     @patch("chat.tasks.GCSManager.upload_file")

@@ -192,12 +192,9 @@ class TestConversationExport:
         response = api_client.get(conversation_export_url(conversation.pk))
 
         tables = parse_zip_tables(response)
-        assert set(tables) == {
-            'conversation-conv-test-001-conversations.csv',
-            'conversation-conv-test-001-turns.csv',
-        }
-        assert tables['conversation-conv-test-001-conversations.csv']['headers'] == ConversationBulkExportManager.CSV_HEADERS
-        assert tables['conversation-conv-test-001-turns.csv']['headers'] == ConversationExportManager.CSV_HEADERS
+        assert set(tables) == {'conversations.csv', 'turns.csv'}
+        assert tables['conversations.csv']['headers'] == ConversationBulkExportManager.CSV_HEADERS
+        assert tables['turns.csv']['headers'] == ConversationExportManager.CSV_HEADERS
 
     def test_export_turns_table_data_ordered_chronologically(self, api_client, chat_user, conversation):
         api_client.force_authenticate(user=chat_user)
@@ -207,7 +204,7 @@ class TestConversationExport:
 
         response = api_client.get(conversation_export_url(conversation.pk))
 
-        turns = table_rows(parse_zip_tables(response), '-turns.csv')
+        turns = table_rows(parse_zip_tables(response), 'turns.csv')
         assert len(turns) == 3
         assert [row['prompt'] for row in turns] == prompts
 
@@ -222,7 +219,7 @@ class TestConversationExport:
 
         response = api_client.get(conversation_export_url(conversation.pk))
 
-        turns = table_rows(parse_zip_tables(response), '-turns.csv')
+        turns = table_rows(parse_zip_tables(response), 'turns.csv')
         assert sorted(turns[0]['attachment_urls'].split('|')) == sorted(urls)
 
 
@@ -600,8 +597,8 @@ class TestConversationBulkExport:
         response = api_client.get(bulk_export_url())
 
         tables = parse_zip_tables(response)
-        assert tables['conversation-conv-test-001-conversations.csv']['headers'] == ConversationBulkExportManager.CSV_HEADERS
-        assert tables['conversation-conv-test-001-turns.csv']['headers'] == ConversationExportManager.CSV_HEADERS
+        assert tables['conversations.csv']['headers'] == ConversationBulkExportManager.CSV_HEADERS
+        assert tables['turns.csv']['headers'] == ConversationExportManager.CSV_HEADERS
 
     def test_bulk_export_no_conversations_returns_404(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
@@ -615,7 +612,7 @@ class TestConversationBulkExport:
 
         assert 'conversations-all.zip' in response['Content-Disposition']
 
-    def test_bulk_export_two_csvs_per_conversation(self, api_client, chat_user):
+    def test_bulk_export_two_csvs_total(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
         c1 = ConversationModel.objects.create(conversation_id='b1', user=chat_user, title='First', model_name='gpt-4o')
         c2 = ConversationModel.objects.create(conversation_id='b2', user=chat_user, title='Second', model_name='claude')
@@ -625,20 +622,15 @@ class TestConversationBulkExport:
         response = api_client.get(bulk_export_url())
 
         tables = parse_zip_tables(response)
-        assert set(tables) == {
-            'conversation-b1-conversations.csv',
-            'conversation-b1-turns.csv',
-            'conversation-b2-conversations.csv',
-            'conversation-b2-turns.csv',
-        }
-        convs = table_rows(tables, '-conversations.csv')
+        assert set(tables) == {'conversations.csv', 'turns.csv'}
+        convs = table_rows(tables, 'conversations.csv')
         assert {row['conversation_id'] for row in convs} == {'b1', 'b2'}
 
     def test_bulk_export_csv_row_contains_correct_data(self, api_client, chat_user, conversation, chat):
         api_client.force_authenticate(user=chat_user)
         response = api_client.get(bulk_export_url())
 
-        convs = table_rows(parse_zip_tables(response), '-conversations.csv')
+        convs = table_rows(parse_zip_tables(response), 'conversations.csv')
         assert convs[0] == {
             h: BULK_EXPORT_FIELD_VALUES[h](conversation, chat)
             for h in ConversationBulkExportManager.CSV_HEADERS
@@ -655,8 +647,8 @@ class TestConversationBulkExport:
         response = api_client.get(bulk_export_url())
 
         tables = parse_zip_tables(response)
-        assert len(tables) == 4  # 2 conversations × 2 csvs each
-        all_turns = table_rows(tables, '-turns.csv')
+        assert len(tables) == 2
+        all_turns = table_rows(tables, 'turns.csv')
         assert len(all_turns) == 3
         assert {row['prompt'] for row in all_turns} == {'p1', 'p2', 'p3'}
 
@@ -670,7 +662,7 @@ class TestConversationBulkExport:
 
         response = api_client.get(bulk_export_url(), {'participant_username': 'ChatUser'})
 
-        convs = table_rows(parse_zip_tables(response), '-conversations.csv')
+        convs = table_rows(parse_zip_tables(response), 'conversations.csv')
         assert len(convs) == 1
         assert convs[0]['conversation_id'] == 'b1'
 
@@ -682,7 +674,7 @@ class TestConversationBulkExport:
 
         response = api_client.get(bulk_export_url(), {'cohort_id': str(cohort.id)})
 
-        convs = table_rows(parse_zip_tables(response), '-conversations.csv')
+        convs = table_rows(parse_zip_tables(response), 'conversations.csv')
         assert len(convs) == 1
         assert convs[0]['conversation_id'] == 'be-cohort'
 
@@ -693,7 +685,7 @@ class TestConversationBulkExport:
 
         response = api_client.get(bulk_export_url(), {'search': 'Climate'})
 
-        convs = table_rows(parse_zip_tables(response), '-conversations.csv')
+        convs = table_rows(parse_zip_tables(response), 'conversations.csv')
         assert len(convs) == 1
         assert convs[0]['conversation_id'] == 'b1'
 
@@ -708,7 +700,7 @@ class TestConversationBulkExport:
 
         response = api_client.get(bulk_export_url())
 
-        convs = table_rows(parse_zip_tables(response), '-conversations.csv')
+        convs = table_rows(parse_zip_tables(response), 'conversations.csv')
         assert sorted(convs[0]['attachment_urls'].split('|')) == sorted(urls)
 
 
