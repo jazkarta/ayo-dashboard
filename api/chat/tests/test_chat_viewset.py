@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 
-from chat.managers import ConversationBulkExportManager, ConversationExportManager
+from chat.managers import ChatExportManager, ConversationExportManager
 from chat.models import Chat, ChatMedia, ConversationModel
 from chat.tests.helpers import BULK_EXPORT_FIELD_VALUES
 
@@ -193,8 +193,8 @@ class TestConversationExport:
 
         tables = parse_zip_tables(response)
         assert set(tables) == {'conversations.csv', 'turns.csv'}
-        assert tables['conversations.csv']['headers'] == ConversationBulkExportManager.CSV_HEADERS
-        assert tables['turns.csv']['headers'] == ConversationExportManager.CSV_HEADERS
+        assert tables['conversations.csv']['headers'] == ConversationExportManager.CSV_HEADERS
+        assert tables['turns.csv']['headers'] == ChatExportManager.CSV_HEADERS
 
     def test_export_turns_table_data_ordered_chronologically(self, api_client, chat_user, conversation):
         api_client.force_authenticate(user=chat_user)
@@ -597,8 +597,8 @@ class TestConversationBulkExport:
         response = api_client.get(bulk_export_url())
 
         tables = parse_zip_tables(response)
-        assert tables['conversations.csv']['headers'] == ConversationBulkExportManager.CSV_HEADERS
-        assert tables['turns.csv']['headers'] == ConversationExportManager.CSV_HEADERS
+        assert tables['conversations.csv']['headers'] == ConversationExportManager.CSV_HEADERS
+        assert tables['turns.csv']['headers'] == ChatExportManager.CSV_HEADERS
 
     def test_bulk_export_no_conversations_returns_404(self, api_client, chat_user):
         api_client.force_authenticate(user=chat_user)
@@ -633,7 +633,7 @@ class TestConversationBulkExport:
         convs = table_rows(parse_zip_tables(response), 'conversations.csv')
         assert convs[0] == {
             h: BULK_EXPORT_FIELD_VALUES[h](conversation, chat)
-            for h in ConversationBulkExportManager.CSV_HEADERS
+            for h in ConversationExportManager.CSV_HEADERS
         }
 
     def test_bulk_export_turns_table_contains_all_turns(self, api_client, chat_user):

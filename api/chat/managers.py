@@ -11,7 +11,7 @@ _SPOOL_MAX_BYTES = 16 * 1024 * 1024
 _DRAIN_EVERY_ROWS = 500
 
 
-class ConversationExportManager(BaseCSVExportManager):
+class ChatExportManager(BaseCSVExportManager):
 
     CSV_HEADERS = [
         'conversation_id', 'turn_id', 'turn_index', 'model_name', 'username',
@@ -40,7 +40,7 @@ class ConversationExportManager(BaseCSVExportManager):
             ]
 
 
-class ConversationBulkExportManager(BaseCSVExportManager):
+class ConversationExportManager(BaseCSVExportManager):
 
     CSV_HEADERS = [
         'conversation_id', 'model_name', 'username',
@@ -77,16 +77,16 @@ def export_zip_chunks(conversations):
             with archive.open('turns.csv', mode='w') as member:
                 with io.TextIOWrapper(member, encoding='utf-8', newline='') as turns_text:
                     turns_writer = csv.writer(turns_text)
-                    turns_writer.writerow(ConversationExportManager.CSV_HEADERS)
+                    turns_writer.writerow(ChatExportManager.CSV_HEADERS)
 
                     spool_wrapper = io.TextIOWrapper(spool, encoding='utf-8', newline='', write_through=True)
                     spool_writer = csv.writer(spool_wrapper)
-                    spool_writer.writerow(ConversationBulkExportManager.CSV_HEADERS)
+                    spool_writer.writerow(ConversationExportManager.CSV_HEADERS)
 
                     row_count = 0
                     for conversation in conversations:
-                        spool_writer.writerows(ConversationBulkExportManager.per_conversation_rows(conversation))
-                        for row in ConversationExportManager.per_conversation_rows(conversation):
+                        spool_writer.writerows(ConversationExportManager.per_conversation_rows(conversation))
+                        for row in ChatExportManager.per_conversation_rows(conversation):
                             turns_writer.writerow(row)
                             row_count += 1
                             if row_count % _DRAIN_EVERY_ROWS == 0:
