@@ -1,8 +1,14 @@
+import csv
+import io
 import json
+import tempfile
 import zipfile
 from zoneinfo import ZoneInfo
 
 from utils.csv_export_manager import BaseCSVExportManager, ZipStreamBuffer
+
+_SPOOL_MAX_BYTES = 16 * 1024 * 1024
+_DRAIN_EVERY_ROWS = 500
 
 
 class ConversationExportManager(BaseCSVExportManager):
@@ -63,25 +69,47 @@ class ConversationBulkExportManager(BaseCSVExportManager):
         ]
 
 
-EXPORT_TABLES = (
-    ('conversations', ConversationBulkExportManager),
-    ('turns', ConversationExportManager),
-)
-
-
 def export_zip_chunks(conversations):
     buffer = ZipStreamBuffer()
-    seen = {}
-    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as archive:
-        for conversation in conversations:
-            prefix = f'conversation-{conversation.conversation_id}'
-            count = seen.get(prefix, 0) + 1
-            seen[prefix] = count
-            if count > 1:
-                prefix = f'{prefix}-{count}'
-            for label, manager_cls in EXPORT_TABLES:
-                manager_cls.write_csv_member(archive, f'{prefix}-{label}.csv', conversation)
-                yield buffer.drain()
+
+    with tempfile.SpooledTemporaryFile(max_size=_SPOOL_MAX_BYTES) as spool:
+        with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as archive:
+            with archive.open('turns.csv', mode='w') as member:
+                with io.TextIOWrapper(member, encoding='utf-8', newline='') as turns_text:
+                    turns_writer = csv.writer(turns_text)
+                    turns_writer.writerow(ConversationExportManager.CSV_HEADERS)
+
+                    spool_wrapper = io.TextIOWrapper(spool, encoding='utf-8', newline='', write_through=True)
+                    spool_writer = csv.writer(spool_wrapper)
+                    spool_writer.writerow(ConversationBulkExportManager.CSV_HEADERS)
+
+                    row_count = 0
+                    for conversation in conversations:
+                        spool_writer.writerows(ConversationBulkExportManager.per_conversation_rows(conversation))
+                        for row in ConversationExportManager.per_conversation_rows(conversation):
+                            turns_writer.writerow(row)
+                            row_count += 1
+                            if row_count % _DRAIN_EVERY_ROWS == 0:
+                                turns_text.flush()
+                                yield buffer.drain()
+
+                    turns_text.flush()
+                    yield buffer.drain()
+                    spool_wrapper.detach()
+
+            spool.seek(0)
+            with archive.open('conversations.csv', mode='w') as member:
+                with io.TextIOWrapper(member, encoding='utf-8', newline='') as conv_text:
+                    spool_reader = io.TextIOWrapper(spool, encoding='utf-8', newline='')
+                    for i, line in enumerate(spool_reader, start=1):
+                        conv_text.write(line)
+                        if i % _DRAIN_EVERY_ROWS == 0:
+                            conv_text.flush()
+                            yield buffer.drain()
+                    conv_text.flush()
+                    yield buffer.drain()
+                    spool_reader.detach()
+
     yield buffer.drain()
 
 

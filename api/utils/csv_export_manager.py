@@ -30,14 +30,6 @@ class BaseCSVExportManager:
     def per_conversation_rows(cls, conversation):
         raise NotImplementedError
 
-    @classmethod
-    def write_csv_member(cls, archive, arcname, conversation):
-        with archive.open(arcname, mode='w') as member:
-            with io.TextIOWrapper(member, encoding='utf-8', newline='') as text:
-                writer = csv.writer(text)
-                writer.writerow(cls.CSV_HEADERS)
-                writer.writerows(cls.per_conversation_rows(conversation))
-
     @staticmethod
     def zip_streaming_response(chunks, filename):
         response = StreamingHttpResponse(chunks, content_type='application/zip')
