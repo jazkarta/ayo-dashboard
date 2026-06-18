@@ -2,7 +2,7 @@ import logging
 import tempfile
 
 from celery import shared_task
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Count, Prefetch
 
 from chat.managers import export_zip_chunks
 from chat.models.chat_models import Chat, ChatMedia
@@ -45,7 +45,7 @@ def export_conversations_to_gcs(job_id):
                 Prefetch('chats__media', queryset=ChatMedia.objects.only('id', 'chat', 'url')),
             )
             .annotate(
-                number_of_turns=Count('chats', filter=~Q(chats__response__startswith=Chat.ERROR_RESPONSE_PREFIX))
+                number_of_turns=Count('chats')
             )
         )
         if job.cohort_id:
