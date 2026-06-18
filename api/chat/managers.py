@@ -63,7 +63,7 @@ class ConversationExportManager(BaseCSVExportManager):
             conversation.user.username or '',
             cls._family_id(conversation.user),
             str(conversation.cohort_id) if conversation.cohort_id else '',
-            conversation.turn_count,
+            conversation.number_of_turns,
             f"{conversation.created_at.astimezone(tz).strftime('%B %d, %Y, %I:%M %p')} ({tz_name})",
             '|'.join(attachment_urls),
         ]

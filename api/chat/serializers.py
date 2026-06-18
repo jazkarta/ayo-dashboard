@@ -117,7 +117,7 @@ class ConversationListSerializer(serializers.ModelSerializer):
     participant = ConversationUserSerializer(read_only=True, source='user')
     cohort = CohortReadSerializer(read_only=True)
     created_at = serializers.SerializerMethodField()
-    number_of_turns = serializers.SerializerMethodField()
+    number_of_turns = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = ConversationModel
@@ -128,9 +128,6 @@ class ConversationListSerializer(serializers.ModelSerializer):
             return None
         tz = ZoneInfo(obj.timezone or 'UTC')
         return obj.created_at.astimezone(tz).strftime('%B %d, %Y, %I:%M %p')
-
-    def get_number_of_turns(self, obj):
-        return obj.turn_count
 
 class ConversationDetailSerializer(serializers.ModelSerializer):
     participant = ConversationUserSerializer(read_only=True, source='user')
