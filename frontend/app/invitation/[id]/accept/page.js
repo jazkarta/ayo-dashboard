@@ -6,6 +6,8 @@ import GuardianInfoForm from "@/components/dashboard/add-guardian-form";
 import participantService from "@/services/participantService";
 import { CheckCircle2Icon, XCircleIcon, ClockIcon, BanIcon } from "lucide-react";
 
+const chatDomain = process.env.NEXT_PUBLIC_CHAT_URL?.replace(/^https?:\/\//, "") ?? "";
+
 export default function InvitationAcceptPage() {
   const params = useParams();
   const invitationId = params.id;
@@ -62,7 +64,7 @@ export default function InvitationAcceptPage() {
             Looks like you already accepted this invitation. Head to login to get started!
           </p> 
           <a
-            href="https://chat-ayo.jazkarta.com/login"
+            href={`${process.env.NEXT_PUBLIC_CHAT_URL}/login`}
             className="inline-block mt-2 px-6 py-2 bg-slate-800 text-white text-sm font-medium rounded-md hover:bg-slate-700 transition-colors"
           >
             Go to Login
@@ -125,7 +127,7 @@ export default function InvitationAcceptPage() {
       <div className="min-h-screen w-full bg-white flex items-center justify-center p-4">
         <div className="text-center space-y-4">
           <div className="inline-block h-10 w-10 rounded-full border-4 border-slate-200 border-t-slate-800 animate-spin" />
-          <p className="text-slate-600 text-sm">You're all set! Taking you to the chat-ayo.jazkarta.com now...</p>
+          <p className="text-slate-600 text-sm">You're all set! Taking you to {chatDomain} now...</p>
         </div>
       </div>
     );
