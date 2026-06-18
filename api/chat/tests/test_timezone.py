@@ -5,7 +5,7 @@ from django.urls import reverse
 from rest_framework import status
 
 from chat.models import Chat, ConversationModel
-from chat.tests.test_chat_viewset import (
+from chat.tests.test_export import (
     bulk_export_url,
     conversation_export_url,
     parse_zip_tables,
@@ -54,7 +54,7 @@ class TestTimezoneConversion:
 
         response = api_client.get(conversation_export_url(conv.pk))
 
-        turns = table_rows(parse_zip_tables(response), '-turns.csv')
+        turns = table_rows(parse_zip_tables(response), 'turns.csv')
         assert turns[0]['message_date'] == expected
 
     @pytest.mark.parametrize('tz, expected', _TIMEZONE_SCENARIOS)
@@ -66,5 +66,5 @@ class TestTimezoneConversion:
 
         response = api_client.get(bulk_export_url())
 
-        convs = table_rows(parse_zip_tables(response), '-conversations.csv')
+        convs = table_rows(parse_zip_tables(response), 'conversations.csv')
         assert convs[0]['datetime'] == f"{expected} ({tz or 'UTC'})"

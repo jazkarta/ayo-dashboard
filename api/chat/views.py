@@ -1,5 +1,5 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Count, Prefetch
 from django.utils.text import slugify
 
 from drf_yasg import openapi
@@ -78,7 +78,7 @@ class ConversationViewSet(TimezoneMixin, mixins.CreateModelMixin, ReadOnlyModelV
 
     def get_queryset(self):
         return ConversationModel.objects.select_related('user', 'user__participant_profile').order_by('-created_at').annotate(
-            number_of_turns=Count('chats', filter=~Q(chats__response__startswith=Chat.ERROR_RESPONSE_PREFIX))
+            number_of_turns=Count('chats')
         )
 
     def _export_conversations(self, queryset):
