@@ -35,6 +35,29 @@ from chat.serializers import (
 EXPORT_CHUNK_SIZE = 20
 
 
+AYO_GUARDRAILS = [
+    'OpenAI Moderation',
+    'Block Code Execution',
+    'Prompt Injection: Malicious Code',
+    'Prompt Injection: Data Exfiltration',
+    'Prompt Injection: System Prompt',
+    'Harmful Illegal Weapons',
+    'Harmful Violence',
+    'Denied Medical Advice',
+    'Pattern Matching',
+    'Bias: Sexual Orientation',
+    'Bias: Religious',
+    'Bias: Racial',
+    'Bias: Gender',
+    'Insults & Personal Attacks',
+    'Toxic & Abusive Language',
+    'Prompt Injection: Jailbreak',
+    'Harmful Child Safety',
+    'Harmful Self-Harm',
+    'semantic-child-safety',
+]
+
+
 _CONVERSATION_FILTER_PARAMS = [
     openapi.Parameter('search', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Search by title, participant name, or email'),
     openapi.Parameter('participant_username', openapi.IN_QUERY, type=openapi.TYPE_STRING, description='Filter by participant username'),
@@ -64,6 +87,27 @@ class ChatViewSet(ModelViewSet):
 
     def get_serializer_class(self):
         return self.serializer_action_classes.get(self.action, ChatCreateSerializer)
+
+    @swagger_auto_schema(
+        method='get',
+        responses={
+            200: openapi.Response(
+                description='Guardrail names to activate on LiteLLM for chat requests',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'guardrails': openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(type=openapi.TYPE_STRING),
+                        ),
+                    },
+                ),
+            )
+        },
+    )
+    @action(detail=False, methods=['get'])
+    def guardrails(self, request):
+        return Response({'guardrails': AYO_GUARDRAILS})
 
 
 class ConversationViewSet(TimezoneMixin, mixins.CreateModelMixin, ReadOnlyModelViewSet):
