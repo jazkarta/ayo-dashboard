@@ -1,3 +1,6 @@
+from datetime import date
+from itertools import chain
+
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Count, Prefetch
 from django.utils.text import slugify
@@ -18,6 +21,7 @@ from chat.models.chat_models import Chat, ChatMedia
 from chat.managers import export_zip_response
 from chat.models.conversation_models import ConversationModel
 from chat.models.export_job_model import ExportJob
+from chat.models.guardrail_models import GuardrailRule
 from chat.tasks import export_conversations_to_gcs
 from chat.serializers import (
     ChatCreateSerializer,
@@ -26,7 +30,10 @@ from chat.serializers import (
     ConversationDetailSerializer,
     ConversationListSerializer,
     ExportJobSerializer,
+    GuardrailRuleReadSerializer,
+    GuardrailRuleWriteSerializer,
 )
+from utils.permissions import IsAdminOrResearcher
 
 
 
@@ -64,6 +71,52 @@ class ChatViewSet(ModelViewSet):
 
     def get_serializer_class(self):
         return self.serializer_action_classes.get(self.action, ChatCreateSerializer)
+
+    @swagger_auto_schema(
+        method='get',
+        responses={
+            200: openapi.Response(
+                description='Guardrail ids to activate on LiteLLM for the requesting participant',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'guardrails': openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(type=openapi.TYPE_STRING),
+                        ),
+                    },
+                ),
+            )
+        },
+    )
+    @action(detail=False, methods=['get'])
+    def guardrails(self, request):
+        dob = getattr(getattr(request.user, 'participant_profile', None), 'date_of_birth', None)
+        if not dob:
+            return Response({'guardrails': []})
+
+        today = date.today()
+        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+
+        rule_guardrails = GuardrailRule.objects.filter(
+            min_age__lte=age, max_age__gte=age
+        ).values_list('guardrails', flat=True)
+
+        guardrail_ids = list(dict.fromkeys(chain.from_iterable(gr or [] for gr in rule_guardrails)))
+
+        return Response({'guardrails': guardrail_ids})
+
+
+class GuardrailRuleViewSet(ModelViewSet):
+    permission_classes = [IsAdminOrResearcher]
+    queryset = GuardrailRule.objects.all()
+    serializer_action_classes = {
+        'list': GuardrailRuleReadSerializer,
+        'retrieve': GuardrailRuleReadSerializer,
+    }
+
+    def get_serializer_class(self):
+        return self.serializer_action_classes.get(self.action, GuardrailRuleWriteSerializer)
 
 
 class ConversationViewSet(TimezoneMixin, mixins.CreateModelMixin, ReadOnlyModelViewSet):
