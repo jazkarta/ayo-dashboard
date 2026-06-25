@@ -62,12 +62,12 @@ export default function ApplyGuardrailModal({ guardrails, onClose }) {
 
   const handleMinAge = (e) => {
     setMinAge(sanitizeAge(e.target.value));
-    if (submitted) setErrors((prev) => ({ ...prev, minAge: undefined }));
+    if (submitted) setErrors((prev) => ({ ...prev, minAge: undefined, maxAge: undefined }));
   };
 
   const handleMaxAge = (e) => {
     setMaxAge(sanitizeAge(e.target.value));
-    if (submitted) setErrors((prev) => ({ ...prev, maxAge: undefined }));
+    if (submitted) setErrors((prev) => ({ ...prev, minAge: undefined, maxAge: undefined }));
   };
 
   const handleSubmit = async () => {
