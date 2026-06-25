@@ -17,9 +17,11 @@ import {
   SearchX,
   AlertTriangle,
   RotateCcw,
+  ShieldAlert,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import conversationService from "@/services/conversationService";
+import { Badge } from "@/components/ui/badge";
 import ImagePreview from "./image-preview";
 
 function downloadBlob(blob, filename) {
@@ -290,7 +292,7 @@ export default function ConversationDetails({ id }) {
 
 function MessageRow({ item, onPreview }) {
   return (
-    <div className="border rounded-md">
+    <div className="border rounded-md overflow-hidden">
       <div className="grid grid-cols-2 gap-4 p-3">
         <div className="flex flex-col gap-3 rounded-md border p-3 bg-muted/20 max-h-96 overflow-y-auto">
           {item.prompt && (
@@ -332,6 +334,74 @@ function MessageRow({ item, onPreview }) {
         <div className="rounded-md border p-3 bg-muted/20 max-h-96 overflow-y-auto">
           <p className="text-sm whitespace-pre-wrap">{item.response || ""}</p>
         </div>
+      </div>
+      <TurnMetadata metadata={item.metadata} />
+    </div>
+  );
+}
+
+function formatGuardrailName(name) {
+  return name
+    .split("-")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+function formatStage(stage) {
+  if (stage === "pre_call") return "Pre-call";
+  if (stage === "post_call") return "Post-call";
+  return stage;
+}
+
+function parseDetail(detail) {
+  const idx = (detail || "").indexOf(":");
+  if (idx === -1) return { action: detail || "", category: "" };
+  return { action: detail.slice(0, idx), category: detail.slice(idx + 1) };
+}
+
+function GuardrailRow({ guardrail }) {
+  const { action, category } = parseDetail(guardrail.detail);
+  const isBlock = action === "BLOCK";
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap py-0.5">
+      <span className="text-xs font-semibold text-slate-700">
+        {formatGuardrailName(guardrail.name)}
+      </span>
+      <Badge variant="info" className="text-[10px] px-1.5 py-0 h-4">
+        {formatStage(guardrail.stage)}
+      </Badge>
+      <div className="flex items-center gap-1">
+        <Badge
+          variant={isBlock ? "destructive" : "success"}
+          className="text-[10px] px-1.5 py-0 h-4 font-mono"
+        >
+          {action}
+        </Badge>
+        {category && (
+          <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wide">
+            · {category}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TurnMetadata({ metadata }) {
+  const guardrails = metadata?.guardrails;
+  if (!guardrails?.length) return null;
+
+  return (
+    <div className="border-t bg-slate-50/80 px-4 py-2.5 flex flex-col gap-1.5">
+      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+        <ShieldAlert className="h-3 w-3" />
+        Guardrails
+      </div>
+      <div className="pl-2 border-l-2 border-red-200 flex flex-col gap-1">
+        {guardrails.map((g, i) => (
+          <GuardrailRow key={i} guardrail={g} />
+        ))}
       </div>
     </div>
   );

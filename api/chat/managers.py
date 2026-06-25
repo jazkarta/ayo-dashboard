@@ -32,7 +32,7 @@ class ChatExportManager(BaseCSVExportManager):
                 conversation.user.username or '',
                 family_id,
                 str(conversation.cohort_id) if conversation.cohort_id else '',
-                chat.created_at.astimezone(tz).strftime('%B %d, %Y, %I:%M %p'),
+                chat.created_at.astimezone(tz).strftime('%Y-%m-%d %H:%M:%S'),
                 chat.prompt,
                 chat.response,
                 json.dumps(chat.metadata, indent=4) if chat.metadata else '',
@@ -45,7 +45,7 @@ class ConversationExportManager(BaseCSVExportManager):
     CSV_HEADERS = [
         'conversation_id', 'model_name', 'username',
         'family_id', 'cohort_id', 'number_of_turns',
-        'datetime', 'attachment_urls',
+        'created_at', 'attachment_urls',
     ]
 
     @classmethod
@@ -64,7 +64,8 @@ class ConversationExportManager(BaseCSVExportManager):
             cls._family_id(conversation.user),
             str(conversation.cohort_id) if conversation.cohort_id else '',
             conversation.number_of_turns,
-            f"{conversation.created_at.astimezone(tz).strftime('%B %d, %Y, %I:%M %p')} ({tz_name})",
+            conversation.created_at.astimezone(tz).strftime('%Y-%m-%d %H:%M:%S'),
+            # f"{conversation.created_at.astimezone(tz).strftime('%B %d, %Y, %I:%M %p')} ({tz_name})",
             '|'.join(attachment_urls),
         ]
 
