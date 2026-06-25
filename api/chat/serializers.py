@@ -6,7 +6,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
-from chat.models import ChatMedia, ConversationModel, ExportJob
+from chat.models import ChatMedia, ConversationModel, ExportJob, GuardrailRule
 from chat.models.chat_models import Chat
 from cohort.serializers import CohortReadSerializer
 from users.serializers.user_serializers import UserSerializer
@@ -161,5 +161,33 @@ class ExportJobSerializer(serializers.ModelSerializer):
             'download_url', 'error_message', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'status', 'download_url', 'error_message', 'created_at', 'updated_at']
+
+
+class GuardrailRuleReadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GuardrailRule
+        fields = ['id', 'min_age', 'max_age', 'guardrails', 'created_at', 'updated_at']
+        read_only_fields = fields
+
+
+class GuardrailRuleWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GuardrailRule
+        fields = ['min_age', 'max_age', 'guardrails']
+
+    def validate_guardrails(self, value):
+        if not isinstance(value, list) or any(not isinstance(g, str) or not g.strip() for g in value):
+            raise serializers.ValidationError('guardrails must be a list of non-empty strings.')
+        return value
+
+    def validate(self, attrs):
+        min_age = attrs.get('min_age', getattr(self.instance, 'min_age', None))
+        max_age = attrs.get('max_age', getattr(self.instance, 'max_age', None))
+        if min_age is not None and max_age is not None and min_age > max_age:
+            raise serializers.ValidationError('min_age must be less than or equal to max_age.')
+        return attrs
+
+    def to_representation(self, instance):
+        return GuardrailRuleReadSerializer(instance, context=self.context).data
 
 

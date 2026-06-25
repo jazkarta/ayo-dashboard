@@ -1,3 +1,6 @@
+from datetime import date
+from itertools import chain
+
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Count, Prefetch
 from django.utils.text import slugify
@@ -18,6 +21,7 @@ from chat.models.chat_models import Chat, ChatMedia
 from chat.managers import export_zip_response
 from chat.models.conversation_models import ConversationModel
 from chat.models.export_job_model import ExportJob
+from chat.models.guardrail_models import GuardrailRule
 from chat.tasks import export_conversations_to_gcs
 from chat.serializers import (
     ChatCreateSerializer,
@@ -26,36 +30,16 @@ from chat.serializers import (
     ConversationDetailSerializer,
     ConversationListSerializer,
     ExportJobSerializer,
+    GuardrailRuleReadSerializer,
+    GuardrailRuleWriteSerializer,
 )
+from utils.permissions import IsAdminOrResearcher
 
 
 
 # Conversations fetched per batch while exporting; each batch prefetches all of
 # its chats and media, so keep this small enough to bound memory on long chats.
 EXPORT_CHUNK_SIZE = 20
-
-
-AYO_GUARDRAILS = [
-    'OpenAI Moderation',
-    'Block Code Execution',
-    'Prompt Injection: Malicious Code',
-    'Prompt Injection: Data Exfiltration',
-    'Prompt Injection: System Prompt',
-    'Harmful Illegal Weapons',
-    'Harmful Violence',
-    'Denied Medical Advice',
-    'Pattern Matching',
-    'Bias: Sexual Orientation',
-    'Bias: Religious',
-    'Bias: Racial',
-    'Bias: Gender',
-    'Insults & Personal Attacks',
-    'Toxic & Abusive Language',
-    'Prompt Injection: Jailbreak',
-    'Harmful Child Safety',
-    'Harmful Self-Harm',
-    'semantic-child-safety',
-]
 
 
 _CONVERSATION_FILTER_PARAMS = [
@@ -92,7 +76,7 @@ class ChatViewSet(ModelViewSet):
         method='get',
         responses={
             200: openapi.Response(
-                description='Guardrail names to activate on LiteLLM for chat requests',
+                description='Guardrail ids to activate on LiteLLM for the requesting participant',
                 schema=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
@@ -107,7 +91,32 @@ class ChatViewSet(ModelViewSet):
     )
     @action(detail=False, methods=['get'])
     def guardrails(self, request):
-        return Response({'guardrails': AYO_GUARDRAILS})
+        dob = getattr(getattr(request.user, 'participant_profile', None), 'date_of_birth', None)
+        if not dob:
+            return Response({'guardrails': []})
+
+        today = date.today()
+        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+
+        rule_guardrails = GuardrailRule.objects.filter(
+            min_age__lte=age, max_age__gte=age
+        ).values_list('guardrails', flat=True)
+
+        guardrail_ids = list(dict.fromkeys(chain.from_iterable(gr or [] for gr in rule_guardrails)))
+
+        return Response({'guardrails': guardrail_ids})
+
+
+class GuardrailRuleViewSet(ModelViewSet):
+    permission_classes = [IsAdminOrResearcher]
+    queryset = GuardrailRule.objects.all()
+    serializer_action_classes = {
+        'list': GuardrailRuleReadSerializer,
+        'retrieve': GuardrailRuleReadSerializer,
+    }
+
+    def get_serializer_class(self):
+        return self.serializer_action_classes.get(self.action, GuardrailRuleWriteSerializer)
 
 
 class ConversationViewSet(TimezoneMixin, mixins.CreateModelMixin, ReadOnlyModelViewSet):
