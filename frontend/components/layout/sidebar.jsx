@@ -15,6 +15,7 @@ import {
   HelpCircle,
   MessageSquare,
   Group,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/utils/utils";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,11 @@ const navItems = [
     title: "Cohorts",
     href: "/dashboard/cohorts",
     icon: Group,
+  },
+  {
+    title: "Guardrails Monitor",
+    href: "/dashboard/guardrails-monitor",
+    icon: ShieldCheck,
   },
   // {
   //   title: "Reports",
