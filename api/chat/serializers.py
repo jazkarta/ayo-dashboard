@@ -176,8 +176,13 @@ class GuardrailRuleWriteSerializer(serializers.ModelSerializer):
         fields = ['min_age', 'max_age', 'guardrails']
 
     def validate_guardrails(self, value):
-        if not isinstance(value, list) or any(not isinstance(g, str) or not g.strip() for g in value):
-            raise serializers.ValidationError('guardrails must be a list of non-empty strings.')
+        if not isinstance(value, dict) or any(
+            not isinstance(k, str) or not k.strip() or not isinstance(v, str) or not v.strip()
+            for k, v in value.items()
+        ):
+            raise serializers.ValidationError(
+                'guardrails must be an object mapping guardrail id to name, with non-empty string keys and values.'
+            )
         return value
 
     def validate(self, attrs):
