@@ -31,7 +31,7 @@ class TestParticipantGuardrails:
         return user
 
     def test_returns_guardrails_for_matching_rule(self, api_client):
-        GuardrailRule.objects.create(min_age=5, max_age=12, guardrails=['g1', 'g2'])
+        GuardrailRule.objects.create(min_age=5, max_age=12, guardrails={'g1': 'Guardrail 1', 'g2': 'Guardrail 2'})
         api_client.force_authenticate(self._participant(8))
 
         response = api_client.get(GUARDRAILS_URL)
@@ -40,8 +40,8 @@ class TestParticipantGuardrails:
         assert response.data == {'guardrails': ['g1', 'g2']}
 
     def test_unions_and_dedupes_overlapping_rules(self, api_client):
-        GuardrailRule.objects.create(min_age=5, max_age=10, guardrails=['g1', 'g2'])
-        GuardrailRule.objects.create(min_age=8, max_age=15, guardrails=['g2', 'g3'])
+        GuardrailRule.objects.create(min_age=5, max_age=10, guardrails={'g1': 'Guardrail 1', 'g2': 'Guardrail 2'})
+        GuardrailRule.objects.create(min_age=8, max_age=15, guardrails={'g2': 'Guardrail 2', 'g3': 'Guardrail 3'})
         api_client.force_authenticate(self._participant(9))
 
         response = api_client.get(GUARDRAILS_URL)
@@ -51,7 +51,7 @@ class TestParticipantGuardrails:
 
     @pytest.mark.parametrize('age', [5, 12])
     def test_age_range_bounds_are_inclusive(self, api_client, age):
-        GuardrailRule.objects.create(min_age=5, max_age=12, guardrails=['g1'])
+        GuardrailRule.objects.create(min_age=5, max_age=12, guardrails={'g1': 'Guardrail 1'})
         api_client.force_authenticate(self._participant(age))
 
         response = api_client.get(GUARDRAILS_URL)
@@ -59,7 +59,7 @@ class TestParticipantGuardrails:
         assert response.data['guardrails'] == ['g1']
 
     def test_returns_empty_when_no_rule_matches(self, api_client):
-        GuardrailRule.objects.create(min_age=5, max_age=12, guardrails=['g1'])
+        GuardrailRule.objects.create(min_age=5, max_age=12, guardrails={'g1': 'Guardrail 1'})
         api_client.force_authenticate(self._participant(20))
 
         response = api_client.get(GUARDRAILS_URL)
@@ -68,7 +68,7 @@ class TestParticipantGuardrails:
 
     def test_returns_empty_when_participant_has_no_profile(self, api_client):
         user = User.objects.create_user(email='noprofile@example.com', password='password123')
-        GuardrailRule.objects.create(min_age=0, max_age=120, guardrails=['g1'])
+        GuardrailRule.objects.create(min_age=0, max_age=120, guardrails={'g1': 'Guardrail 1'})
         api_client.force_authenticate(user)
 
         response = api_client.get(GUARDRAILS_URL)

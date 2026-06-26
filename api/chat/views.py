@@ -102,7 +102,7 @@ class ChatViewSet(ModelViewSet):
             min_age__lte=age, max_age__gte=age
         ).values_list('guardrails', flat=True)
 
-        guardrail_ids = list(dict.fromkeys(chain.from_iterable(gr or [] for gr in rule_guardrails)))
+        guardrail_ids = list(dict.fromkeys(chain.from_iterable(gr or {} for gr in rule_guardrails)))
 
         return Response({'guardrails': guardrail_ids})
 
