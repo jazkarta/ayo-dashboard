@@ -88,7 +88,7 @@ export default function ApplyGuardrailModal({ guardrails, onClose }) {
     try {
       await guardrailService.applyGuardrail(payload);
       toast.success("Guardrail applied successfully!");
-      onClose();
+      onClose(true);
     } catch (err) {
       console.error("[ApplyGuardrailModal] Failed to apply guardrail:", err);
       const message = err?.response?.data?.detail || err?.response?.data?.message || "Something went wrong. Please try again.";
@@ -152,9 +152,30 @@ export default function ApplyGuardrailModal({ guardrails, onClose }) {
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <Label className="after:content-['*'] after:ml-0.5 after:text-destructive after:text-[20px]">Guardrails</Label>
-                {selected.length > 0 && (
-                  <span className="text-xs text-muted-foreground">{selected.length} selected</span>
-                )}
+                <div className="flex items-center gap-3">
+                  {selected.length > 0 && (
+                    <span className="text-xs text-muted-foreground">{selected.length} selected</span>
+                  )}
+                  {guardrails.length > 0 && (
+                    selected.length === guardrails.length ? (
+                      <button
+                        type="button"
+                        onClick={() => setSelected([])}
+                        className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                      >
+                        Unselect all
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setSelected(guardrails.map((g) => g.guardrail_id))}
+                        className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                      >
+                        Select all
+                      </button>
+                    )
+                  )}
+                </div>
               </div>
               <ScrollArea className={cn("h-52 rounded-md border", errors.selected ? "border-destructive" : "")}>
                 <div className="p-1 flex flex-col gap-0.5">
