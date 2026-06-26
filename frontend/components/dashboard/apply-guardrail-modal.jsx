@@ -78,10 +78,14 @@ export default function ApplyGuardrailModal({ guardrails, onClose }) {
       return;
     }
 
+    const guardrailsMap = Object.fromEntries(
+      selected.map((id) => [id, guardrails.find((g) => g.guardrail_id === id)?.guardrail_name ?? ""])
+    );
+
     const payload = {
       min_age: parseInt(minAge, 10),
       max_age: parseInt(maxAge, 10),
-      guardrails: selected,
+      guardrails: guardrailsMap,
     };
 
     setLoading(true);

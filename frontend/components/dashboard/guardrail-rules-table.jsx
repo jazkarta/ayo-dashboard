@@ -25,6 +25,37 @@ import {
 import { Loader2, Pencil, Trash2, ShieldOff } from "lucide-react";
 import { format } from "date-fns";
 
+const VISIBLE_LIMIT = 3;
+
+function GuardrailsCell({ guardrails }) {
+  const [expanded, setExpanded] = useState(false);
+  const names = Object.values(guardrails);
+  const visible = expanded ? names : names.slice(0, VISIBLE_LIMIT);
+  const overflow = names.length - VISIBLE_LIMIT;
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {visible.map((name) => (
+        <span
+          key={name}
+          className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700"
+        >
+          {name}
+        </span>
+      ))}
+      {overflow > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-500 underline-offset-2 hover:text-slate-800 hover:underline"
+        >
+          {expanded ? "See less" : `+${overflow} more`}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function RulesTableBody({ rules, loading, onEdit, onDelete }) {
   if (loading) {
     return (
@@ -62,10 +93,7 @@ function RulesTableBody({ rules, loading, onEdit, onDelete }) {
         <span className="ml-1.5 text-xs text-muted-foreground">yrs</span>
       </TableCell>
       <TableCell>
-        <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-          {rule.guardrails.length} guardrail
-          {rule.guardrails.length !== 1 ? "s" : ""}
-        </span>
+        <GuardrailsCell guardrails={rule.guardrails} />
       </TableCell>
       <TableCell className="text-sm text-muted-foreground">
         {format(new Date(rule.created_at), "MMM d, yyyy")}
