@@ -123,7 +123,7 @@ function RulesTableBody({ rules, loading, onEdit, onDelete }) {
   ));
 }
 
-export default function GuardrailRulesTable({ refreshKey = 0 }) {
+export default function GuardrailRulesTable({ refreshKey = 0, onEdit }) {
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -145,11 +145,6 @@ export default function GuardrailRulesTable({ refreshKey = 0 }) {
   useEffect(() => {
     fetchRules();
   }, [fetchRules, refreshKey]);
-
-  const handleEdit = (rule) => {
-    // TODO: open edit modal with rule data
-    toast("Edit coming soon");
-  };
 
   const confirmDelete = async () => {
     setIsDeleting(true);
@@ -189,7 +184,7 @@ export default function GuardrailRulesTable({ refreshKey = 0 }) {
               <RulesTableBody
                 rules={rules}
                 loading={loading}
-                onEdit={handleEdit}
+                onEdit={onEdit}
                 onDelete={setDeleteTarget}
               />
             </TableBody>

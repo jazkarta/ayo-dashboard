@@ -13,6 +13,7 @@ export default function GuardrailsMonitorPage() {
   const [guardrails, setGuardrails] = useState([]);
   const [loadingGuardrails, setLoadingGuardrails] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editRule, setEditRule] = useState(null);
   const [rulesRefreshKey, setRulesRefreshKey] = useState(0);
 
   const fetchGuardrails = useCallback(async () => {
@@ -31,9 +32,15 @@ export default function GuardrailsMonitorPage() {
     fetchGuardrails();
   }, [fetchGuardrails]);
 
-  const handleModalClose = (applied) => {
+  const handleModalClose = (saved) => {
     setModalOpen(false);
-    if (applied) setRulesRefreshKey((k) => k + 1);
+    setEditRule(null);
+    if (saved) setRulesRefreshKey((k) => k + 1);
+  };
+
+  const handleEdit = (rule) => {
+    setEditRule(rule);
+    setModalOpen(true);
   };
 
   return (
@@ -65,7 +72,7 @@ export default function GuardrailsMonitorPage() {
             )}
           </div>
 
-          <GuardrailRulesTable refreshKey={rulesRefreshKey} />
+          <GuardrailRulesTable refreshKey={rulesRefreshKey} onEdit={handleEdit} />
         </div>
       </main>
 
@@ -73,6 +80,7 @@ export default function GuardrailsMonitorPage() {
         <ApplyGuardrailModal
           guardrails={guardrails}
           onClose={handleModalClose}
+          rule={editRule}
         />
       )}
     </>

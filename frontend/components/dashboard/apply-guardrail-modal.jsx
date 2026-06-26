@@ -40,10 +40,11 @@ function validate({ minAge, maxAge, selected }) {
   return errors;
 }
 
-export default function ApplyGuardrailModal({ guardrails, onClose }) {
-  const [minAge, setMinAge] = useState("");
-  const [maxAge, setMaxAge] = useState("");
-  const [selected, setSelected] = useState([]);
+export default function ApplyGuardrailModal({ guardrails, onClose, rule }) {
+  const isEdit = !!rule;
+  const [minAge, setMinAge] = useState(isEdit ? String(rule.min_age) : "");
+  const [maxAge, setMaxAge] = useState(isEdit ? String(rule.max_age) : "");
+  const [selected, setSelected] = useState(isEdit ? Object.keys(rule.guardrails) : []);
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -90,8 +91,13 @@ export default function ApplyGuardrailModal({ guardrails, onClose }) {
 
     setLoading(true);
     try {
-      await guardrailService.applyGuardrail(payload);
-      toast.success("Guardrail applied successfully!");
+      if (isEdit) {
+        await guardrailService.updateGuardrailRule(rule.id, payload);
+        toast.success("Guardrail rule updated successfully!");
+      } else {
+        await guardrailService.applyGuardrail(payload);
+        toast.success("Guardrail applied successfully!");
+      }
       onClose(true);
     } catch (err) {
       console.error("[ApplyGuardrailModal] Failed to apply guardrail:", err);
@@ -107,7 +113,7 @@ export default function ApplyGuardrailModal({ guardrails, onClose }) {
       <Card className="w-full max-w-lg">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Apply Guardrail</CardTitle>
+            <CardTitle>{isEdit ? "Edit Guardrail Rule" : "Apply Guardrail"}</CardTitle>
             <Button variant="ghost" size="icon" onClick={onClose} disabled={loading}>
               <XIcon className="h-4 w-4" />
             </Button>
@@ -227,7 +233,7 @@ export default function ApplyGuardrailModal({ guardrails, onClose }) {
             </Button>
             <Button onClick={handleSubmit} disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Apply Guardrail
+              {isEdit ? "Save Changes" : "Apply Guardrail"}
             </Button>
           </div>
         </CardContent>
