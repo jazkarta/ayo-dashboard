@@ -44,6 +44,7 @@ urlpatterns = [
     path('api/chats/', include('chat.urls')),
     path('api/users/', include('users.urls')),
     path('api/researchers/', include('researcher.urls')),
+    path('api/configurations/', include('utils.configuration.urls')),
 
     path('swagger<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),
     path('swagger/', swagger_with_timezone(schema_view.with_ui('swagger', cache_timeout=0)), name='schema-swagger-ui'),

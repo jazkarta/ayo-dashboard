@@ -60,6 +60,7 @@ LOCAL_APPS = [
     'cohort.apps.CohortConfig',
     'chat.apps.ChatConfig',
     'researcher.apps.ResearcherConfig',
+    'utils.configuration.apps.ConfigurationConfig',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

@@ -3,7 +3,10 @@ from typing import Optional
 
 from django.core.mail import EmailMessage
 from django.conf import settings
+
 from .email_template_manager import EmailTemplateManager
+from utils.configuration.resolver import build_connection, get_email_connection, resolve_email_config
+from utils.configuration.strategies.database_strategy import DatabaseEmailConfigurationStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +23,7 @@ class EmailManager:
         body: str,
         from_email: Optional[str] = None,
         attachments: Optional[list] = None,
+        connection=None,
     ) -> bool:
         """
         Low-level method responsible solely for dispatching an email.
@@ -32,14 +36,20 @@ class EmailManager:
         :param attachments: Optional list of (filename, content, mimetype) tuples.
         :returns: True if sent successfully, False otherwise.
         """
-        from_email = from_email or settings.DEFAULT_FROM_EMAIL
-
         try:
+            if connection is None or from_email is None:
+                config = resolve_email_config()
+                if connection is None:
+                    connection = get_email_connection(config)
+                if from_email is None:
+                    from_email = (config or {}).get('from_email') or settings.DEFAULT_FROM_EMAIL
+
             email = EmailMessage(
                 subject=subject,
                 body=body,
                 from_email=from_email,
                 to=[to],
+                connection=connection,
             )
             if attachments:
                 for filename, content, mimetype in attachments:
@@ -103,3 +113,21 @@ class EmailManager:
         )
 
         return self._send_email(subject=subject, to=to_email, body=body)
+
+    def send_test_email(self, to_email: str, config=None) -> bool:
+        try:
+            config_dict = DatabaseEmailConfigurationStrategy(config=config).get_config() if config else None
+            connection = build_connection(config_dict) if config_dict else None
+        except Exception as exc:
+            logger.error("Failed to build SMTP connection for test email: %s", exc, exc_info=True)
+            return False
+        from_email = (config_dict or {}).get('from_email') or None
+        subject = 'AYO Dashboard SMTP test'
+        body = 'This is a test email confirming your SMTP configuration is working.'
+        return self._send_email(
+            subject=subject,
+            to=to_email,
+            body=body,
+            from_email=from_email,
+            connection=connection,
+        )
