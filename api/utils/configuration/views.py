@@ -1,17 +1,22 @@
 from django.db import transaction
+from drf_yasg import openapi
 from drf_yasg.utils import no_body, swagger_auto_schema
-from rest_framework import status, viewsets
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet
 
 from utils.email_manager import EmailManager
 from utils.permissions import IsAdmin
-from .models import EmailConfiguration
+from .models import EmailConfiguration, GlobalConfiguration
 from .serializers import (
     EmailConfigurationCreateSerializer,
     EmailConfigurationReadSerializer,
     EmailConfigurationTestSerializer,
     EmailConfigurationUpdateSerializer,
+    GlobalConfigurationReadSerializer,
+    GlobalConfigurationUpdateSerializer,
 )
 
 
@@ -70,3 +75,38 @@ class EmailConfigurationViewSet(viewsets.ModelViewSet):
             {'detail': 'Failed to send test email. Verify the SMTP configuration.'},
             status=status.HTTP_502_BAD_GATEWAY,
         )
+
+
+class GlobalConfigurationViewSet(mixins.UpdateModelMixin, GenericViewSet):
+    queryset = GlobalConfiguration.objects.all()
+
+    def get_serializer_class(self):
+        if self.action in ('update', 'partial_update'):
+            return GlobalConfigurationUpdateSerializer
+        return GlobalConfigurationReadSerializer
+
+    def get_permissions(self):
+        if self.action in ('update', 'partial_update'):
+            return [IsAdmin()]
+        return [IsAuthenticated()]
+
+    @swagger_auto_schema(
+        responses={
+            200: openapi.Response(
+                description='Global configuration applied across services',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'web_search': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                    },
+                ),
+            )
+        },
+    )
+    def list(self, request):
+        instance = GlobalConfiguration.load()
+        serializer = GlobalConfigurationReadSerializer(instance, context=self.get_serializer_context())
+        return Response(serializer.data)
+
+    def perform_update(self, serializer):
+        serializer.save(updated_by=self.request.user)

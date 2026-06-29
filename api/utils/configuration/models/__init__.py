@@ -1,1 +1,2 @@
 from .email_configuration import EmailConfiguration
+from .global_configuration import GlobalConfiguration

@@ -1,7 +1,7 @@
 from django.db import transaction
 from rest_framework import serializers
 
-from .models import EmailConfiguration
+from .models import EmailConfiguration, GlobalConfiguration
 
 
 class EmailConfigurationReadSerializer(serializers.ModelSerializer):
@@ -78,3 +78,26 @@ class EmailConfigurationUpdateSerializer(serializers.ModelSerializer):
 
 class EmailConfigurationTestSerializer(serializers.Serializer):
     recipient_email = serializers.EmailField(required=False)
+
+
+class GlobalConfigurationReadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GlobalConfiguration
+        fields = ['id', 'web_search', 'created_at', 'updated_at']
+        read_only_fields = fields
+
+
+class GlobalConfigurationUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GlobalConfiguration
+        fields = ['web_search']
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+    def to_representation(self, instance):
+        return GlobalConfigurationReadSerializer(instance, context=self.context).data
