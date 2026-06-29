@@ -26,6 +26,13 @@ const settingsService = {
   sendTestEmail(id, data) {
     return apiClient.post(`${urlBase}email-configurations/${id}/send-test-email/`, data);
   },
+
+  getGlobalConfigurations() {
+    return apiClient.get(`${urlBase}global-configurations/`);
+  },
+  updateGlobalConfiguration(id, data) {
+    return apiClient.patch(`${urlBase}global-configurations/${id}/`, data);
+  }
 };
 
 export default settingsService;

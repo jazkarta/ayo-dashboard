@@ -26,6 +26,7 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
+import { useUser } from "@/context/UserContext";
 
 const navItems = [
   {
@@ -86,6 +87,11 @@ const bottomNavItems = [
 export function Sidebar() {
   const [collapsed, setCollapsed] = React.useState(false);
   const pathname = usePathname();
+  const user = useUser();
+
+  const visibleBottomNavItems = bottomNavItems.filter(
+    (item) => item.href !== "/dashboard/settings" || user?.is_admin_researcher === true
+  );
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -154,7 +160,7 @@ export function Sidebar() {
 
           {/* Bottom nav section */}
           <div className="flex flex-col gap-1 pb-2">
-            {bottomNavItems.map((item) => {
+            {visibleBottomNavItems.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <NavItem

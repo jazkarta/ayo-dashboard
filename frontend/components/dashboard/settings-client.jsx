@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import settingsService from "@/services/settingsService";
+import { useUser } from "@/context/UserContext";
 import {
   Mail,
   Globe,
@@ -168,6 +170,7 @@ function EmailSection() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [originalForm, setOriginalForm] = useState(EMPTY_FORM);
+  const [formErrors, setFormErrors] = useState({});
 
   const fetchConfigs = async () => {
     setLoading(true);
@@ -186,11 +189,15 @@ function EmailSection() {
     fetchConfigs();
   }, []);
 
-  const setField = (key, val) => setForm((f) => ({ ...f, [key]: val }));
+  const setField = (key, val) => {
+    setForm((f) => ({ ...f, [key]: val }));
+    setFormErrors((e) => ({ ...e, [key]: undefined }));
+  };
 
   const openAdd = () => {
     setEditingId(null);
     setForm(EMPTY_FORM);
+    setFormErrors({});
     setShowForm(true);
   };
 
@@ -198,12 +205,14 @@ function EmailSection() {
     setEditingId(cfg.id);
     setForm({ ...cfg });
     setOriginalForm({ ...cfg });
+    setFormErrors({});
     setShowForm(true);
   };
 
   const handleCancel = () => {
     setShowForm(false);
     setEditingId(null);
+    setFormErrors({});
   };
 
   const [saving, setSaving] = useState(false);
@@ -262,12 +271,19 @@ function EmailSection() {
     } catch (error) {
       console.error("[EmailSection] Failed to save email configuration", error);
       const responseData = error?.response?.data;
-      const message = Array.isArray(responseData?.non_field_errors)
-        ? responseData.non_field_errors.join(" ")
-        : Array.isArray(responseData)
-        ? responseData.join(" ")
-        : responseData?.message || "Failed to save email configuration.";
-      toast.error(message);
+      const FIELD_KEYS = ["name", "email_host", "email_port", "email_host_user", "password", "default_from_email"];
+      const fieldErrors = {};
+      FIELD_KEYS.forEach((key) => {
+        if (Array.isArray(responseData?.[key])) fieldErrors[key] = responseData[key].join(" ");
+      });
+      if (Object.keys(fieldErrors).length > 0) {
+        setFormErrors(fieldErrors);
+      } else {
+        const message = Array.isArray(responseData?.non_field_errors)
+          ? responseData.non_field_errors.join(" ")
+          : responseData?.detail || responseData?.message || "Failed to save email configuration.";
+        toast.error(message);
+      }
     } finally {
       setSaving(false);
     }
@@ -476,12 +492,15 @@ function EmailSection() {
               <Input
                 id="cfg-name"
                 placeholder="e.g. SendGrid Production"
-                className="h-9 text-sm"
+                className={`h-9 text-sm ${formErrors.name ? "border-destructive" : ""}`}
                 value={form.name}
                 onChange={(e) => setField("name", e.target.value)}
                 required
               />
-              <p className="text-xs text-muted-foreground">A friendly name to identify this configuration</p>
+              {formErrors.name
+                ? <p className="text-xs text-destructive">{formErrors.name}</p>
+                : <p className="text-xs text-muted-foreground">A friendly name to identify this configuration</p>
+              }
             </div>
 
             {/* Host + Port */}
@@ -493,12 +512,15 @@ function EmailSection() {
                 <Input
                   id="cfg-host"
                   placeholder="smtp.sendgrid.net"
-                  className="h-9 text-sm"
+                  className={`h-9 text-sm ${formErrors.email_host ? "border-destructive" : ""}`}
                   value={form.email_host}
                   onChange={(e) => setField("email_host", e.target.value)}
                   required
                 />
-                <p className="text-xs text-muted-foreground">Your SMTP server hostname</p>
+                {formErrors.email_host
+                  ? <p className="text-xs text-destructive">{formErrors.email_host}</p>
+                  : <p className="text-xs text-muted-foreground">Your SMTP server hostname</p>
+                }
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="cfg-port" className="text-xs font-medium">
@@ -508,12 +530,15 @@ function EmailSection() {
                   id="cfg-port"
                   type="number"
                   placeholder="587"
-                  className="h-9 text-sm"
+                  className={`h-9 text-sm ${formErrors.email_port ? "border-destructive" : ""}`}
                   value={form.email_port}
                   onChange={(e) => setField("email_port", Number(e.target.value))}
                   required
                 />
-                <p className="text-xs text-muted-foreground">SMTP server port</p>
+                {formErrors.email_port
+                  ? <p className="text-xs text-destructive">{formErrors.email_port}</p>
+                  : <p className="text-xs text-muted-foreground">SMTP server port</p>
+                }
               </div>
             </div>
 
@@ -526,12 +551,15 @@ function EmailSection() {
                 <Input
                   id="cfg-user"
                   placeholder="apikey"
-                  className="h-9 text-sm"
+                  className={`h-9 text-sm ${formErrors.email_host_user ? "border-destructive" : ""}`}
                   value={form.email_host_user}
                   onChange={(e) => setField("email_host_user", e.target.value)}
                   required
                 />
-                <p className="text-xs text-muted-foreground">SMTP username or API key</p>
+                {formErrors.email_host_user
+                  ? <p className="text-xs text-destructive">{formErrors.email_host_user}</p>
+                  : <p className="text-xs text-muted-foreground">SMTP username or API key</p>
+                }
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="cfg-pass" className="text-xs font-medium">
@@ -540,12 +568,15 @@ function EmailSection() {
                 <PasswordInput
                   id="cfg-pass"
                   placeholder="••••••••"
-                  className="h-9 text-sm font-mono"
+                  className={`h-9 text-sm font-mono ${formErrors.password ? "border-destructive" : ""}`}
                   value={form.password}
                   onChange={(val) => setField("password", val)}
                   required
                 />
-                <p className="text-xs text-muted-foreground">SMTP password or API key</p>
+                {formErrors.password
+                  ? <p className="text-xs text-destructive">{formErrors.password}</p>
+                  : <p className="text-xs text-muted-foreground">SMTP password or API key</p>
+                }
               </div>
             </div>
 
@@ -558,12 +589,15 @@ function EmailSection() {
                 id="cfg-from"
                 type="email"
                 placeholder="no-reply@yourdomain.com"
-                className="h-9 text-sm"
+                className={`h-9 text-sm ${formErrors.default_from_email ? "border-destructive" : ""}`}
                 value={form.default_from_email}
                 onChange={(e) => setField("default_from_email", e.target.value)}
                 required
               />
-              <p className="text-xs text-muted-foreground">Default email address for outgoing messages</p>
+              {formErrors.default_from_email
+                ? <p className="text-xs text-destructive">{formErrors.default_from_email}</p>
+                : <p className="text-xs text-muted-foreground">Default email address for outgoing messages</p>
+              }
             </div>
 
             <Separator />
@@ -708,7 +742,45 @@ function EmailSection() {
 // ─── Web Search Section ───────────────────────────────────────────────────────
 
 function WebSearchSection() {
+  const [configId, setConfigId] = useState(null);
   const [enabled, setEnabled] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      setLoading(true);
+      try {
+        const { data } = await settingsService.getGlobalConfigurations();
+        const config = Array.isArray(data.results) ? data.results[0] : data;
+        if (config) {
+          setConfigId(config.id);
+          setEnabled(config.web_search);
+        }
+      } catch (error) {
+        console.error("[WebSearchSection] Failed to load global configuration", error);
+        toast.error("Failed to load web search settings.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchConfig();
+  }, []);
+
+  const handleToggle = async (val) => {
+    setEnabled(val);
+    setSaving(true);
+    try {
+      await settingsService.updateGlobalConfiguration(configId, { web_search: val });
+      toast.success(`Web search ${val ? "enabled" : "disabled"}.`);
+    } catch (error) {
+      console.error("[WebSearchSection] Failed to update web search setting", error);
+      toast.error("Failed to update web search setting.");
+      setEnabled(!val);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -721,6 +793,12 @@ function WebSearchSection() {
           />
         </CardHeader>
         <CardContent>
+          {loading ? (
+            <div className="flex items-center gap-2 py-1 text-sm text-muted-foreground">
+              <span className="h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin inline-block" />
+              Loading...
+            </div>
+          ) : (
           <div className="flex items-center justify-between py-1">
             <div>
               <p className="text-sm font-medium">Enable web search</p>
@@ -729,14 +807,12 @@ function WebSearchSection() {
                 research and conversation tasks.
               </p>
             </div>
-            <Toggle checked={enabled} onChange={setEnabled} />
+            <Toggle checked={enabled} onChange={handleToggle} id="web-search-toggle" />
           </div>
+          )}
         </CardContent>
       </Card>
 
-      <div className="flex justify-end">
-        <Button size="sm">Save Changes</Button>
-      </div>
     </div>
   );
 }
@@ -750,6 +826,16 @@ const SECTIONS = [
 
 export default function SettingsClient() {
   const [activeId, setActiveId] = useState("email");
+  const user = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user !== null && user?.is_admin_researcher !== true) {
+      router.replace("/dashboard");
+    }
+  }, [user, router]);
+
+  if (!user || user?.is_admin_researcher !== true) return null;
 
   const ActiveSection = SECTIONS.find((s) => s.id === activeId)?.component;
 
