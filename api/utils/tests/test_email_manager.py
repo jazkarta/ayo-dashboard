@@ -9,6 +9,11 @@ class TestEmailManager:
     def email_manager(self):
         return EmailManager()
 
+    @pytest.fixture(autouse=True)
+    def stub_email_config(self, mocker):
+        mocker.patch("utils.email_manager.resolve_email_config", return_value=None)
+        mocker.patch("utils.email_manager.get_email_connection", return_value=None)
+
     def test_send_email_success(self, email_manager, mocker):
         """Test low-level _send_email success."""
         mock_email_message = mocker.patch("utils.email_manager.EmailMessage")
@@ -24,7 +29,8 @@ class TestEmailManager:
             subject=subject,
             body=body,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[to]
+            to=[to],
+            connection=None,
         )
         mock_email_message.return_value.send.assert_called_once_with(fail_silently=False)
 
