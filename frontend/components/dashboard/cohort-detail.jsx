@@ -221,17 +221,18 @@ export default function CohortDetail({ id }) {
           <div className="max-h-96 divide-y overflow-y-auto">
             {cohort.participants.map((p) => {
               const fullName = `${p.first_name} ${p.last_name}`.trim();
-              const initial = p.first_name?.charAt(0)?.toUpperCase() ?? "?";
+              const displayName = fullName || p.username || "-";
+              const initial = displayName.charAt(0)?.toUpperCase() ?? "?";
               return (
                 <div
                   key={p.id}
                   className="flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-slate-50/60"
                 >
-                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${getAvatarColor(p.first_name)}`}>
+                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${getAvatarColor(displayName)}`}>
                     {initial}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-foreground leading-tight">{fullName || "-"}</p>
+                    <p className="text-sm font-semibold text-foreground leading-tight">{displayName}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground truncate">{p.email}</p>
                   </div>
                   {p.family_id && (
