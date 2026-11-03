@@ -16,8 +16,8 @@ def mock_signal_keycloak(mocker):
 
 
 @pytest.fixture(autouse=True)
-def mock_signal_librechat(mocker):
-    mock_cls = mocker.patch("users.signals.LibreChatSync")
+def mock_signal_purge(mocker):
+    mock_cls = mocker.patch("users.signals.UserPurgeManager")
     mock_cls.return_value = MagicMock()
     return mock_cls
 

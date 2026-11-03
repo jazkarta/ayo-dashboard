@@ -71,3 +71,12 @@ class GCSManager:
             settings.GCS_EXPORT_SIGNED_URL_EXPIRY_HOURS,
         )
         return url
+
+    @classmethod
+    def delete_prefix(cls, prefix: str) -> int:
+        bucket = cls._bucket()
+        blobs = list(bucket.list_blobs(prefix=prefix))
+        for blob in blobs:
+            blob.delete()
+        logger.info("Deleted %d blobs under gs://%s/%s", len(blobs), settings.GCS_BUCKET_NAME, prefix)
+        return len(blobs)

@@ -12,7 +12,6 @@ from django.core.exceptions import ValidationError
 
 from keycloak.exceptions import KeycloakError
 from utils.keycloak_manager import KeycloakSync
-from utils.librechat_manager import LibreChatSync
 from .models import User
 
 logger = logging.getLogger(__name__)
@@ -224,50 +223,3 @@ class UserAdmin(BaseUserAdmin):
                     "or ask the user to use the password-reset flow."
                 ),
             )
-
-    # ------------------------------------------------------------------
-    # Delete hooks – ensure Keycloak is kept in sync
-    # ------------------------------------------------------------------
-
-    def delete_model(self, request, obj):
-        """
-        Called when a single user is deleted via the change-form 'Delete' button.
-        The post_delete signal fires automatically here, so we just call super().
-        Defined explicitly for clarity.
-        """
-        super().delete_model(request, obj)
-
-    def delete_queryset(self, request, queryset):
-        """
-        Called when using the 'Delete selected users' bulk action in the
-        change-list.  Django's bulk QuerySet.delete() bypasses model signals,
-        so we sync each user to Keycloak manually before deleting.
-        """
-        sync_kc = KeycloakSync()
-        sync_lc = LibreChatSync()
-        for user in queryset:
-            # 1. Sync delete with Keycloak
-            if user.keycloak_id:
-                try:
-                    sync_kc.delete_user(user.keycloak_id)
-                except Exception as e:
-                    logger.error(
-                        f"Failed to delete Keycloak user {user.keycloak_id} "
-                        f"(Django user: {user.username}): {e}"
-                    )
-                    messages.warning(
-                        request,
-                        f'Could not remove user "{user.username}" from Keycloak: {e}',
-                    )
-
-            # 2. Sync delete with LibreChat
-            try:
-                sync_lc.delete_user(user.email)
-            except Exception as e:
-                logger.error(f"Failed to delete LibreChat user {user.email}: {e}")
-                messages.warning(
-                    request,
-                    f'Could not remove user "{user.username}" from LibreChat: {e}',
-                )
-
-        super().delete_queryset(request, queryset)

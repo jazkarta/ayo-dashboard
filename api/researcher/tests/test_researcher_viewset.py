@@ -195,13 +195,15 @@ class TestResearcherUpdate:
 @pytest.mark.django_db
 class TestResearcherDelete:
 
-    def test_delete_removes_researcher(self, admin_client, researcher_user):
+    def test_delete_removes_researcher(self, admin_client, researcher_user, mock_signal_purge):
         """DELETE should remove the user from Django (signal handles Keycloak)."""
         # Signals are mocked in conftest.py
         pk = researcher_user.pk
         response = admin_client.delete(detail_url(pk))
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not User.objects.filter(pk=pk).exists()
+        mock_signal_purge.purge.assert_called_once()
+        assert mock_signal_purge.purge.call_args.args[0].email == researcher_user.email
 
     def test_delete_nonexistent_researcher(self, admin_client):
         response = admin_client.delete(detail_url(99999))
